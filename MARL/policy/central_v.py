@@ -103,6 +103,10 @@ class CentralV:
         torch.nn.utils.clip_grad_norm_(self.rnn_parameters, self.args.grad_norm_clip)
         self.rnn_optimizer.step()
         # print('Actor loss is', loss)
+        
+        # 保存loss
+        loss_val = loss.item()
+        return loss_val
 
     def _get_v_values(self, batch, max_episode_len):
         v_evals, v_targets = [], []

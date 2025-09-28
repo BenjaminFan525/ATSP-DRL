@@ -8,15 +8,12 @@ Here are the param for the training
 
 def get_common_args():
     parser = argparse.ArgumentParser()
-    # the environment setting
-    parser.add_argument('--difficulty', type=str, default='7', help='the difficulty of the game')
-    parser.add_argument('--game_version', type=str, default='latest', help='the version of the game')
+    # 环境设置
     parser.add_argument('--map', type=str, default='boatschedule', help='the map of the game')
+    parser.add_argument('--n_agents', type=int, default=8, help='the number of the agents')
     parser.add_argument('--seed', type=int, default=123, help='random seed')
-    parser.add_argument('--step_mul', type=int, default=8, help='how many steps to make an action')
-    parser.add_argument('--replay_dir', type=str, default=r'', help='absolute path to save the replay')
-    # 一共可以测试13种算法，但是智能体实际上只有8种
-    # The alternative algorithms are vdn, coma, central_v, qmix, qtran_base,
+    # 测试算法
+    # vdn, coma, central_v, qmix, qtran_base,
     # qtran_alt, reinforce, coma+commnet, central_v+commnet, reinforce+commnet，
     # coma+g2anet, central_v+g2anet, reinforce+g2anet, maven
     parser.add_argument('--alg', type=str, default='qmix', help='the algorithm to train the agent')
@@ -25,15 +22,13 @@ def get_common_args():
     parser.add_argument('--gamma', type=float, default=0.99, help='discount factor')
     parser.add_argument('--optimizer', type=str, default="RMS", help='optimizer')
     parser.add_argument('--evaluate_epoch', type=int, default=20, help='number of the epoch to evaluate the agent')
-
-    # 以下几个参数比较常用,注意只有指定变量名的时候，就会变成true，没法b变false，最好直接在这里改参数吧
+    # 常用参数
     parser.add_argument('--model_dir', type=str, default='./MARL/model', help='model directory of the policy')
     parser.add_argument('--result_dir', type=str, default='./result', help='result directory of the policy')
-
+    parser.add_argument('--result_name', type=str, default='test', help='result name of the policy')
     parser.add_argument('--load_model', type=bool, default=False, help='whether to load the pretrained model')
     parser.add_argument('--learn', type=bool, default=True, help='whether to train the model')
-    parser.add_argument('--cuda', type=bool, default=False, help='whether to use the GPU')
-    parser.add_argument('--havelook', type=bool, default=False, help='whether to have a look of the saruo')
+    parser.add_argument('--cuda', type=bool, default=True, help='whether to use the GPU')
 
     args = parser.parse_args()
     return args
@@ -105,13 +100,13 @@ def get_coma_args(args):
     args.epsilon = 0.5
     args.anneal_epsilon = 0.00064
     args.min_epsilon = 0.02
-    args.epsilon_anneal_scale = 'epoch'
+    args.epsilon_anneal_scale = 'episode'
 
     # lambda of td-lambda return
     args.td_lambda = 0.8
 
     # the number of the epoch to train the agent
-    args.n_epoch = 20000
+    args.n_epoch = 30000
 
     # the number of the episodes in one epoch
     args.n_episodes = 1
@@ -120,7 +115,7 @@ def get_coma_args(args):
     args.evaluate_cycle = 100
 
     # how often to save the model
-    args.save_cycle = 5000
+    args.save_cycle = 500
 
     # how often to update the target_net
     args.target_update_cycle = 200

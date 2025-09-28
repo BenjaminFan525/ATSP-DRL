@@ -9,9 +9,8 @@ class SDrules:
     def __init__(self):
         pass
 
-    # avail: [1,2,...], current: (1,2), sites: [(1,2), (2,3),...]
     # 这个函数直接按照可行动作中距离最短的进行选择动作
-    def choose_action(self, agent_id, avail_actions, current_plane_location, sites_loactions_fixed):
+    def choose_action(self, agent_id, avail_actions, current_plane_location, sites_loactions_fixed, speed):
         avail_ids = []
         for i, eve in enumerate(avail_actions[:-3]):
             if eve == 1:
@@ -19,12 +18,12 @@ class SDrules:
         if avail_ids == []:
             for i, eve in enumerate(avail_actions[-3:]):
                 if eve == 1:
-                    return i + 18
+                    return i + 31
             raise Exception("available actions error!", avail_actions)
         # 否则avail_ids不为空
         distances = []
         for eve_site_id in avail_ids:
-            distances.append(count_path_on_road(current_plane_location, sites_loactions_fixed[eve_site_id], 20))
+            distances.append(count_path_on_road(current_plane_location, sites_loactions_fixed[eve_site_id], speed))
         distances_array = np.array(distances)
         arg_min = np.argsort(distances_array)[0]
         return avail_ids[arg_min]  # 返回其最短路径的规则

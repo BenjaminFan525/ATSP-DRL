@@ -94,6 +94,10 @@ class Reinforce:
         self.rnn_optimizer.step()
         # print('Actor loss is', loss)
 
+        # 保存loss
+        loss_val = loss.item()
+        return loss_val
+
     def _get_returns(self, r, mask, terminated, max_episode_len):
         r = r.squeeze(-1)
         mask = mask.squeeze(-1)

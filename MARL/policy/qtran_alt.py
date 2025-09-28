@@ -179,6 +179,10 @@ class QtranAlt:
             self.target_rnn.load_state_dict(self.eval_rnn.state_dict())
             self.target_joint_q.load_state_dict(self.eval_joint_q.state_dict())
 
+        # 保存loss
+        loss_val = loss.item()
+        return loss_val
+
     def _get_individual_q(self, batch, max_episode_len):
         episode_num = batch['o'].shape[0]
         q_evals, q_targets, hidden_evals, hidden_targets = [], [], [], []

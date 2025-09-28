@@ -42,15 +42,15 @@ class Agents:
     # 有可能分布选出来不符合要求的动作,目前貌似用不到这个东西
     def random_choice_with_mask(self, avail_actions):
         temp = []
+        wait = self.n_actions-3
         for i, eve in enumerate(avail_actions):
             if eve == 1:
-                temp.append(i)
-        # assert 18 in temp
-        if temp[0] == 18:  # 如果真的没有资源了的话
-            return 18
+                temp.append(i)  # 可选站位
+        if temp[0] == wait:  # 没有可选站位，动作为等待
+            return wait
         else:
-            if 18 in temp:
-                temp.remove(18)
+            if wait in temp:
+                temp.remove(wait)
             return np.random.choice(temp, 1, False)[0]
 
     def choose_action(self, obs, last_action, agent_num, avail_actions, epsilon, maven_z=None, evaluate=False):
@@ -92,8 +92,9 @@ class Agents:
             if np.random.uniform() < epsilon:
                 # action = np.random.choice(avail_actions_ind)  # action是一个整数
                 action = self.random_choice_with_mask(avail_actions[0])
-                if action == 18:
-                    print(avail_actions[0])
+                if action == self.n_actions-3:
+                    # print(avail_actions[0])
+                    pass
             else:
                 action = torch.argmax(q_value).cpu()  # 此处应该判断一下是不是都是-inf
                 # print(66666,action,q_value)
@@ -115,25 +116,34 @@ class Agents:
         不能执行的动作概率为0之后，prob中的概率和不为1，这里不需要进行正则化，因为torch.distributions.Categorical
         会将其进行正则化。要注意在训练的过程中没有用到Categorical，所以训练时取执行的动作对应的概率需要再正则化。
         """
-
+        
+        prob = prob / prob.sum()
         if epsilon == 0 and evaluate:
+            # 测试时直接选最大的
             action = torch.argmax(prob)
         else:
-            action = Categorical(prob).sample().long()
+            # action = Categorical(prob.squeeze(0)).sample().long()
+            action = torch.multinomial(prob, num_samples=1)
+            while prob[0][action] == 0:
+                action = torch.multinomial(prob, num_samples=1)
         return action
 
-    # 这个函数有问题
+    # 获取bach中最大的结束step数
     def _get_max_episode_len(self, batch):
         terminated = batch['terminated']
         episode_num = terminated.shape[0]
         max_episode_len = 0
-        # 由于episodelimit的长度内没有terminal==1，所以导致max_episode_len == 0
+        # 获取这些episode中最大的结束step数
         for episode_idx in range(episode_num):
             for transition_idx in range(self.args.episode_limit):
-                if terminated[episode_idx, transition_idx, 0] == 1:
+                if terminated[episode_idx, transition_idx, 0] == 1:  # 如果episodelimit的长度内没有terminal==1，导致max_episode_len == 0
                     if transition_idx + 1 >= max_episode_len:
                         max_episode_len = transition_idx + 1
-                    break
+                    break   # 若已经终止则跳出这个episode检查下一个episode
+            
+            if terminated[episode_idx, transition_idx, 0] == 0:
+                max_episode_len = self.args.episode_limit   # 若该episode没有在episode_limit步前完成调度，设max_episode_len为episode_limit
+                break
         return max_episode_len
 
     def train(self, batch, train_step, epsilon=None):  # coma needs epsilon for training
@@ -142,12 +152,14 @@ class Agents:
         max_episode_len = self._get_max_episode_len(batch)
         for key in batch.keys():
             if key != 'z':
-                batch[key] = batch[key][:, :max_episode_len]
-        self.policy.learn(batch, max_episode_len, train_step, epsilon)
+                batch[key] = batch[key][:, :max_episode_len]    # 取所有episode前max_episode_len个step的信息
+        loss = self.policy.learn(batch, max_episode_len, train_step, epsilon)
 
         if train_step > 0 and train_step % self.args.save_cycle == 0:
             print("\n开始保存模型", train_step, self.args.save_cycle)
             self.policy.save_model(train_step)
+        
+        return loss
 
 
 # Agent for communication
@@ -184,12 +196,15 @@ class CommAgents:
         不能执行的动作概率为0之后，prob中的概率和不为1，这里不需要进行正则化，因为torch.distributions.Categorical
         会将其进行正则化。要注意在训练的过程中没有用到Categorical，所以训练时取执行的动作对应的概率需要再正则化。
         """
-
+        prob = prob / prob.sum()
         if epsilon == 0 and evaluate:
             # 测试时直接选最大的
             action = torch.argmax(prob)
         else:
-            action = Categorical(prob).sample().long()
+            # action = Categorical(prob.squeeze(0)).sample().long()
+            action = torch.multinomial(prob, num_samples=1)
+            while prob[0][action] == 0:
+                action = torch.multinomial(prob, num_samples=1)
         return action
 
     def get_action_weights(self, obs, last_action):
@@ -214,12 +229,16 @@ class CommAgents:
         terminated = batch['terminated']
         episode_num = terminated.shape[0]
         max_episode_len = 0
+        # 获取这些episode中最大的结束step数
         for episode_idx in range(episode_num):
             for transition_idx in range(self.args.episode_limit):
-                if terminated[episode_idx, transition_idx, 0] == 1:
+                if terminated[episode_idx, transition_idx, 0] == 1:  # 如果episodelimit的长度内没有terminal==1，导致max_episode_len == 0
                     if transition_idx + 1 >= max_episode_len:
                         max_episode_len = transition_idx + 1
-                    break
+                    break   # 若已经终止则跳出这个episode检查下一个episode
+            if terminated[episode_idx, transition_idx, 0] == 0:
+                max_episode_len = self.args.episode_limit   # 若该episode没有在episode_limit步前完成调度，设max_episode_len为episode_limit
+                break
         return max_episode_len
 
     def train(self, batch, train_step, epsilon=None):  # coma在训练时也需要epsilon计算动作的执行概率
@@ -227,6 +246,7 @@ class CommAgents:
         max_episode_len = self._get_max_episode_len(batch)
         for key in batch.keys():
             batch[key] = batch[key][:, :max_episode_len]
-        self.policy.learn(batch, max_episode_len, train_step, epsilon)
+        loss = self.policy.learn(batch, max_episode_len, train_step, epsilon)
         if train_step > 0 and train_step % self.args.save_cycle == 0:
             self.policy.save_model(train_step)
+        return loss

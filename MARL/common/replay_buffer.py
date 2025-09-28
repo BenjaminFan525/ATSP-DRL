@@ -32,7 +32,7 @@ class ReplayBuffer:
         # thread lock
         self.lock = threading.Lock()
 
-        # store the episode
+    # 收集信息存入buffer
     def store_episode(self, episode_batch):
         batch_size = episode_batch['o'].shape[0]  # episode_number
         with self.lock:
@@ -51,7 +51,7 @@ class ReplayBuffer:
             self.buffers['terminated'][idxs] = episode_batch['terminated']
             if self.args.alg == 'maven':
                 self.buffers['z'][idxs] = episode_batch['z']
-
+    # 随机采样
     def sample(self, batch_size):
         temp_buffer = {}
         idx = np.random.randint(0, self.current_size, batch_size)
@@ -61,18 +61,22 @@ class ReplayBuffer:
 
     def _get_storage_idx(self, inc=None):
         inc = inc or 1
+        # 若当前buffer索引加inc不超过buffer size
         if self.current_idx + inc <= self.size:
-            idx = np.arange(self.current_idx, self.current_idx + inc)
+            idx = np.arange(self.current_idx, self.current_idx + inc)   # 生成inc个等差数
             self.current_idx += inc
+        # 若当前buffer索引不超过ize，加上inc超过size，循环覆盖
         elif self.current_idx < self.size:
             overflow = inc - (self.size - self.current_idx)
             idx_a = np.arange(self.current_idx, self.size)
             idx_b = np.arange(0, overflow)
             idx = np.concatenate([idx_a, idx_b])
             self.current_idx = overflow
+        # 若当前buffer索引>=size，从0开始
         else:
             idx = np.arange(0, inc)
             self.current_idx = inc
+        # 当前buffer size
         self.current_size = min(self.size, self.current_size + inc)
         if inc == 1:
             idx = idx[0]

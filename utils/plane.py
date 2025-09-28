@@ -1,27 +1,27 @@
 """
 飞机类
-包含：飞机id，静态任务全列表，完成任务列表，剩余任务列表，当前耗时量，当前位置
+包含:飞机位置,飞机id,静态作业对象列表(每个飞机一样),已完成作业对象列表,剩余作业对象列表,已用时间,进行作业的历史站位id列表
 
 """
 from utils.task import Task
+import numpy as np
 
 
 class Planes:
 
-    def __init__(self, numbers=8):
+    def __init__(self, numbers):
 
-        initial_position = [0, 0]
-        self.plane_speed = 20
+        initial_position = np.array([10, 70])   # 初始位置
+        self.plane_speed = 5   # 飞机速度
 
         task = Task()
         # 所有飞机对象
-        # id 0-7
         self.planes_object_list = []
         for i in range(numbers):
-            temp_object = Plane(i, task.simple_task_object, initial_position)  # 目前所有飞机的任务都是一样的
+            temp_object = Plane(i, task.simple_task_object, initial_position)  # 目前所有飞机的作业都是一样的
             self.planes_object_list.append(temp_object)
 
-    # 计算当前所有飞机的剩余工作数以及总工作数
+    # 计算当前所有飞机的剩余作业数以及总作业数
     def count_jobs(self):
         left_jobs = 0
         all_jobs = 0
@@ -36,14 +36,14 @@ class Plane:
     def __init__(self, plane_id, job_object_list, initial_position):
         self.position = initial_position
         self.plane_id = plane_id
-        self.static_job_list = job_object_list  # 表示不会变的总任务列表
-        self.finished_job = []  # 完成的任务
-        self.left_job = [eve for eve in job_object_list]   # 剩下的任务
+        self.static_job_list = job_object_list  # 表示不会变的总作业列表
+        self.finished_job = []  # 完成的作业列表
+        self.left_job = [eve for eve in job_object_list]   # 剩下的作业对象列表
         self.time_spent = 0  # 花费的时间
         # self.is_idle = False  # true代表正在完成任务，false代表空闲
-        self.site_history = []  # 存储每一步完成保障作业所在的战位
+        self.site_history = []  # 存储每一步完成保障作业所在的战位id
 
-    # 执行一个job， 注意这个job应该在战位中有对应位置
+    # 执行一个job， 注意这个job应该在战位中有对应位置，返回该作业的执行时间
     def execute_task(self, job_object, site_object):
         assert job_object.index_id == self.left_job[0].index_id
         time = job_object.time_span

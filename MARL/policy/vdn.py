@@ -29,12 +29,12 @@ class VDN:
             self.eval_vdn_net.cuda()
             self.target_vdn_net.cuda()
 
-        self.model_dir = args.model_dir + '/' + args.alg + '/' + args.map
+        self.model_dir = args.model_dir + '/' + args.alg + '/' + str(args.n_agents)+'_agents' + '/' + args.result_name
         # 如果存在模型则加载模型
         if self.args.load_model:
-            if os.path.exists(self.model_dir + '/rnn_net_params.pkl'):
-                path_rnn = self.model_dir + '/rnn_net_params.pkl'
-                path_vdn = self.model_dir + '/vdn_net_params.pkl'
+            if os.path.exists(self.model_dir + '/599_rnn_net_params.pkl'):
+                path_rnn = self.model_dir + '/599_rnn_net_params.pkl'
+                path_vdn = self.model_dir + '/599_vdn_net_params.pkl'
                 map_location = 'cuda:0' if self.args.cuda else 'cpu'
                 self.eval_rnn.load_state_dict(torch.load(path_rnn, map_location=map_location))
                 self.eval_vdn_net.load_state_dict(torch.load(path_vdn, map_location=map_location))
@@ -110,6 +110,10 @@ class VDN:
         if train_step > 0 and train_step % self.args.target_update_cycle == 0:
             self.target_rnn.load_state_dict(self.eval_rnn.state_dict())
             self.target_vdn_net.load_state_dict(self.eval_vdn_net.state_dict())
+        
+        # 保存loss
+        loss_val = loss.item()
+        return loss_val
 
     def _get_inputs(self, batch, transition_idx):
         # 取出所有episode上该transition_idx的经验，u_onehot要取出所有，因为要用到上一条

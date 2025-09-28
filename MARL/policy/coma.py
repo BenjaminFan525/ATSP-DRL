@@ -45,12 +45,12 @@ class COMA:
             self.eval_critic.cuda()
             self.target_critic.cuda()
 
-        self.model_dir = args.model_dir + '/' + args.alg + '/' + args.map
+        self.model_dir = args.model_dir + '/' + args.alg + '/' + args.map + '/' + str(args.n_agents)+'_agents' + '/' + args.result_name
         # 如果存在模型则加载模型
         if self.args.load_model:
-            if os.path.exists(self.model_dir + '/rnn_params.pkl'):
-                path_rnn = self.model_dir + '/rnn_params.pkl'
-                path_coma = self.model_dir + '/critic_params.pkl'
+            if os.path.exists(self.model_dir + '/3_rnn_params.pkl'):
+                path_rnn = self.model_dir + '/3_rnn_params.pkl'
+                path_coma = self.model_dir + '/3_critic_params.pkl'
                 map_location = 'cuda:0' if self.args.cuda else 'cpu'
                 self.eval_rnn.load_state_dict(torch.load(path_rnn, map_location=map_location))
                 self.eval_critic.load_state_dict(torch.load(path_coma, map_location=map_location))
@@ -122,6 +122,10 @@ class COMA:
         # print('Training: actor params')
         # for params in self.eval_rnn.named_parameters():
         #     print(params)
+
+        # 保存loss
+        loss_val = loss.item()
+        return loss_val
 
     def _get_critic_inputs(self, batch, transition_idx, max_episode_len):
         # 取出所有episode上该transition_idx的经验

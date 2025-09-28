@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.distributions import one_hot_categorical
-import time
+import os
 
 
 class RolloutWorker:
@@ -18,22 +18,21 @@ class RolloutWorker:
         self.epsilon = args.epsilon
         self.anneal_epsilon = args.anneal_epsilon
         self.min_epsilon = args.min_epsilon
+        if self.args.result_dir != '':
+            self.save_path = self.args.result_dir + '/' + args.alg + '/' + args.map
+            if not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
         print('Init RolloutWorker')
 
     def generate_episode(self, episode_num=None, evaluate=False):
-        with open("./my_data_and_graph/historydata/havealook.txt", "a") as f:
-            print("----", file=f)
-        if self.args.replay_dir != '' and evaluate and episode_num == 0:  # prepare for save replay of evaluation
-            self.env.close()
         # 开始收集与环境交互的情况
-        # 收集了8个东西？
+        # 收集了8个东西：obs, action, reward, state, avail_action, action_onehot, 结束标志, padding
         o, u, r, s, avail_u, u_onehot, terminate, padded = [], [], [], [], [], [], [], []
-        # episode_rewards = 0
-        self.env.reset()
+        self.env.reset(self.n_agents)
         terminated = False
         win_tag = False
         step = 0
-        episode_reward = 0  # cumulative rewards
+        episode_reward = 0
         last_action = np.zeros((self.args.n_agents, self.args.n_actions))
         self.agents.policy.init_hidden(1)
 
@@ -61,51 +60,48 @@ class RolloutWorker:
             obs = self.env.get_obs()  # [[],[],...]
             state = self.env.get_state() # []
             actions, avail_actions, actions_onehot = [], [], []
-
+            
+            # 选择动作
             for agent_id in range(self.n_agents):
-                avail_action = self.env.get_avail_agent_actions(agent_id)
-                # print(avail_action)
-                # # 判断是不是所有动作都不可选
-                # assert avail_action[-1] == 1
+                avail_action = self.env.get_avail_agent_actions(agent_id)   # 获取该agent可用动作列表
                 action = self.agents.choose_action(obs[agent_id], last_action[agent_id], agent_id,
                                                    avail_action, epsilon, evaluate)
 
-                if action != 18 and action != 19 and action != 20:  # 更新环境状态
+                if action < len(self.env.sites):  # 更新环境状态
                     self.env.has_chosen_action(action, agent_id)
 
-                # generate onehot vector of th action
+                # action的one-hot向量
                 action_onehot = np.zeros(self.args.n_actions)
                 action_onehot[action] = 1
                 actions.append(action)
                 actions_onehot.append(action_onehot)
                 avail_actions.append(avail_action)
                 last_action[agent_id] = action_onehot
-
+            
+            # 进行一个step，获取总reward，是否结束，交互信息
             reward, terminated, info = self.env.step(actions)
-            win_tag = True if terminated and 'battle_won' in info and info['battle_won'] else False
+            
             o.append(obs)
             s.append(state)
-            # actions = np.array(actions)  # 将动作转化为数组
             u.append(np.reshape(actions, [self.n_agents, 1]))
             u_onehot.append(actions_onehot)
-            # avail_actions = np.array(avail_actions)
             avail_u.append(avail_actions)
             r.append([reward])
             terminate.append([terminated])
             padded.append([0.])
             episode_reward += reward
             step += 1
+            # 更新epsilon
             if self.args.epsilon_anneal_scale == 'step':
                 epsilon = epsilon - self.anneal_epsilon if epsilon > self.min_epsilon else epsilon
             # 存储gantt的记录
             if terminated:
                 for_gantt = info["episodes_situation"]
 
-        # 记录奖励值和时间的变化
-        with open("./my_data_and_graph/historydata/accumulated_rewards.txt", "a") as f:
-            print(episode_reward, file=f)
-        with open("./my_data_and_graph/historydata/times.txt", "a") as f:
-            print(info["time"], file=f)
+        win_tag = terminated
+        move_time = sum(job_trans[5] for job_trans in info["episodes_situation"])
+        move_time = move_time / self.n_agents
+
 
         # last obs
         o.append(obs)
@@ -123,29 +119,20 @@ class RolloutWorker:
         avail_u_next = avail_u[1:]
         avail_u = avail_u[:-1]
 
-        if self.args.havelook:
-            with open("./my_data_and_graph/historydata/havealook.txt", "a") as f:
-                for num in range(len(o)):
-                    print("o:", o[num], file=f)
-                    print("s:", s[num], file=f)
-                    print("u:", u[num], file=f)
-                    print("avail:", avail_u[num], file=f)
-                    print("r:", r[num],"\n", file=f)
 
-
-        # if step < self.episode_limit，padding
-        for i in range(step, self.episode_limit):
-            o.append(np.zeros((self.n_agents, self.obs_shape)))
-            u.append(np.zeros([self.n_agents, 1]))
-            s.append(np.zeros(self.state_shape))
-            r.append([0.])
-            o_next.append(np.zeros((self.n_agents, self.obs_shape)))
-            s_next.append(np.zeros(self.state_shape))
-            u_onehot.append(np.zeros((self.n_agents, self.n_actions)))
-            avail_u.append(np.zeros((self.n_agents, self.n_actions)))
-            avail_u_next.append(np.zeros((self.n_agents, self.n_actions)))
-            padded.append([1.])
-            terminate.append([1.])  # 如果没有padding的情况下是没有terminal的
+        if step < self.episode_limit:
+            for i in range(step, self.episode_limit):
+                o.append(np.zeros((self.n_agents, self.obs_shape)))
+                u.append(np.zeros([self.n_agents, 1]))
+                s.append(np.zeros(self.state_shape))
+                r.append([0.])
+                o_next.append(np.zeros((self.n_agents, self.obs_shape)))
+                s_next.append(np.zeros(self.state_shape))
+                u_onehot.append(np.zeros((self.n_agents, self.n_actions)))
+                avail_u.append(np.zeros((self.n_agents, self.n_actions)))
+                avail_u_next.append(np.zeros((self.n_agents, self.n_actions)))
+                padded.append([1.])
+                terminate.append([1.])
 
         episode = dict(o=o.copy(),
                        s=s.copy(),
@@ -166,10 +153,7 @@ class RolloutWorker:
             self.epsilon = epsilon
         if self.args.alg == 'maven':
             episode['z'] = np.array([maven_z.copy()])
-        if evaluate and episode_num == self.args.evaluate_epoch - 1 and self.args.replay_dir != '':
-            self.env.save_replay()
-            self.env.close()
-        return episode, episode_reward, win_tag, for_gantt
+        return episode, episode_reward, info["time"], win_tag, for_gantt , move_time
 
 
 # RolloutWorker for communication
@@ -190,22 +174,23 @@ class CommRolloutWorker:
         print('Init CommRolloutWorker')
 
     def generate_episode(self, episode_num=None, evaluate=False):
-        if self.args.replay_dir != '' and evaluate and episode_num == 0:  # prepare for save replay
-            self.env.close()
         o, u, r, s, avail_u, u_onehot, terminate, padded = [], [], [], [], [], [], [], []
-        self.env.reset()
+        self.env.reset(self.n_agents)
         terminated = False
         win_tag = False
         step = 0
         episode_reward = 0
         last_action = np.zeros((self.args.n_agents, self.args.n_actions))
         self.agents.policy.init_hidden(1)
+        
         epsilon = 0 if evaluate else self.epsilon
         if self.args.epsilon_anneal_scale == 'episode':
             epsilon = epsilon - self.anneal_epsilon if epsilon > self.min_epsilon else epsilon
         if self.args.epsilon_anneal_scale == 'epoch':
             if episode_num == 0:
                 epsilon = epsilon - self.anneal_epsilon if epsilon > self.min_epsilon else epsilon
+        
+        for_gantt = []
         while not terminated and step < self.episode_limit:
             # time.sleep(0.2)
             obs = self.env.get_obs()
@@ -219,6 +204,9 @@ class CommRolloutWorker:
             for agent_id in range(self.n_agents):
                 avail_action = self.env.get_avail_agent_actions(agent_id)
                 action = self.agents.choose_action(weights[agent_id], avail_action, epsilon, evaluate)
+                
+                if action < len(self.env.sites):  # 更新环境状态
+                    self.env.has_chosen_action(action, agent_id)
 
                 # generate onehot vector of th action
                 action_onehot = np.zeros(self.args.n_actions)
@@ -229,7 +217,7 @@ class CommRolloutWorker:
                 last_action[agent_id] = action_onehot
 
             reward, terminated, info = self.env.step(actions)
-            win_tag = True if terminated and 'battle_won' in info and info['battle_won'] else False
+            
             o.append(obs)
             s.append(state)
             u.append(np.reshape(actions, [self.n_agents, 1]))
@@ -240,10 +228,14 @@ class CommRolloutWorker:
             padded.append([0.])
             episode_reward += reward
             step += 1
-            # if terminated:
-            #     time.sleep(1)
             if self.args.epsilon_anneal_scale == 'step':
                 epsilon = epsilon - self.anneal_epsilon if epsilon > self.min_epsilon else epsilon
+            if terminated:
+                for_gantt = info["episodes_situation"]
+        win_tag = terminated
+        print("step:", step)
+        move_time = sum(job_trans[5] for job_trans in info["episodes_situation"])
+        move_time = move_time / self.n_agents
         # last obs
         o.append(obs)
         s.append(state)
@@ -260,19 +252,19 @@ class CommRolloutWorker:
         avail_u_next = avail_u[1:]
         avail_u = avail_u[:-1]
 
-        # if step < self.episode_limit，padding
-        for i in range(step, self.episode_limit):
-            o.append(np.zeros((self.n_agents, self.obs_shape)))
-            u.append(np.zeros([self.n_agents, 1]))
-            s.append(np.zeros(self.state_shape))
-            r.append([0.])
-            o_next.append(np.zeros((self.n_agents, self.obs_shape)))
-            s_next.append(np.zeros(self.state_shape))
-            u_onehot.append(np.zeros((self.n_agents, self.n_actions)))
-            avail_u.append(np.zeros((self.n_agents, self.n_actions)))
-            avail_u_next.append(np.zeros((self.n_agents, self.n_actions)))
-            padded.append([1.])
-            terminate.append([1.])
+        if step < self.episode_limit:
+            for i in range(step, self.episode_limit):
+                o.append(np.zeros((self.n_agents, self.obs_shape)))
+                u.append(np.zeros([self.n_agents, 1]))
+                s.append(np.zeros(self.state_shape))
+                r.append([0.])
+                o_next.append(np.zeros((self.n_agents, self.obs_shape)))
+                s_next.append(np.zeros(self.state_shape))
+                u_onehot.append(np.zeros((self.n_agents, self.n_actions)))
+                avail_u.append(np.zeros((self.n_agents, self.n_actions)))
+                avail_u_next.append(np.zeros((self.n_agents, self.n_actions)))
+                padded.append([1.])
+                terminate.append([1.])
 
         episode = dict(o=o.copy(),
                        s=s.copy(),
@@ -291,8 +283,5 @@ class CommRolloutWorker:
             episode[key] = np.array([episode[key]])
         if not evaluate:
             self.epsilon = epsilon
-            # print('Epsilon is ', self.epsilon)
-        if evaluate and episode_num == self.args.evaluate_epoch - 1 and self.args.replay_dir != '':
-            self.env.save_replay()
-            self.env.close()
-        return episode, episode_reward, win_tag
+
+        return episode, episode_reward, info["time"], win_tag, for_gantt , move_time
