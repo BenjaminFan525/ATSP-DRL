@@ -26,9 +26,34 @@ class Jobs:
         self.jobs_object_list = reserved_jobs
 
 
+# class Job:
+#     def __init__(self, index_id, codes, name, time_span):
+#         self.index_id = index_id
+#         self.codes = codes
+#         self.name = name
+#         self.time_span = time_span
+
+    
 class Job:
-    def __init__(self, index_id, codes, name, time_span):
-        self.index_id = index_id
-        self.codes = codes
-        self.name = name
-        self.time_span = time_span
+    def __init__(self, code: str, time, group, resources: list = [], predecessor: list = [], exclusive: list = []):
+        self.code = code
+        self.time = time if isinstance(time, (int, float)) else None
+        self.group = group
+        self.resources = resources
+        self.predecessor = predecessor
+        self.exclusive = exclusive
+
+
+if __name__ == "__main__":
+    import json
+    jobs_path = 'utils/config/jobs.json'
+    with open(jobs_path, 'r') as f:
+            data = json.load(f)
+    jobs = [Job(code=item["作业编号"], 
+                time=item["作业时间"], 
+                group=item["分组"], 
+                resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
+                predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
+                exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
+            for item in data]
+    print(jobs)
