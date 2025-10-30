@@ -1,73 +1,35 @@
-"""
-战位的相关信息，被环境调用
-A-R 20个战位
-每个站位拥有:站位id,绝对位置,可以进行的作业对象列表,可以进行作业id列表
-"""
-import numpy as np
-import copy
-import random
+class Job:
+    def __init__(self, code: str, time, group, resources: list = [], predecessor: list = [], exclusive: list = []):
+        self.code = code
+        self.time = time if isinstance(time, (int, float)) else None
+        self.group = group
+        self.resources = resources
+        self.predecessor = predecessor
+        self.exclusive = exclusive
 
-# 所有战位的类
-class Sites:
+class Resource():
+    def __init__(self, code: str, type: str, sites: list, max_service: int = 1):
+        self.code = code
+        self.type = type
+        self.sites = sites  # 该资源可服务的站位列表
+        self.on_service = []
+        self.max_service = max_service
+        self.available = True  # 代表当前是否可用
 
-    def __init__(self, planes_num):
+    def is_available(self):
+        return True if len(self.on_service) < self.max_service else False
 
-        # 所有战位对象
-        self.sites_object_list = []
-        sites_codes = ['z','1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', "14", '15', '16',
-                       '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28','29', '30', '31']
-        # 站位位置
-        self.sites_positions = [
-            [10, 70],
-            [45,110], [35,110], [25,100], [25, 90], [35, 80], [45, 80],
-            [95,120], [85,120], [75,110], [85,100], [95,100], [105,90], [95, 80], [85, 80], 
-            [45, 60], [35, 60], [25, 50], [35, 40], [45, 40], [55, 30], [45, 20], [35, 20], 
-            [95, 50], [85, 50], [75, 40], [75, 30], [85, 20], [95, 20],
-            [130,80], [130,70], [130,60]
-            ]
-        
-        # 前18个站位资源数量随机生成
-        jobs_num = 10
-        sites_resources_range = [[i for i in range(jobs_num-1)] for _ in range(len(sites_codes)-3)]  # [0,1,...,8]*18
-        resource_number = [[0]*(jobs_num) for _ in range(len(sites_codes)-3)]   # [0*10]*18
-        for a in range(len(resource_number)):
-            while sum(resource_number[a]) == 0:
-                for i in range(jobs_num-1):
-                    resource_sum = 0
-                    while resource_sum < planes_num:
-                        for j in range(len(resource_number)):
-                            resource_number[j][i] = random.randint(0, 2)
-                            resource_sum += resource_number[j][i]
-        for i in range(len(resource_number)):
-            for j in range(jobs_num-1):
-                if resource_number[i][j] == 0:
-                    sites_resources_range[i].remove(j)
-        # 最后几个出场站位只能执行出场作业且资源无限
-        sites_resources_range.extend([[jobs_num-1]]*3)
-        resource_number.extend([[0,0,0,0,0,0,0,0,0,100]]*3)
-        
-        
-        for i in range(len(sites_codes)):
-            temp_object = Site(i, self.sites_positions[i], sites_resources_range[i], resource_number[i])
-            self.sites_object_list.append(temp_object)
+    def add_service(self, site_code):
+        assert self.available == True, f"Resource {self.code} is not available!"
+        assert site_code in self.sites, f"Site {site_code} is not supported by Resource {self.code}!"
+        self.on_service.append(site_code)
+        self.available = self.is_available()
 
-        
-    
-    def update_site_resources(self, action_id, job_id):
-        # 更新该站位的资源列表
-        assert self.sites_object_list[action_id].resource_number[job_id] >= 1
-        self.sites_object_list[action_id].resource_number[job_id] -= 1
-        if self.sites_object_list[action_id].resource_number[job_id] == 0:
-            temp = copy.deepcopy(self.sites_object_list[action_id].resource_ids_list)
-            temp.remove(job_id)
-            self.sites_object_list[action_id].update_resorces(temp)
+    def remove_service(self, site_code):
+        assert site_code in self.on_service, f"Site {site_code} is not in service list of Resource {self.code}!"
+        self.on_service.remove(site_code)
+        self.available = self.is_available()
 
-
-from agent import Plane, Device
-from job import Job
-from .res import Resource
-
-# 每一个战位的类
 class Site:
     def __init__(self, code, config):
         self.code = code
@@ -85,7 +47,7 @@ class Site:
                 self.resources[res.code] = res
         self.update_resources()
 
-    def add_plane(self, plane: Plane):
+    def add_plane(self, plane):
         assert self.is_occupied is False, f"Site {self.code} is already occupied!"
         self.plane = plane
         self.is_occupied = True
@@ -171,6 +133,41 @@ class Site:
 
 if __name__ == "__main__":
     import json
+    import numpy as np
+    import math
+
+    # test for job class
+    # jobs_path = 'utils/config/jobs.json'
+    # with open(jobs_path, 'r') as f:
+    #         data = json.load(f)
+    # jobs = [Job(code=item["作业编号"], 
+    #             time=item["作业时间"], 
+    #             group=item["分组"], 
+    #             resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
+    #             predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
+    #             exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
+    #         for item in data]
+    # print(jobs)
+
+    # # test for resource class
+    # fixed_res_path = 'utils/config/fixed_resources.json'
+    # mobile_res_path = 'utils/config/mobile_resources.json'
+    # with open(fixed_res_path, 'r') as f:
+    #         data = json.load(f)
+    # fixed_resources = [Resource(item["设备编号"], 
+    #                             item["类型"], 
+    #                             [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
+    #                             max_service=5) 
+    #                             for item in data]
+    # with open(mobile_res_path, 'r') as f:
+    #     data = json.load(f)
+    # mobile_resources = [Resource(item["设备编号"], 
+    #                              item["类型"], 
+    #                              [item["初始停机位"]], 
+    #                              max_service=1) 
+    #                              for item in data]    
+    # print(fixed_resources)
+
     jobs_path = 'utils/config/jobs.json'
     with open(jobs_path, 'r') as f:
             data = json.load(f)
@@ -199,28 +196,10 @@ if __name__ == "__main__":
                                  max_service=1) 
                                  for item in data]  
     
-    
-    # sites_codes = ['z','1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
-    #                '13', "14", '15', '16', '17', '18', '19', '20', '21', '22', '23', 
-    #                '24', '25', '26', '27', '28','29', '30', '31']
-    #     # 站位位置
-    # sites_positions = [
-    #         [10, 70],
-    #         [45,110], [35,110], [25,100], [25, 90], [35, 80], [45, 80],
-    #         [95,120], [85,120], [75,110], [85,100], [95,100], [105,90], [95, 80], [85, 80], 
-    #         [45, 60], [35, 60], [25, 50], [35, 40], [45, 40], [55, 30], [45, 20], [35, 20], 
-    #         [95, 50], [85, 50], [75, 40], [75, 30], [85, 20], [95, 20],
-    #         [130,80], [130,70], [130,60]
-    #         ]
-
     sites_path = 'utils/config/sites.json'
     with open(sites_path, 'r') as f:
         data = json.load(f)
-    for code, pos in zip(data['sites_codes'], data['sites_positions']):
-        fixed = [res for res in fixed_resources if code in res.sites]
-        mobile = [res for res in mobile_resources if code in res.sites]
-        temp_object = Site(code, {'position': pos, 
-                                  'jobs': jobs, 
-                                  'fixed_resources': fixed, 
-                                  'mobile_resources': mobile})
-        print(temp_object.code, temp_object.pos, temp_object.res_avail)
+    sites = [Site(code, {'position': pos, 
+                         'jobs': jobs, 
+                         'fixed_resources': [res for res in fixed_resources if code in res.sites], 
+                         'mobile_resources': [res for res in mobile_resources if code in res.sites]}) for code, pos in zip(data['sites_codes'], data['sites_positions'])]

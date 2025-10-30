@@ -26,14 +26,6 @@ class Jobs:
         self.jobs_object_list = reserved_jobs
 
 
-# class Job:
-#     def __init__(self, index_id, codes, name, time_span):
-#         self.index_id = index_id
-#         self.codes = codes
-#         self.name = name
-#         self.time_span = time_span
-
-    
 class Job:
     def __init__(self, code: str, time, group, resources: list = [], predecessor: list = [], exclusive: list = []):
         self.code = code
