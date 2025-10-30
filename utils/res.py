@@ -1,17 +1,8 @@
-"""
-资源类
-包含:...
-
-"""
-import json
-import numpy as np
-import math
-
 class Resource():
-    def __init__(self, code: str, type: str, site_range: tuple, max_service: int = 1):
+    def __init__(self, code: str, type: str, sites: list, max_service: int = 1):
         self.code = code
         self.type = type
-        self.sites = [str(idx) for idx in range(site_range[0], site_range[1])]  # 该资源可服务的站位列表
+        self.sites = sites  # 该资源可服务的站位列表
         self.on_service = []
         self.max_service = max_service
         self.available = True  # 代表当前是否可用
@@ -32,17 +23,23 @@ class Resource():
 
 
 if __name__ == "__main__":
+    import json
+    import numpy as np
+    import math
     fixed_res_path = 'utils/config/fixed_resources.json'
     mobile_res_path = 'utils/config/mobile_resources.json'
     with open(fixed_res_path, 'r') as f:
             data = json.load(f)
     fixed_resources = [Resource(item["设备编号"], 
-                                        item["类型"], 
-                                        range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])), 5) 
-                                        for item in data]
+                                item["类型"], 
+                                [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
+                                max_service=5) 
+                                for item in data]
     with open(mobile_res_path, 'r') as f:
         data = json.load(f)
     mobile_resources = [Resource(item["设备编号"], 
-                                        item["类型"], 
-                                        item["初始停机位"], 1) 
-                                        for item in data]    
+                                 item["类型"], 
+                                 [item["初始停机位"]], 
+                                 max_service=1) 
+                                 for item in data]    
+    print(fixed_resources)
