@@ -225,7 +225,7 @@ class ScheduleEnv(gym.Env):
         self.episode_time_slice.append(min_time)  # 这个step消耗的时间为最小的站位工作时间
         self.state_left_time = util.advance_by_min_time(min_time, self.state_left_time)  # step推进，将剩余工作时间中非0的都减去min_time
 
-        # 更新站位状态,主要是检查哪些站位工作完了
+        # 更新站位状态,主要是检查哪些站位工作完了   
         # state transition 2：当前step时间推进完再进行一次状态转移
         for i, eve_time in enumerate(self.state_left_time):
             if eve_time == 0:   # 若站位剩余工作时间为0

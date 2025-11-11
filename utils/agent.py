@@ -1,4 +1,6 @@
 from env_utils import Resource, Site, Job
+import math
+import numpy as np
 
 class Device:
     def __init__(self, code, config):
@@ -6,75 +8,83 @@ class Device:
         self.config = config
         self.resource : Resource = config['resource']  # 携带的资源对象
         self.velocity = config['velocity']  # 飞机速度
-        self.position : Site = config['position'].pos  # 位置
+        self.site : Site = config['site']  # 位置
         self.is_transporting = False  # 是否在移动
         self.destination = None  # 目的地
         self.left_trans_time = 0  # 当前任务剩余时间
+        self.is_busy = False  # 是否忙碌
+        self.position = self.site.pos
 
     def start_transport(self, destination: Site):
         assert self.is_transporting is False, "Device must be idle to start transporting!"
         assert self.resource.is_available(), f"Resource must be idle to start transporting!"
-        distance = abs(self.position[0]-destination[0]) + abs(self.position[1]-destination[1]) # 曼哈顿距离
-        time = distance // self.velocity
+        distance = abs(self.site.pos[0]-destination.pos[0]) + abs(self.site.pos[1]-destination.pos[1]) # 曼哈顿距离
+        time = math.ceil(distance / self.velocity)
         self.is_transporting = True
         self.left_trans_time = time
         self.destination = destination
-        self.position.remove_resource(self.resource)
+        self.site.remove_resource(self.resource)
         return time
 
     def finish_transport(self):
-        assert self.is_transporting is False and self.destination is not None, "Device must be transporting to finish transport."
-        self.position = self.destination
+        # assert self.is_transporting is True and self.destination is not None, "Device must be transporting to finish transport."
+        self.site = self.destination
         self.destination = None
         self.is_transporting = False
-        self.resource.sites = [self.position.code]
-        self.position.add_resource(self.resource)
+        self.resource.sites = [self.site.code]
+        self.site.add_resource(self.resource)
     
-    def step(self):
+    def update(self, time):
         assert not(self.is_busy and self.is_transporting), "Device must be either busy or transporting."
+        ret = np.inf
         if self.is_transporting:
-            self.left_trans_time -= 1
-            if self.left_trans_time == 0:
+            self.left_trans_time -= time
+            # if self.left_trans_time <= 0 and self.resource.type != 'R014':
+            if self.left_trans_time <= 0:
                 self.finish_transport()
+            if self.resource.type == 'R014':
+                ret = self.left_trans_time # 统计转运车的剩余时间
+        self.is_busy = not self.resource.available
+        return ret
 
     def reset(self):
-        self.position = self.config['position'].pos  # 位置
+        self.site = self.config['site']  # 位置
         self.is_transporting = False
         self.destination = None
         self.left_trans_time = 0
+        self.is_busy = False
 
 class Plane:
     def __init__(self, code, config):
         self.code = code
         self.config = config
         self.velocity = config['velocity']  # 飞机速度
-        self.position : Site = config['position']  # 位置
+        self.site : Site = config['site']  # 位置
         self.current_jobs = []  # 当前任务
         self.finished_jobs = []  # 已完成的作业列表
         self.is_busy = False  # 是否忙碌
         self.destination = None  # 目的地
+        self.transporter = None  # 转运车
         self.is_transporting = False  # 是否在移动
         self.left_job_time = 0  # 当前任务剩余时间
         self.left_trans_time = 0  # 当前运输剩余时间
+        self.is_waiting = False  # 是否在等待
+        self.waiting_time = 0  # 等待时间
 
         self.jobs = {}
         for job in config['jobs']:
             if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']:
                 self.jobs[job.code] = job
             if job.time is None:
-                if job.code == 'ZY02':
-                    job.time = (100-self.config['hydraulic_oil'])//10
-                elif job.code == 'ZY03':
-                    job.time = (100-self.config['electricity'])//5
-                elif job.code == 'ZY10':
-                    job.time = (100-self.config['fuel'])//5
+                if job.code == 'ZY10':
+                    job.time = math.ceil((100-self.config['fuel'])/5*60)
             job.predecessor = set(job.predecessor)
             job.resources = set(job.resources)
         self.left_jobs = list(self.jobs.keys())  # 初始剩余作业列表
 
     def get_avail_jobs(self):
-        assert not self.is_busy and not self.is_transporting, \
-            "Current plane must be idle to get available jobs."
+        # assert not self.is_busy and not self.is_transporting, \
+        #     "Current plane must be idle to get available jobs."
 
         avail = []                               # 存放所有可选作业编码
         for job_code in self.left_jobs:          # 遍历剩余作业
@@ -82,7 +92,8 @@ class Plane:
             # 1. 前序作业必须全部完工
             if job.predecessor.issubset(self.finished_jobs):
                 # 2. 资源需求检查
-                if len(job.resources) == 0 or not job.resources.isdisjoint(self.position.res_avail.keys()):                   
+                self.site.update_resources()
+                if len(job.resources) == 0 or not job.resources.isdisjoint(self.site.res_avail.keys()):                   
                     avail.append(job_code)
         return avail
 
@@ -100,41 +111,78 @@ class Plane:
         assert job_code in self.get_avail_jobs(), f"Job {job_code} is not available."
         self.current_jobs = self.get_parallel_jobs(job_code)
         self.is_busy = True
-        self.position.start_jobs([self.jobs[job] for job in self.current_jobs])
+        self.site.start_jobs([self.jobs[job] for job in self.current_jobs])
+        return self.jobs[job_code].time
 
-    def start_transport(self, destination: Site):
+    def start_transport(self, destination: Site, transporter: Device):
         assert self.is_busy is False and self.is_transporting is False, "Plane must be idle to start transporting."
-        self.position.remove_plane()
-        distance = abs(self.position[0]-destination[0]) + abs(self.position[1]-destination[1]) # 曼哈顿距离
-        time = distance // self.velocity
+        self.site.remove_plane()
+        distance = abs(self.site.pos[0]-destination.pos[0]) + abs(self.site.pos[1]-destination.pos[1]) # 曼哈顿距离
+        time = math.ceil(distance / self.velocity)
+        if self.site.code == 'Z':
+            time += 1*60  # 加上固定和解固的时间
+        elif destination.code in ['29', '30', '31']:
+            time += 5*60  # 解固+调整姿态+起飞
+        else:
+            time += 2*60
         self.is_transporting = True
         self.left_trans_time = time
         self.destination = destination
+        self.destination.add_plane(self)
+        if transporter is not None:
+            self.transporter = transporter
+            transporter.start_transport(destination)
+            transporter.left_trans_time = time
+        
         return time
     
     def finish_transport(self):
-        assert self.is_transporting is False and self.destination is not None, "Plane must be transporting to finish transport."
-        self.position = self.destination
+        assert self.is_transporting is True and self.destination is not None, "Plane must be transporting to finish transport."
+        self.site = self.destination
         self.destination = None
+        if self.transporter:
+            # self.transporter.finish_transport()
+            self.transporter = None
+        self.finished_jobs = [item for item in self.finished_jobs if item not in ['ZY02', 'ZY03']]
         self.is_transporting = False
     
-    def step(self):
+    def start_waiting(self):
+        assert self.is_busy is False and self.is_transporting is False, "Plane must be idle to start waiting."
+        self.is_waiting = True
+        self.waiting_time = 0
+
+    def finish_waiting(self):
+        assert self.is_waiting is True, "Plane must be waiting to finish waiting."
+        self.is_waiting = False
+        self.waiting_time = 0
+
+    def is_completed_all_jobs(self):
+        return len(self.left_jobs) == 0
+    
+    def update(self, time):
         assert not(self.is_busy and self.is_transporting), "Plane must be either busy or transporting."
+        ret = 0
         if self.is_busy:
-            self.position.step()
-            if self.position.is_all_finished():
+            ret = self.site.update(time)
+            if self.site.is_all_finished():
                 self.finished_jobs += self.current_jobs
                 self.left_jobs = [job for job in self.left_jobs if job not in self.current_jobs]
                 self.current_jobs = []
                 self.is_busy = False
         elif self.is_transporting:
-            self.left_trans_time -= 1
-            if self.left_trans_time == 0:
+            self.left_trans_time -= time
+            assert self.left_trans_time >= 0, "Plane transport time cannot be negative."
+            if self.left_trans_time <= 0:
                 self.finish_transport()
+            else:
+                ret = self.left_trans_time
+        elif self.is_waiting:
+            self.waiting_time += time
+        return ret
 
     def reset(self):
         self.velocity = self.config['velocity']  # 飞机速度
-        self.position = self.config['position'].pos  # 位置
+        self.site = self.config['site']  # 位置
         self.current_jobs = []
         self.finished_jobs = []
         self.is_busy = False
@@ -179,7 +227,7 @@ if __name__ == "__main__":
     sites_path = 'utils/config/sites.json'
     with open(sites_path, 'r') as f:
         data = json.load(f)
-    sites = {code: Site(code, {'position': pos, 
+    sites = {code: Site(code, {'site': pos, 
                          'jobs': jobs, 
                          'fixed_resources': [res for res in fixed_resources.values() if code in res.sites], 
                          'mobile_resources': [res for res in mobile_resources.values() if code in res.sites]}) for code, pos in zip(data['sites_codes'], data['sites_positions'])}
@@ -189,7 +237,7 @@ if __name__ == "__main__":
         device_cfg = {
             'resource': res,
             'velocity': 3,
-            'position': sites[res.sites[0]]
+            'site': sites[res.sites[0]]
             }
         if res.type not in mobile_devices:
             mobile_devices[res.type] = [Device(res.code, device_cfg)]
@@ -200,13 +248,10 @@ if __name__ == "__main__":
     for idx in range(5):
         plane_cfg = {
             'velocity': 5,
-            'position': sites[str(idx+1)],
-            'hydraulic_oil': np.random.randint(20, 60),
-            'electricity': np.random.randint(0, 50),
+            'site': sites[str(idx+1)],
             'fuel': np.random.randint(0, 30),
             'jobs': jobs.values()
         }
         plane = Plane(f'Plane_{idx}', plane_cfg)
-        # TODO: fix bug here
         print(plane.get_avail_jobs())
         plane.choose_job('ZY02')
