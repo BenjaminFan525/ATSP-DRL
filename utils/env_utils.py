@@ -1,7 +1,7 @@
 class Job:
     def __init__(self, code: str, time, group, resources: list = [], predecessor: list = [], exclusive: list = []):
         self.code = code
-        self.time = time if isinstance(time, (int, float)) else None
+        self.time = time*60 if isinstance(time, (int, float)) else None
         self.group = group
         self.resources = resources
         self.predecessor = predecessor
@@ -74,9 +74,10 @@ class Site:
             for res_code in job.resources:
                 if res_code in self.res_avail:
                     self.resources[self.res_avail[res_code][-1]].add_service(self.code)
-                    res = res_code
+                    res = self.res_avail[res_code][-1]
                     break
             self.onging_jobs[job.code] = [job.time, res]
+    
     def finish_jobs(self, jobs: list[Job]):
         for job in jobs:
             assert job.code in self.onging_jobs, f"Job {job.code} is not being serviced at Site {self.code}!"
@@ -96,20 +97,26 @@ class Site:
     def is_all_finished(self):
         return len(self.onging_jobs) == 0
     
-    def step(self):
+    def update(self, time):
+        ret = 0
         if self.is_interfered:
             return
         if self.left_rec_time > 0:
-            self.left_rec_time -= 1
+            self.left_rec_time -= time
             if self.left_rec_time > 0:
                 return
+            else:
+                self.is_interfered = False
         finished_jobs = []
         for job_code in self.onging_jobs:
-            self.onging_jobs[job_code][0] -= 1
-            if self.onging_jobs[job_code][0] == 0:
+            self.onging_jobs[job_code][0] -= time
+            if self.onging_jobs[job_code][0] <= 0:
                 finished_jobs.append(job_code)
+            else:
+                ret = max(ret, self.onging_jobs[job_code][0])
         if len(finished_jobs) > 0:
             self.finish_jobs([self.config['jobs'][job] for job in finished_jobs])
+        return ret
     
     def update_resources(self):
         '''更新该站位的可用资源类型字典'''
