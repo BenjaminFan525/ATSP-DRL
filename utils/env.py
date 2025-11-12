@@ -27,9 +27,6 @@ class ScheduleEnv(gym.Env):
         self.job_list = list(self.jobs.keys())
 
         self.obs = {}
-        self.action = {}
-        # self.action["devices"] = {k: [self.sites[0] for _ in v] for k, v in self.mobile_devices.items()}
-        # self.action["planes"] = [[self.sites[0], self.jobs[0]] for _ in range(self.num_planes)]
         self.done = False
 
 
@@ -43,6 +40,10 @@ class ScheduleEnv(gym.Env):
                     predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
                     exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
                 for item in data}
+        
+        self.waiting_sites = {}
+        for job_type, devices in self.jobs.items():
+            self.waiting_sites[job_type] = []
 
         with open(config['fixed_res_path'], 'r') as f:
             data = json.load(f)
@@ -107,19 +108,13 @@ class ScheduleEnv(gym.Env):
 
     def get_avail_plane_actions(self, plane):
         return [1 if job in self.job_list else 0 for job in plane.get_avail_jobs()]
-
-    def get_avail_transporter(self, plane):
-        current_site = plane.site
-        current_site.update_resources()
-        if "R014" in current_site.res_avail:
-            res = current_site.resources[current_site.res_avail["R014"][-1]]
-            for device in self.mobile_devices["R014"]:
-                if device.resource.code == res.code and not device.is_busy and not device.is_transporting:
-                    transporter = device
-            return transporter
-        else:
-            return None
         
+    def get_idle_devices(self, res_types):
+        ret = []
+        for res_type in res_types:
+            ret += [device for device in self.mobile_devices[res_type] if device.is_idle()]
+        return ret
+    
     def get_idle_transporters(self):
         return [device for device in self.mobile_devices["R014"] if not device.is_busy and not device.is_transporting]
     
@@ -145,39 +140,41 @@ class ScheduleEnv(gym.Env):
         
         for device_type, devices in self.mobile_devices.items():
             for idx, device in enumerate(devices):
-                if device.is_busy or device.is_transporting:
+                if not device.is_idle():
                     step_time = min(step_time, device.update(dt)) 
                 elif action["devices"][device_type][idx] == device.site.code:
                     continue  # 目标位置与当前位置相同，无需移动
                 else:
-                    device.start_transport(self.sites[action["devices"][device_type][idx]])
+                    step_time = min(step_time, device.start_transport(self.sites[action["devices"][device_type][idx]]))
         
         for plane_id, plane in self.planes.items():
-            if plane.is_busy or plane.is_transporting:
+            if not plane.is_idle():
                 step_time = min(step_time, plane.update(dt))
             else:
                 target_site_code, target_job = action["planes"][int(plane_id.split('_')[1])][int(plane_id.split('_')[2])]
+                # 先考虑转运，再考虑作业
                 if target_site_code != plane.site.code:
-                    if self.get_avail_transporter(plane) is None:
-                        waiting_planes += 1
+                    # 无可用转运车的情况
+                    if plane.site.get_avail_transporter() is None:
                         if plane.site.code == 'Z':  # 起始位置可以直接滑行
-                            # if plane.is_waiting:
-                            #     plane.finish_waiting()
                             step_time = min(step_time, plane.start_transport(self.sites[target_site_code], None))
+                            self.choosed_job = target_job
                         else:
                             plane.start_waiting()
-                            continue  # 无可用转运车，等待
+                            self.waiting_sites['ZY-T'].append(plane.site.code)
+                            plane.destination = self.sites[target_site_code]
+                            plane.destination.add_plane(plane)
+                            self.choosed_job = target_job
                     else:
-                        step_time = min(step_time, plane.start_transport(self.sites[target_site_code], self.get_avail_transporter(plane)))
+                        step_time = min(step_time, plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter()))
+                        self.choosed_job = target_job
+                
                 else:
-                    if target_job is None:
-                        if len(plane.get_avail_jobs()) == 0 and not plane.is_completed_all_jobs():
-                            waiting_planes += 1
-                            plane.start_waiting()
-                            continue  # 无任务，等待
-                    else:
-                        if plane.is_waiting:
-                            plane.finish_waiting()  
+                    if target_job not in plane.get_avail_jobs() and not plane.is_completed_all_jobs(): # 资源不足
+                        plane.start_waiting()
+                        self.waiting_sites[target_job.code].append(plane.site.code)
+                        self.choosed_job = target_job
+                    elif target_job is not None:
                         step_time = min(step_time, plane.choose_job(target_job))
 
             if plane.is_completed_all_jobs() and plane.site.code in ['29', '30', '31']:  # 完成所有任务并且抵达起飞跑道
@@ -185,6 +182,7 @@ class ScheduleEnv(gym.Env):
         
         self.sites_avail = self.get_avail_sites()
         self.remove_planes(remove_planes)
+        assert step_time != np.inf, "No planes or devices in the environment!"
         self.step_time = step_time               
         self.obs = {}
         rewards = {}
@@ -206,44 +204,44 @@ if __name__ == "__main__":
     import pulp
     from scipy.spatial.distance import cdist
 
-    def arrange_transporters(transporters, planes):
+    def arrange_devices(devices, planes):
         '''使用线性规划安排转运车'''
         # 按等待时间排序，筛选前n个等待时间最长的飞机
-        if len(planes) >= len(transporters):
-            planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(transporters)-1]
+        if len(planes) >= len(devices):
+            planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
 
         # 提取位置信息
-        transporter_positions = np.array([transporter.site.pos for transporter in transporters])
+        device_positions = np.array([transporter.site.pos for transporter in devices])
         plane_positions = np.array([plane.site.pos for plane in planes])
         # 计算代价矩阵
-        cost_matrix = cdist(transporter_positions, plane_positions, metric='cityblock')
+        cost_matrix = cdist(device_positions, plane_positions, metric='cityblock')
         # 定义线性规划问题
         prob = pulp.LpProblem("Transporter_Assignment", pulp.LpMinimize)
         # 定义决策变量: x[i][j] = 1 表示车辆i分配给任务点j
-        x = pulp.LpVariable.dicts('分配', (range(len(transporters)), range(len(planes))), cat='Binary')
+        x = pulp.LpVariable.dicts('分配', (range(len(devices)), range(len(planes))), cat='Binary')
         # 目标函数: 最小化总运输距离
         prob += pulp.lpSum([
             cost_matrix[i][j] * x[i][j] 
-            for i in range(len(transporters)) for j in range(len(planes))
+            for i in range(len(devices)) for j in range(len(planes))
         ])
 
         # 约束1: 每个任务点至少被一辆车服务 (车多情况)
         for j in range(len(planes)):
-            prob += pulp.lpSum([x[i][j] for i in range(len(transporters))]) >= 1
+            prob += pulp.lpSum([x[i][j] for i in range(len(devices))]) >= 1
 
         # 约束2: 每辆车最多服务一个任务点
-        for i in range(len(transporters)):
+        for i in range(len(devices)):
             prob += pulp.lpSum([x[i][j] for j in range(len(planes))]) <= 1
 
         # 求解线性规划问题
         prob.solve(pulp.PULP_CBC_CMD(msg=False))
 
         ret = []
-        for i in range(len(transporters)):
+        for i in range(len(devices)):
             for j in range(len(planes)):
                 if pulp.value(x[i][j]) == 1:
-                    transporter, plane = transporters[i], planes[j]
-                    ret.append((transporter.resource.type, transporter.code, plane.site.code))
+                    device, plane = devices[i], planes[j]
+                    ret.append((device.resource.type, device.code, plane.site.code))
         for plane in planes:
             plane.finish_waiting()
         return ret
@@ -283,35 +281,47 @@ if __name__ == "__main__":
                 env.add_planes([{'batch': 0, 'idx': pidx, **plane_cfg}])  
             
             action = {}
-            action["devices"] = {}
-            for device_type, devices in env.mobile_devices.items():
-                action["devices"][device_type] = [device.site.code for device in devices]
-            if len(env.get_waiting_planes()) > 0 and len(env.get_idle_transporters()) > 0:
-                transporters = env.get_idle_transporters()
-                planes = env.get_waiting_planes()
-                assignments = arrange_transporters(transporters, planes)
-                for device_type, device_code, target_site in assignments:
-                    for idx, device in enumerate(env.mobile_devices[device_type]):
-                        if device.resource.code == device_code:
-                            action["devices"][device_type][idx] = target_site
-                            break
             
             action["planes"] = [[[] for _ in range(pidx+1)] for _ in range(bidx+1)]
             for plane_id, plane in env.planes.items():
                 bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-                action["planes"][bidx_][pidx_] = [sampled_sites[pidx_], random.choice(jobs) if (jobs := plane.get_avail_jobs()) else None]
+                plane_action = [None, None]
+                
+                if plane.is_idle():
+                    plane_action[0] = sampled_sites[pidx_]
+                jobs = plane.get_avail_jobs()
+                if jobs and plane.is_idle():  # 非空
+                    plane_action[1] = random.choice(jobs)
+                action["planes"][bidx_][pidx_] = plane_action
             if len(env.planes) and all([plane.is_completed_all_jobs() for plane in env.planes.values()]):
                 takeoff_planes = []
                 for site in env.get_avail_takeoff_sites():
                     for plane_id, plane in env.planes.items():
-                        if not plane.is_transporting and not plane.is_busy:
+                        if plane.is_idle() and plane_id not in takeoff_planes:
                             bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
                             action["planes"][bidx_][pidx_] = [site, None]
                             takeoff_planes.append(plane_id)
                             break
+            
+            action["devices"] = {}
+            for device_type, devices in env.mobile_devices.items():
+                action["devices"][device_type] = [device.site.code for device in devices]
+
+            
+            for job_code, waiting_sites in env.waiting_sites.items():
+                if len(waiting_sites) > 0:
+                    devices = env.get_idle_devices(env.jobs[job_code].resources)
+                    if len(devices) > 0:
+                        planes = [plane for plane in env.planes.values() if plane.site.code in waiting_sites]
+                        assignments = arrange_devices(devices, planes)
+                        for device_type, device_code, target_site in assignments:
+                            for idx, device in enumerate(env.mobile_devices[device_type]):
+                                if device.resource.code == device_code:
+                                    action["devices"][device_type][idx] = target_site
+                                    break
+
             obs, rewards, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
-            # takeoff_planes += remove_planes
 
             if done:
                 print("All planes have taken off.")
