@@ -36,6 +36,7 @@ class Site:
         self.config = config
         self.pos = config['position']  # 位置
         self.plane = None
+        self.devices = []
         self.is_occupied = False  # 是否被占用
         self.is_interfered = False  # 是否被干涉
         self.left_rec_time = 0  # 剩余干涉时间
@@ -48,7 +49,7 @@ class Site:
         self.update_resources()
 
     def add_plane(self, plane):
-        assert self.is_occupied is False, f"Site {self.code} is already occupied!"
+        assert self.is_occupied is False or self.plane == plane, f"Site {self.code} is already occupied!"
         self.plane = plane
         self.is_occupied = True
 
@@ -94,19 +95,30 @@ class Site:
         self.is_interfered = False
         self.left_rec_time = rec_time
 
+    def get_avail_transporter(self):
+        self.update_resources()
+        if "R014" in self.res_avail:
+            res = self.resources[self.res_avail["R014"][-1]]
+            for device in self.devices:
+                if device.resource.code == res.code and not device.is_busy and not device.is_transporting:
+                    transporter = device
+            return transporter
+        else:
+            return None
+
     def is_all_finished(self):
         return len(self.onging_jobs) == 0
     
     def update(self, time):
         ret = 0
-        if self.is_interfered:
-            return
-        if self.left_rec_time > 0:
-            self.left_rec_time -= time
-            if self.left_rec_time > 0:
-                return
-            else:
-                self.is_interfered = False
+        # if self.is_interfered:
+        #     return
+        # if self.left_rec_time > 0:
+        #     self.left_rec_time -= time
+        #     if self.left_rec_time > 0:
+        #         return
+        #     else:
+        #         self.is_interfered = False
         finished_jobs = []
         for job_code in self.onging_jobs:
             self.onging_jobs[job_code][0] -= time
