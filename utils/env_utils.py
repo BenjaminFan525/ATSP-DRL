@@ -52,6 +52,7 @@ class Site:
         assert self.is_occupied is False or self.plane == plane, f"Site {self.code} is already occupied!"
         self.plane = plane
         self.is_occupied = True
+        print(f"Plane {plane.code} has landed at Site {self.code}.")
 
     def remove_plane(self):
         assert self.is_occupied is True, f"Site {self.code} is already empty!"

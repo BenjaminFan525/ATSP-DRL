@@ -141,14 +141,21 @@ class Plane:
         self.site = destination
         self.site.add_plane(self)
 
-        return transporter.left_trans_time
+        if transporter is not None:
+            return transporter.left_trans_time
+        else:
+            return time
     
     def finish_transport(self):
         assert self.is_transporting is True, "Plane must be transporting to finish transport."
         if self.transporter:
             # self.transporter.finish_transport()
             self.transporter = None
-        self.finished_jobs = [item for item in self.finished_jobs if item not in ['ZY02', 'ZY03']]  # 重置长占作业
+        if not self.is_completed_all_jobs():
+            self.finished_jobs = [item for item in self.finished_jobs if item not in ['ZY02', 'ZY03']]  # 重置长占作业
+            for job_code in ['ZY02', 'ZY03']:
+                if job_code not in self.left_jobs:
+                    self.left_jobs.append(job_code)
         self.is_transporting = False
     
     def start_waiting(self):
