@@ -80,20 +80,14 @@ class ScheduleEnv(gym.Env):
                 self.mobile_devices[res.type].append(Device(res.code, device_cfg))
 
         self.planes = {}
-        # for idx in range(self.num_planes):
-        #     plane_cfg = {
-        #         'velocity': 5,
-        #         'site': self.sites['Z'],
-        #         'fuel': np.random.randint(0, 30),
-        #         'jobs': self.jobs.values()
-        #     }
-        #     self.planes[f'Plane_{idx}'] = Plane(f'Plane_{idx}', plane_cfg)
-
         self.num_agents = len(self.mobile_devices) + 1 # 移动设备集群数量 + 飞机集群
     
     def add_planes(self, new_planes_cfg):
         for plane_cfg in new_planes_cfg:
             plane_id = f'Plane_{plane_cfg["batch"]}_{plane_cfg["idx"]}'
+            if plane_id in self.planes:
+                # print(f"Warning: Plane {plane_id} already exists!")
+                continue
             plane = Plane(plane_id, plane_cfg)
             self.planes[plane_id] = plane
             self.sites[plane.site.code].add_plane(plane)
@@ -165,6 +159,7 @@ class ScheduleEnv(gym.Env):
                             plane.destination = self.sites[target_site_code]
                             plane.destination.add_plane(plane)
                             self.choosed_job = target_job
+                            step_time = 0
                     else:
                         step_time = min(step_time, plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter()))
                         self.choosed_job = target_job
@@ -182,7 +177,10 @@ class ScheduleEnv(gym.Env):
         
         self.sites_avail = self.get_avail_sites()
         self.remove_planes(remove_planes)
-        assert step_time != np.inf, "No planes or devices in the environment!"
+        for plane_id in remove_planes:
+            print(f"Plane {plane_id} has taken off and removed from the airport.")
+        if step_time == np.inf:
+            print("No planes or devices in the environment!")
         self.step_time = step_time               
         self.obs = {}
         rewards = {}
@@ -208,7 +206,8 @@ if __name__ == "__main__":
         '''使用线性规划安排转运车'''
         # 按等待时间排序，筛选前n个等待时间最长的飞机
         if len(planes) >= len(devices):
-            planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
+            # planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
+            planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)]
 
         # 提取位置信息
         device_positions = np.array([transporter.site.pos for transporter in devices])
@@ -242,8 +241,7 @@ if __name__ == "__main__":
                 if pulp.value(x[i][j]) == 1:
                     device, plane = devices[i], planes[j]
                     ret.append((device.resource.type, device.code, plane.site.code))
-        for plane in planes:
-            plane.finish_waiting()
+
         return ret
         
     config = {
@@ -256,52 +254,68 @@ if __name__ == "__main__":
 
     # # 第一阶段：着陆
     # landing_per_batch = list(range(0, 1440, 120))  # 着陆时间点
-    # landing_list = []
-    # for bidx in range(5):
-    #     landing_list += [item + bidx*3600 for item in list(range(0, 1440, 120))]
-    plane_num = 6
-    landing_list = list(range(0, 120*plane_num, 120))
-    sampled_sites = random.sample(env.get_avail_sites(), k=plane_num)
+    landing_list = []
+    batch_num = 5
+    plane_num_per_batch = 12
+    for bidx in range(batch_num):
+        landing_list += [item + bidx*3600 for item in list(range(0, 120*plane_num_per_batch, 120))]
+    # landing_list = list(range(0, 120*plane_num, 120))
+    sampled_sites = [random.sample(env.get_avail_sites(), k=plane_num_per_batch)]
 
     total_time = 0
     step_time = 0
-    bidx, pidx = 0, 0
+    current_batch = 0
 
     while True:
         if total_time in landing_list or step_time == 0:
-            
+            bidx = total_time // 3600
+            pidx = (total_time % 3600) // 120
             if total_time in landing_list:
-                pidx = landing_list.index(total_time)
+                # pidx = landing_list.index(total_time)
                 plane_cfg = {
                     'velocity': 5,
                     'site': env.sites['Z'],
                     'fuel': np.random.randint(0, 30),
                     'jobs': env.jobs.values()
                 }
-                env.add_planes([{'batch': 0, 'idx': pidx, **plane_cfg}])  
+                env.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])  
             
             action = {}
             
-            action["planes"] = [[[] for _ in range(pidx+1)] for _ in range(bidx+1)]
+            action["planes"] = [[[] for _ in range(plane_num_per_batch)] for _ in range(batch_num)]
+            avail_sites = env.get_avail_sites()
+                
             for plane_id, plane in env.planes.items():
                 bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
                 plane_action = [None, None]
-                
                 if plane.is_idle():
-                    plane_action[0] = sampled_sites[pidx_]
+                    if plane.site.code == 'Z' or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
+                        plane_action[0] = random.choice(avail_sites) # 随机选取
+                        avail_sites.remove(plane_action[0])
+                    else:
+                        plane_action[0] = plane.site.code  # 保持在当前位置
                 jobs = plane.get_avail_jobs()
                 if jobs and plane.is_idle():  # 非空
                     plane_action[1] = random.choice(jobs)
                 action["planes"][bidx_][pidx_] = plane_action
-            if len(env.planes) and all([plane.is_completed_all_jobs() for plane in env.planes.values()]):
-                takeoff_planes = []
-                for site in env.get_avail_takeoff_sites():
-                    for plane_id, plane in env.planes.items():
-                        if plane.is_idle() and plane_id not in takeoff_planes:
-                            bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-                            action["planes"][bidx_][pidx_] = [site, None]
-                            takeoff_planes.append(plane_id)
-                            break
+                if plane_action[0] in avail_sites:
+                    avail_sites.remove(plane_action[0])  # 从可用站点中移除已采样站点
+            
+            for plane_id, plane in env.planes.items():
+                bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
+                
+            
+            for batch_idx in range(current_batch+1):
+                if len(env.planes) and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == batch_idx]):
+                    takeoff_planes = []
+                    for site in env.get_avail_takeoff_sites():
+                        for plane_id, plane in env.planes.items():
+                            if int(plane_id.split('_')[1]) == batch_idx:
+                                if plane.is_idle() and plane_id not in takeoff_planes:
+                                    bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
+                                    action["planes"][bidx_][pidx_] = [site, None]
+                                    takeoff_planes.append(plane_id)
+                                    break
             
             action["devices"] = {}
             for device_type, devices in env.mobile_devices.items():
@@ -318,22 +332,27 @@ if __name__ == "__main__":
                             for idx, device in enumerate(env.mobile_devices[device_type]):
                                 if device.resource.code == device_code:
                                     action["devices"][device_type][idx] = target_site
+                                    waiting_sites.remove(target_site)
                                     break
 
             obs, rewards, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
 
             if done:
-                print("All planes have taken off.")
+                print(f"All planes have taken off. Total time: {total_time}")
                 break 
             elif step_time == 0:
                 continue
         else:
             step_time -= 1
-        print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}")
+        # print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}")
         total_time += 1
-        if total_time == landing_list[-1]:
-            print("All planes have landed.")
-        elif all([plane.is_completed_all_jobs() for plane in env.planes.values()]):
-            print("All planes have completed their jobs.")
+        if total_time == landing_list[plane_num_per_batch*bidx-1]:
+            print(f"All planes in batch {bidx} have landed. Total time: {total_time}")
+        if total_time % 3600 == 0 and total_time != 0:
+            sampled_sites.append(random.sample(env.get_avail_sites(), k=plane_num_per_batch))
+        elif all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
+            print(f"All planes in batch {current_batch} have completed their jobs.")
+            current_batch += 1
+            current_batch = min(current_batch, batch_num - 1)
                                                                                                                                                                                                                                                                                                                     
