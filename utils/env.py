@@ -5,6 +5,8 @@ import numpy as np
 from agent import Plane, Device
 from env_utils import Job, Resource, Site
 import json
+import matplotlib.pyplot as plt
+from gym.utils import seeding
 
 class ScheduleEnv(gym.Env):
     environment_name = "Plane Schedule"
@@ -22,9 +24,14 @@ class ScheduleEnv(gym.Env):
         self.total_time = 0
         self.num_planes = 0
         self.num_agents = 0
+
+        # ===== 可视化相关 =====
+        self.fig = None
+        self.ax = None
         
         self.initialize(config)
         self.job_list = list(self.jobs.keys())
+        self.seed(config.get('seed', None))
 
         self.obs = {}
         self.done = False
@@ -81,6 +88,11 @@ class ScheduleEnv(gym.Env):
 
         self.planes = {}
         self.num_agents = len(self.mobile_devices) + 1 # 移动设备集群数量 + 飞机集群
+        self.force_transfer_planes = []
+    
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
     
     def add_planes(self, new_planes_cfg):
         for plane_cfg in new_planes_cfg:
@@ -100,6 +112,13 @@ class ScheduleEnv(gym.Env):
                 del self.planes[plane_id]
                 self.num_planes -= 1
 
+    def add_interfere_sites(self, site_codes, rec_time):
+        for site_code in site_codes:
+            if site_code in self.sites:
+                plane_id = self.sites[site_code].start_interfere(rec_time)
+                if plane_id:
+                    self.force_transfer_planes.append(plane_id)
+
     def get_avail_plane_actions(self, plane):
         return [1 if job in self.job_list else 0 for job in plane.get_avail_jobs()]
         
@@ -115,9 +134,8 @@ class ScheduleEnv(gym.Env):
     def get_waiting_planes(self):
        return [plane for plane in self.planes.values() if plane.is_waiting]
 
-
     def get_avail_sites(self, plane=None):
-        ret = [site.code for site in self.sites.values() if not site.is_occupied and site.code not in ['Z', '29', '30', '31']]
+        ret = [site.code for site in self.sites.values() if not site.is_occupied and not site.is_interfered and site.code not in ['Z', '29', '30', '31']]
         if plane is not None:
             ret.append(plane.site.code)  # 包括当前所在位置
         return ret
@@ -175,7 +193,10 @@ class ScheduleEnv(gym.Env):
             if plane.is_completed_all_jobs() and plane.site.code in ['29', '30', '31']:  # 完成所有任务并且抵达起飞跑道
                 remove_planes.append(plane_id)
         
-        self.sites_avail = self.get_avail_sites()
+        for site_id, site in self.sites.items():
+            if site.is_interfered:
+                step_time = min(step_time, site.update(dt))
+
         self.remove_planes(remove_planes)
         for plane_id in remove_planes:
             print(f"Plane {plane_id} has taken off and removed from the airport.")
@@ -192,74 +213,89 @@ class ScheduleEnv(gym.Env):
         
 
     def render(self):
-        pass
+        # 如果没开可视化模式，可以直接返回
+        if self.render_mode is None:
+            return
+
+        # 第一次调用时创建大一点的画布
+        if self.fig is None or self.ax is None:
+            plt.ion()
+            # 图像大一些：10x8
+            self.fig, self.ax = plt.subplots(figsize=(16, 14), dpi=120)
+            self.ax.set_title("Airport Schedule Environment", fontsize=14)
+
+        self.ax.clear()
+
+        # ==== 计算可视区域（根据所有站位自动缩放） ====
+        xs = [site.pos[0] for site in self.sites.values()]
+        ys = [site.pos[1] for site in self.sites.values()]
+        if xs and ys:
+            margin = 10
+            xmin, xmax = min(xs) - margin, max(xs) + margin
+            ymin, ymax = min(ys) - margin, max(ys) + margin
+            self.ax.set_xlim(xmin, xmax)
+            self.ax.set_ylim(ymin, ymax)
+
+        # 1. 画所有机位（背景）
+        for code, site in self.sites.items():
+            x, y = site.pos
+            # 空机位：空心方块
+            self.ax.scatter(x, y, marker='s', s=120, edgecolors='gray', facecolors='none')
+            self.ax.text(x, y - 2, code, ha='center', va='top', fontsize=7, color='gray')
+
+        # 2. 画有飞机的机位（高亮）  
+        for plane_id, plane in self.planes.items():
+            x, y = plane.site.pos
+            self.ax.scatter(x, y, marker='s', s=200)  # 实心方块
+            self.ax.text(x, y + 2, plane_id, ha='center', va='bottom', fontsize=8)
+
+        # 3. 画移动设备（小车等）
+        for device_type, devices in self.mobile_devices.items():
+            for d in devices:
+                x, y = d.site.pos
+                # 稍微上移一点，避免跟机位完全重合
+                self.ax.scatter(x, y + 1.5, marker='o', s=40)
+                self.ax.text(x, y + 3, d.code, ha='center', va='bottom', fontsize=6)
+
+        self.ax.set_xlabel("X")
+        self.ax.set_ylabel("Y")
+        self.ax.set_aspect("equal", adjustable="box")
+        self.ax.grid(True, linestyle='--', linewidth=0.5)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
 
     def close(self):
-        pass
+        if self.fig is not None:
+            plt.close(self.fig)
+            self.fig, self.ax = None, None
 
 if __name__ == "__main__":
     import random
-    import pulp
-    from scipy.spatial.distance import cdist
+    from utils.arrangement import arrange_devices
 
-    def arrange_devices(devices, planes):
-        '''使用线性规划安排转运车'''
-        # 按等待时间排序，筛选前n个等待时间最长的飞机
-        if len(planes) >= len(devices):
-            # planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
-            planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)]
-
-        # 提取位置信息
-        device_positions = np.array([transporter.site.pos for transporter in devices])
-        plane_positions = np.array([plane.site.pos for plane in planes])
-        # 计算代价矩阵
-        cost_matrix = cdist(device_positions, plane_positions, metric='cityblock')
-        # 定义线性规划问题
-        prob = pulp.LpProblem("Transporter_Assignment", pulp.LpMinimize)
-        # 定义决策变量: x[i][j] = 1 表示车辆i分配给任务点j
-        x = pulp.LpVariable.dicts('分配', (range(len(devices)), range(len(planes))), cat='Binary')
-        # 目标函数: 最小化总运输距离
-        prob += pulp.lpSum([
-            cost_matrix[i][j] * x[i][j] 
-            for i in range(len(devices)) for j in range(len(planes))
-        ])
-
-        # 约束1: 每个任务点至少被一辆车服务 (车多情况)
-        for j in range(len(planes)):
-            prob += pulp.lpSum([x[i][j] for i in range(len(devices))]) >= 1
-
-        # 约束2: 每辆车最多服务一个任务点
-        for i in range(len(devices)):
-            prob += pulp.lpSum([x[i][j] for j in range(len(planes))]) <= 1
-
-        # 求解线性规划问题
-        prob.solve(pulp.PULP_CBC_CMD(msg=False))
-
-        ret = []
-        for i in range(len(devices)):
-            for j in range(len(planes)):
-                if pulp.value(x[i][j]) == 1:
-                    device, plane = devices[i], planes[j]
-                    ret.append((device.resource.type, device.code, plane.site.code))
-
-        return ret
+    # ========= 固定随机种子 =========
+    SEED = 42
+    random.seed(SEED)
+    np.random.seed(SEED)
         
     config = {
         'jobs_path': 'utils/config/jobs.json',
         'fixed_res_path': 'utils/config/fixed_resources.json',
         'mobile_res_path': 'utils/config/mobile_resources.json',
-        'sites_path': 'utils/config/sites.json'
+        'sites_path': 'utils/config/sites.json',
+        'seed': SEED
     }
     env = ScheduleEnv(config)
+    # env = ScheduleEnv(config, render_mode="human")
 
-    # # 第一阶段：着陆
-    # landing_per_batch = list(range(0, 1440, 120))  # 着陆时间点
+    # 第一阶段：着陆
     landing_list = []
     batch_num = 5
     plane_num_per_batch = 12
     for bidx in range(batch_num):
         landing_list += [item + bidx*3600 for item in list(range(0, 120*plane_num_per_batch, 120))]
-    # landing_list = list(range(0, 120*plane_num, 120))
     sampled_sites = [random.sample(env.get_avail_sites(), k=plane_num_per_batch)]
 
     total_time = 0
@@ -271,7 +307,6 @@ if __name__ == "__main__":
             bidx = total_time // 3600
             pidx = (total_time % 3600) // 120
             if total_time in landing_list:
-                # pidx = landing_list.index(total_time)
                 plane_cfg = {
                     'velocity': 5,
                     'site': env.sites['Z'],
@@ -289,12 +324,12 @@ if __name__ == "__main__":
                 bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
                 plane_action = [None, None]
                 if plane.is_idle():
-                    if plane.site.code == 'Z' or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
+                    if plane.site.code == 'Z' or plane.site == None or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
                         plane_action[0] = random.choice(avail_sites) # 随机选取
                         avail_sites.remove(plane_action[0])
                     else:
                         plane_action[0] = plane.site.code  # 保持在当前位置
-                jobs = plane.get_avail_jobs()
+                jobs = plane.get_avail_jobs(env.sites[plane_action[0]])
                 if jobs and plane.is_idle():  # 非空
                     plane_action[1] = random.choice(jobs)
                 action["planes"][bidx_][pidx_] = plane_action
@@ -338,6 +373,9 @@ if __name__ == "__main__":
             obs, rewards, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
 
+            # ===== 调用渲染 =====
+            env.render()
+
             if done:
                 print(f"All planes have taken off. Total time: {total_time}")
                 break 
@@ -351,7 +389,7 @@ if __name__ == "__main__":
             print(f"All planes in batch {bidx} have landed. Total time: {total_time}")
         if total_time % 3600 == 0 and total_time != 0:
             sampled_sites.append(random.sample(env.get_avail_sites(), k=plane_num_per_batch))
-        elif all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
+        elif len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
             print(f"All planes in batch {current_batch} have completed their jobs.")
             current_batch += 1
             current_batch = min(current_batch, batch_num - 1)

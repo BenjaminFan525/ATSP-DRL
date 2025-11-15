@@ -49,11 +49,7 @@ class Device:
         return ret
 
     def reset(self):
-        self.site = self.config['site']  # 位置
         self.is_transporting = False
-        self.destination = None
-        self.left_trans_time = 0
-        self.is_busy = False
 
 class Plane:
     def __init__(self, code, config):
@@ -84,7 +80,7 @@ class Plane:
             job.resources = set(job.resources)
         self.left_jobs = list(self.jobs.keys())  # 初始剩余作业列表
 
-    def get_avail_jobs(self):
+    def get_avail_jobs(self, site = None):
         # assert not self.is_busy and not self.is_transporting, \
         #     "Current plane must be idle to get available jobs."
         avail = []                               # 存放所有可选作业编码
@@ -93,9 +89,14 @@ class Plane:
             # 1. 前序作业必须全部完工
             if job.predecessor.issubset(self.finished_jobs):
                 # 2. 资源需求检查
-                self.site.update_resources()
-                if len(job.resources) == 0 or not job.resources.isdisjoint(self.site.res_avail.keys()):                   
-                    avail.append(job_code)
+                if site is None:
+                    self.site.update_resources()
+                    if len(job.resources) == 0 or not job.resources.isdisjoint(self.site.res_avail.keys()):                   
+                        avail.append(job_code)
+                else:
+                    site.update_resources()
+                    if len(job.resources) == 0 or not job.resources.isdisjoint(site.res_avail.keys()):
+                        avail.append(job_code)
         return avail
 
     def get_parallel_jobs(self, job_code):
@@ -139,7 +140,8 @@ class Plane:
                 transporter.left_trans_time = time - 2*60
         
         self.site = destination
-        self.site.add_plane(self)
+        if self.site.plane != self:
+            self.site.add_plane(self)
 
         if transporter is not None:
             return transporter.left_trans_time
