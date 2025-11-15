@@ -7,37 +7,45 @@ from env_utils import Job, Resource, Site
 import json
 import matplotlib.pyplot as plt
 from gym.utils import seeding
+import math
 
 class ScheduleEnv(gym.Env):
     environment_name = "Plane Schedule"
-    """
-    兼容 Gymnasium 的最小网格世界环境。
-    注册名: 'GridWorld-v0'
-    """
-
+    
     def __init__(self, config, render_mode: str = None):
         super().__init__()
         self.config = config
         self.render_mode = render_mode
+        
+        # MARL核心属性
+        self.n_agents = 0
+        self.n_actions = 0
+        self.obs_shape = 0
+        self.state_shape = 0
+        
+        # 训练监控
         self.steps = 0
         self.step_time = 0
         self.total_time = 0
-        self.num_planes = 0
-        self.num_agents = 0
-
-        # ===== 可视化相关 =====
+        self.episode_time_slice = []  # 每个step消耗时间列表
+        self.current_finishing_planes = 0  # 已完成作业的飞机数
+        
+        # 可视化
         self.fig = None
         self.ax = None
         
+        # 初始化环境数据
         self.initialize(config)
-        self.job_list = list(self.jobs.keys())
         self.seed(config.get('seed', None))
-
-        self.obs = {}
-        self.done = False
-
+        
+        # MARL状态缓存
+        self.obs4marl = None
+        self.state4marl = None
+        self.job_record_for_gant = []  # 调度过程记录
 
     def initialize(self, config):
+        """加载配置文件并初始化环境"""
+        # 加载作业数据
         with open(config['jobs_path'], 'r') as f:
                 data = json.load(f)
         self.jobs = {item["作业编号"] : Job(code=item["作业编号"], 
@@ -48,48 +56,73 @@ class ScheduleEnv(gym.Env):
                     exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
                 for item in data}
         
-        self.waiting_sites = {}
-        for job_type, devices in self.jobs.items():
-            self.waiting_sites[job_type] = []
-
+        # 等待队列
+        self.waiting_sites = {job_type: [] for job_type in self.jobs.keys()}
+        
+        # 加载固定资源
         with open(config['fixed_res_path'], 'r') as f:
             data = json.load(f)
-        self.fixed_resources = {item["设备编号"]: Resource(item["设备编号"], 
-                                    item["类型"], 
-                                    [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
-                                    max_service=5) 
-                                    for item in data}
+        self.fixed_resources = {
+            item["设备编号"]: Resource(
+                item["设备编号"],
+                item["类型"],
+                [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1]) + 1)],
+                max_service=5
+            ) for item in data
+        }
+        
+        # 加载移动资源
         with open(config['mobile_res_path'], 'r') as f:
             data = json.load(f)
-        self.mobile_resources = {item["设备编号"]: Resource(item["设备编号"], 
-                                    item["类型"], 
-                                    [item["初始停机位"]], 
-                                    max_service=1) 
-                                    for item in data} 
+        self.mobile_resources = {
+            item["设备编号"]: Resource(
+                item["设备编号"],
+                item["类型"],
+                [item["初始停机位"]],
+                max_service=1
+            ) for item in data
+        }
         
+        # 加载站点
         with open(config['sites_path'], 'r') as f:
             data = json.load(f)
-        self.sites = {code: Site(code, {'position': pos, 
-                            'jobs': self.jobs, 
-                            'fixed_resources': [res for res in self.fixed_resources.values() if code in res.sites], 
-                            'mobile_resources': [res for res in self.mobile_resources.values() if code in res.sites]}) for code, pos in zip(data['sites_codes'], data['sites_positions'])}
-
+        self.sites = {
+            code: Site(code, {
+                'position': pos,
+                'jobs': self.jobs,
+                'fixed_resources': [res for res in self.fixed_resources.values() if code in res.sites],
+                'mobile_resources': [res for res in self.mobile_resources.values() if code in res.sites]
+            }) for code, pos in zip(data['sites_codes'], data['sites_positions'])
+        }
+        
+        # 初始化移动设备
         self.mobile_devices = {}
         for res in self.mobile_resources.values():
             device_cfg = {
                 'resource': res,
                 'velocity': 5 if res.code == 'R014' else 3,# 转运车速度和飞机速度一致
                 'site': self.sites[res.sites[0]]
-                }
+            }
             if res.type not in self.mobile_devices:
                 self.mobile_devices[res.type] = [Device(res.code, device_cfg)]
             else:
                 self.mobile_devices[res.type].append(Device(res.code, device_cfg))
-
+        
+        # 飞机字典
         self.planes = {}
-        self.num_agents = len(self.mobile_devices) + 1 # 移动设备集群数量 + 飞机集群
+        self.num_planes = 0
+        self.n_agents = len(self.mobile_devices) + 1  # 移动设备集群 + 飞机集群
+        
+        # 强制转运飞机列表
         self.force_transfer_planes = []
-    
+        
+        # 构建MARL动作空间：选择机位 + 等待 + 正忙 + 完成
+        self.n_actions = len(self.sites) + 3
+        
+        # 状态相关
+        self.sites_state_global = [-1] * len(self.sites)  # 站位状态
+        self.state_left_time = np.zeros(len(self.sites))  # 站位剩余时间
+        
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -118,9 +151,6 @@ class ScheduleEnv(gym.Env):
                 plane_id = self.sites[site_code].start_interfere(rec_time)
                 if plane_id:
                     self.force_transfer_planes.append(plane_id)
-
-    def get_avail_plane_actions(self, plane):
-        return [1 if job in self.job_list else 0 for job in plane.get_avail_jobs()]
         
     def get_idle_devices(self, res_types):
         ret = []
@@ -142,14 +172,167 @@ class ScheduleEnv(gym.Env):
     
     def get_avail_takeoff_sites(self):
         return [site.code for site in self.sites.values() if not site.is_occupied and site.code in ['29', '30', '31']]
+
+    def get_obs_agent(self, agent_id):
+        """获取单个智能体的观测（飞机作为主要智能体）"""
+        return self.obs4marl[agent_id]
+    
+    def get_obs(self):
+        """获取所有智能体的观测"""
+        return [self.get_obs_agent(i) for i in range(len(self.planes))]
+    
+    def get_state(self):
+        """获取全局状态"""
+        if self.state4marl is None:
+            self._update_marl_state()
+        return np.array(self.state4marl)
+    
+    def get_avail_agent_actions(self, plane_id):
+        """获取智能体可用的动作掩码"""
+        # 检查飞机是否处于正忙状态
+        plane = self.planes[plane_id]
+        if plane.is_waiting:
+            return [0] * len(self.sites) + [1, 0, 0]
+        elif plane.is_transporting or plane.is_busy:
+            return [0] * len(self.sites) + [0, 1, 0]
+        elif plane.is_completed_all_jobs():
+            return [0] * len(self.sites) + [0, 0, 1]
+        else:
+            # 飞机空闲，计算可用机位
+            avail_sites = self.get_avail_sites()
+            avail_actions = [1 if site.code in avail_sites else 0 for site in self.sites.values()]
+            # 返回 [可用机位..., 1, 0, 0] 表示可以"等待"
+            return avail_actions + [1, 0, 0]
+    
+    def get_env_info(self):
+        """返回环境基本信息供Runner使用"""
+        return {
+            "n_actions": self.n_actions,
+            "n_agents": len(self.planes),  # 实际智能体数量是飞机数量
+            "state_shape": len(self.get_state()),
+            "obs_shape": len(self.get_obs()[0]) if self.obs4marl else 0,
+            "episode_limit": len(self.planes) * 10
+        }
+    
+    def update_state(self):
+        """更新MARL全局状态和观测"""
+        # 构建全局状态
+        state = []
+        avail_sites = self.get_avail_sites()
+        site_occupied, site_left_time, site_resource = [], [], []
+        for site in self.sites.values():
+            if site.code not in ['Z', '29', '30', '31']:
+                # 1. 站位占用状态
+                site_occupied.append(len(self.planes) + 1 if site.code in avail_sites else int(site.plane.code.split('_')[2]))
+                # 2. 站位剩余工作时间
+                if site.is_interfered:
+                    site_left_time.append(site.left_rec_time)
+                elif site.is_occupied:
+                    site_left_time.append(site.left_job_time)
+                # 3. 站位资源向量（one-hot）
+                site_resource += [1 if site.is_avail_job(job) else 0 for job in self.jobs.values() if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']]
+        state += site_occupied + site_left_time + site_resource
+        # 4. 飞机状态
+        for plane in self.planes.values():
+            if len(plane.left_jobs) > 0:
+                next_job = sorted(plane.left_jobs, key=lambda x: plane.jobs[x].time, reverse=True)[0]
+                state.extend([list(plane.jobs.keys()).index(next_job), plane.jobs[next_job].time, len(plane.left_jobs)])
+            else:
+                state.extend([len(plane.jobs), 0, 0])  # 已完成所有作业
+            
+        self.state4marl = np.array(state, dtype=np.float32)
+        
+        obs_dim = 3 + 2 * len(self.sites) - 4 + 1    # 3 个飞机自身信息 + 每站位 2 维 + 忙碌 flag
+        zero_obs = [0.0] * obs_dim
+
+        self.obs4marl = [[] for _ in range(len(self.planes))]
+        for plane_id, plane in enumerate(self.planes.values()):
+            # 飞机已完成所有作业 -> 全零观测
+            if plane.is_completed_all_jobs():
+                self.obs4marl[plane_id] = zero_obs
+                continue
+
+            next_job = sorted(plane.left_jobs, key=lambda x: plane.jobs[x].time, reverse=True)[0]
+            self_obs = [float(list(plane.jobs.keys()).index(next_job)), 
+                        float(plane.jobs[next_job].time), 
+                        float(len(plane.left_jobs))]
+
+            # 对每一个站位：运输时间 + 剩余工时
+            per_site_obs = []
+            for site in self.sites.values():
+                if site.code not in ['Z', '29', '30', '31']:
+                    # 运输时间（若无资源则为 0）
+                    if site.is_avail_job(self.jobs[next_job]):
+                        distance = abs(plane.site.pos[0]-site.pos[0]) + abs(plane.site.pos[1]-site.pos[1]) # 曼哈顿距离
+                        travel_t = distance / plane.velocity
+                    else:
+                        travel_t = 0.0
+
+                    # 站位剩余工时（空闲为 0）
+                    left_t = site.left_job_time
+                    per_site_obs.extend([travel_t, left_t])
+
+            # 忙碌标记
+            if not plane.is_idle():
+                # 正忙：除自身前 3 维外全部置 0
+                per_site_obs = [0.0] * len(per_site_obs)
+
+            self.obs4marl[plane_id] = self_obs + per_site_obs + [float(not plane.is_idle())]
+    
+    def reset(self, seed=None, options=None):
+        """重置环境，返回初始全局状态"""
+        self.steps = 0
+        self.total_time = 0
+        self.episode_time_slice = []
+        self.current_finishing_planes = 0
+        self.job_record_for_gant = []
+        self.sites_state_global = [-1] * len(self.sites)
+        self.state_left_time = np.zeros(len(self.sites))
+        self.done = False
+        
+        # 清空飞机和设备状态
+        self.planes.clear()
+        for devices in self.mobile_devices.values():
+            for device in devices:
+                device.reset()
+        
+        # 重新初始化（保持配置不变）
+        self.initialize(self.config)
+        
+        # 返回初始状态
+        return self.get_state()
     
     def step(self, action, dt):
+        """
+        执行一步动作
+        action: dict 包含飞机和设备的动作
+        dt: int 时间差
+        """
         self.steps += 1
-        self.total_time += self.step_time
+        self.total_time += dt 
+        
+        # 动作处理逻辑（参考您的原始实现）
+        step_time, real_did = self.process_action(action, dt)        
+        
+        self.step_time = step_time              
+        self.obs = {}
+        self.done = len(self.planes) == 0
+
+        # 计算全局奖励
+        reward = self.calculate_global_reward(real_did)
+
+        # 更新状态
+        self.update_state()
+        
+        return reward, self.done
+    
+    def process_action(self, action, dt):
+        """处理动作并计算即时奖励"""
         step_time = np.inf
-        waiting_planes = 0
+        real_did = 0
         remove_planes = []
         
+        # 处理设备动作
         for device_type, devices in self.mobile_devices.items():
             for idx, device in enumerate(devices):
                 if not device.is_idle():
@@ -159,6 +342,7 @@ class ScheduleEnv(gym.Env):
                 else:
                     step_time = min(step_time, device.start_transport(self.sites[action["devices"][device_type][idx]]))
         
+        # 处理飞机动作
         for plane_id, plane in self.planes.items():
             if not plane.is_idle():
                 step_time = min(step_time, plane.update(dt))
@@ -171,6 +355,7 @@ class ScheduleEnv(gym.Env):
                         if plane.site.code == 'Z':  # 起始位置可以直接滑行
                             step_time = min(step_time, plane.start_transport(self.sites[target_site_code], None))
                             self.choosed_job = target_job
+                            real_did += 1
                         else:
                             plane.start_waiting()
                             self.waiting_sites['ZY-T'].append(plane.site.code)
@@ -181,6 +366,7 @@ class ScheduleEnv(gym.Env):
                     else:
                         step_time = min(step_time, plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter()))
                         self.choosed_job = target_job
+                        real_did += 1
                 
                 else:
                     if target_job not in plane.get_avail_jobs() and not plane.is_completed_all_jobs(): # 资源不足
@@ -189,28 +375,35 @@ class ScheduleEnv(gym.Env):
                         self.choosed_job = target_job
                     elif target_job is not None:
                         step_time = min(step_time, plane.choose_job(target_job))
+                        real_did += 1
 
-            if plane.is_completed_all_jobs() and plane.site.code in ['29', '30', '31']:  # 完成所有任务并且抵达起飞跑道
+            if plane.is_completed_all_jobs() and plane.site.code in ['29', '30', '31'] and plane.is_idle():  # 完成所有任务并且抵达起飞跑道
                 remove_planes.append(plane_id)
         
-        for site_id, site in self.sites.items():
+        for site in self.sites.values():
             if site.is_interfered:
                 step_time = min(step_time, site.update(dt))
 
         self.remove_planes(remove_planes)
         for plane_id in remove_planes:
-            print(f"Plane {plane_id} has taken off and removed from the airport.")
+            print(f"[Time: {self.total_time}] Plane {plane_id} has taken off and removed from the airport.")
         if step_time == np.inf:
             print("No planes or devices in the environment!")
-        self.step_time = step_time               
-        self.obs = {}
-        rewards = {}
-        self.done = len(self.planes) == 0
-        return self.obs, rewards, self.done
+        return step_time, real_did
     
-    def reset(self, seed=None, options=None):
-        pass
+    def calculate_global_reward(self, real_did):
+        """计算全局奖励"""
+        # 等待惩罚
+        waiting_penalty = sum(1 for p in self.planes.values() if p.is_waiting) * 2
+        # makespan相关奖励
+        if self.done:
+            makespan_reward = 6000 / self.total_time
+        else:
+            makespan_reward = real_did - (self.steps) / 60
+        # 综合奖励
+        global_reward = makespan_reward  - waiting_penalty
         
+        return global_reward
 
     def render(self):
         # 如果没开可视化模式，可以直接返回
@@ -270,127 +463,3 @@ class ScheduleEnv(gym.Env):
         if self.fig is not None:
             plt.close(self.fig)
             self.fig, self.ax = None, None
-
-if __name__ == "__main__":
-    import random
-    from utils.arrangement import arrange_devices
-
-    # ========= 固定随机种子 =========
-    SEED = 42
-    random.seed(SEED)
-    np.random.seed(SEED)
-        
-    config = {
-        'jobs_path': 'utils/config/jobs.json',
-        'fixed_res_path': 'utils/config/fixed_resources.json',
-        'mobile_res_path': 'utils/config/mobile_resources.json',
-        'sites_path': 'utils/config/sites.json',
-        'seed': SEED
-    }
-    env = ScheduleEnv(config)
-    # env = ScheduleEnv(config, render_mode="human")
-
-    # 第一阶段：着陆
-    landing_list = []
-    batch_num = 5
-    plane_num_per_batch = 12
-    for bidx in range(batch_num):
-        landing_list += [item + bidx*3600 for item in list(range(0, 120*plane_num_per_batch, 120))]
-    sampled_sites = [random.sample(env.get_avail_sites(), k=plane_num_per_batch)]
-
-    total_time = 0
-    step_time = 0
-    current_batch = 0
-
-    while True:
-        if total_time in landing_list or step_time == 0:
-            bidx = total_time // 3600
-            pidx = (total_time % 3600) // 120
-            if total_time in landing_list:
-                plane_cfg = {
-                    'velocity': 5,
-                    'site': env.sites['Z'],
-                    'fuel': np.random.randint(0, 30),
-                    'jobs': env.jobs.values()
-                }
-                env.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])  
-            
-            action = {}
-            
-            action["planes"] = [[[] for _ in range(plane_num_per_batch)] for _ in range(batch_num)]
-            avail_sites = env.get_avail_sites()
-                
-            for plane_id, plane in env.planes.items():
-                bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-                plane_action = [None, None]
-                if plane.is_idle():
-                    if plane.site.code == 'Z' or plane.site == None or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
-                        plane_action[0] = random.choice(avail_sites) # 随机选取
-                        avail_sites.remove(plane_action[0])
-                    else:
-                        plane_action[0] = plane.site.code  # 保持在当前位置
-                jobs = plane.get_avail_jobs(env.sites[plane_action[0]])
-                if jobs and plane.is_idle():  # 非空
-                    plane_action[1] = random.choice(jobs)
-                action["planes"][bidx_][pidx_] = plane_action
-                if plane_action[0] in avail_sites:
-                    avail_sites.remove(plane_action[0])  # 从可用站点中移除已采样站点
-            
-            for plane_id, plane in env.planes.items():
-                bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-                
-            
-            for batch_idx in range(current_batch+1):
-                if len(env.planes) and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == batch_idx]):
-                    takeoff_planes = []
-                    for site in env.get_avail_takeoff_sites():
-                        for plane_id, plane in env.planes.items():
-                            if int(plane_id.split('_')[1]) == batch_idx:
-                                if plane.is_idle() and plane_id not in takeoff_planes:
-                                    bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-                                    action["planes"][bidx_][pidx_] = [site, None]
-                                    takeoff_planes.append(plane_id)
-                                    break
-            
-            action["devices"] = {}
-            for device_type, devices in env.mobile_devices.items():
-                action["devices"][device_type] = [device.site.code for device in devices]
-
-            
-            for job_code, waiting_sites in env.waiting_sites.items():
-                if len(waiting_sites) > 0:
-                    devices = env.get_idle_devices(env.jobs[job_code].resources)
-                    if len(devices) > 0:
-                        planes = [plane for plane in env.planes.values() if plane.site.code in waiting_sites]
-                        assignments = arrange_devices(devices, planes)
-                        for device_type, device_code, target_site in assignments:
-                            for idx, device in enumerate(env.mobile_devices[device_type]):
-                                if device.resource.code == device_code:
-                                    action["devices"][device_type][idx] = target_site
-                                    waiting_sites.remove(target_site)
-                                    break
-
-            obs, rewards, done = env.step(action, env.step_time - step_time)
-            step_time = env.step_time
-
-            # ===== 调用渲染 =====
-            env.render()
-
-            if done:
-                print(f"All planes have taken off. Total time: {total_time}")
-                break 
-            elif step_time == 0:
-                continue
-        else:
-            step_time -= 1
-        # print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}")
-        total_time += 1
-        if total_time == landing_list[plane_num_per_batch*bidx-1]:
-            print(f"All planes in batch {bidx} have landed. Total time: {total_time}")
-        if total_time % 3600 == 0 and total_time != 0:
-            sampled_sites.append(random.sample(env.get_avail_sites(), k=plane_num_per_batch))
-        elif len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
-            print(f"All planes in batch {current_batch} have completed their jobs.")
-            current_batch += 1
-            current_batch = min(current_batch, batch_num - 1)
-                                                                                                                                                                                                                                                                                                                    

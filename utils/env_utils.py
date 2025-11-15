@@ -41,6 +41,7 @@ class Site:
         self.is_interfered = False  # 是否被干涉
         self.left_rec_time = 0  # 剩余干涉时间
         self.onging_jobs = {}  # 当前正在进行的作业列表, key为作业id，value为剩余时间
+        self.left_job_time = 0
 
         self.resources = {}  # 该站位的资源对象列表，key为资源id，value为资源对象
         for res in self.config['fixed_resources'] + self.config['mobile_resources']:
@@ -89,9 +90,6 @@ class Site:
             self.onging_jobs.pop(job.code)
 
     def start_interfere(self, rec_time):
-        if self.is_interfered:
-            print(6666)
-        
         assert self.is_interfered is False, f"Site {self.code} is already interfered!"
         self.is_interfered = True
         self.left_rec_time = rec_time
@@ -126,6 +124,13 @@ class Site:
         else:
             return None
 
+    def is_avail_job(self, job : Job):
+        self.update_resources()
+        for res_code in job.resources:
+            if res_code in self.res_avail:
+                return True
+        return False
+    
     def is_all_finished(self):
         return len(self.onging_jobs) == 0
     
@@ -147,6 +152,10 @@ class Site:
                 ret = max(ret, self.onging_jobs[job_code][0])
         if len(finished_jobs) > 0:
             self.finish_jobs([self.config['jobs'][job] for job in finished_jobs])
+        if len(self.onging_jobs) == 0:
+            self.left_job_time = 0
+        else:
+            self.left_job_time = ret
         return ret
     
     def update_resources(self):
@@ -165,79 +174,7 @@ class Site:
         self.is_interfered = False
         self.left_rec_time = 0
         self.onging_jobs = {}
+        self.left_job_time = 0
         # for res in self.resources.values():
         #     res.reset()
         self.update_resources()
-
-if __name__ == "__main__":
-    import json
-    import numpy as np
-    import math
-
-    # test for job class
-    # jobs_path = 'utils/config/jobs.json'
-    # with open(jobs_path, 'r') as f:
-    #         data = json.load(f)
-    # jobs = [Job(code=item["作业编号"], 
-    #             time=item["作业时间"], 
-    #             group=item["分组"], 
-    #             resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
-    #             predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
-    #             exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
-    #         for item in data]
-    # print(jobs)
-
-    # # test for resource class
-    # fixed_res_path = 'utils/config/fixed_resources.json'
-    # mobile_res_path = 'utils/config/mobile_resources.json'
-    # with open(fixed_res_path, 'r') as f:
-    #         data = json.load(f)
-    # fixed_resources = [Resource(item["设备编号"], 
-    #                             item["类型"], 
-    #                             [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
-    #                             max_service=5) 
-    #                             for item in data]
-    # with open(mobile_res_path, 'r') as f:
-    #     data = json.load(f)
-    # mobile_resources = [Resource(item["设备编号"], 
-    #                              item["类型"], 
-    #                              [item["初始停机位"]], 
-    #                              max_service=1) 
-    #                              for item in data]    
-    # print(fixed_resources)
-
-    jobs_path = 'utils/config/jobs.json'
-    with open(jobs_path, 'r') as f:
-            data = json.load(f)
-    jobs = [Job(code=item["作业编号"], 
-                time=item["作业时间"], 
-                group=item["分组"], 
-                resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
-                predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
-                exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
-            for item in data]
-
-    fixed_res_path = 'utils/config/fixed_resources.json'
-    mobile_res_path = 'utils/config/mobile_resources.json'
-    with open(fixed_res_path, 'r') as f:
-            data = json.load(f)
-    fixed_resources = [Resource(item["设备编号"], 
-                                item["类型"], 
-                                [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
-                                max_service=5) 
-                                for item in data]
-    with open(mobile_res_path, 'r') as f:
-        data = json.load(f)
-    mobile_resources = [Resource(item["设备编号"], 
-                                 item["类型"], 
-                                 [item["初始停机位"]], 
-                                 max_service=1) 
-                                 for item in data]  
-    
-    sites_path = 'utils/config/sites.json'
-    with open(sites_path, 'r') as f:
-        data = json.load(f)
-    sites = [Site(code, {'position': pos, 
-                         'jobs': jobs, 
-                         'fixed_resources': [res for res in fixed_resources if code in res.sites], 
-                         'mobile_resources': [res for res in mobile_resources if code in res.sites]}) for code, pos in zip(data['sites_codes'], data['sites_positions'])]

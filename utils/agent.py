@@ -64,7 +64,6 @@ class Plane:
         self.destination = None  # 目的地
         self.transporter = None  # 转运车
         self.is_transporting = False  # 是否在移动
-        self.left_job_time = 0  # 当前任务剩余时间
         self.left_trans_time = 0  # 当前运输剩余时间
         self.is_waiting = False  # 是否在等待
         self.waiting_time = 0  # 等待时间
@@ -216,70 +215,5 @@ class Plane:
         self.is_busy = False
         self.destination = None
         self.is_transporting = False
-        self.left_job_time = 0  
         self.left_trans_time = 0
         self.left_jobs = list(self.jobs.keys())
-
-if __name__ == "__main__":
-    import json
-    import numpy as np
-
-    jobs_path = 'utils/config/jobs.json'
-    with open(jobs_path, 'r') as f:
-            data = json.load(f)
-    jobs = {item["作业编号"] : Job(code=item["作业编号"], 
-                time=item["作业时间"], 
-                group=item["分组"], 
-                resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
-                predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
-                exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
-            for item in data}
-
-    fixed_res_path = 'utils/config/fixed_resources.json'
-    mobile_res_path = 'utils/config/mobile_resources.json'
-    with open(fixed_res_path, 'r') as f:
-            data = json.load(f)
-    fixed_resources = {item["设备编号"]: Resource(item["设备编号"], 
-                                item["类型"], 
-                                [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1])+1)],
-                                max_service=5) 
-                                for item in data}
-    with open(mobile_res_path, 'r') as f:
-        data = json.load(f)
-    mobile_resources = {item["设备编号"]: Resource(item["设备编号"], 
-                                 item["类型"], 
-                                 [item["初始停机位"]], 
-                                 max_service=1) 
-                                 for item in data} 
-    
-    sites_path = 'utils/config/sites.json'
-    with open(sites_path, 'r') as f:
-        data = json.load(f)
-    sites = {code: Site(code, {'site': pos, 
-                         'jobs': jobs, 
-                         'fixed_resources': [res for res in fixed_resources.values() if code in res.sites], 
-                         'mobile_resources': [res for res in mobile_resources.values() if code in res.sites]}) for code, pos in zip(data['sites_codes'], data['sites_positions'])}
-
-    mobile_devices = {}
-    for res in mobile_resources.values():
-        device_cfg = {
-            'resource': res,
-            'velocity': 3,
-            'site': sites[res.sites[0]]
-            }
-        if res.type not in mobile_devices:
-            mobile_devices[res.type] = [Device(res.code, device_cfg)]
-        else:
-            mobile_devices[res.type].append(Device(res.code, device_cfg))
-
-
-    for idx in range(5):
-        plane_cfg = {
-            'velocity': 5,
-            'site': sites[str(idx+1)],
-            'fuel': np.random.randint(0, 30),
-            'jobs': jobs.values()
-        }
-        plane = Plane(f'Plane_{idx}', plane_cfg)
-        print(plane.get_avail_jobs())
-        plane.choose_job('ZY02')
