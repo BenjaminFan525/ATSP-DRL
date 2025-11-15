@@ -93,10 +93,6 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
         if plane_action[0] in avail_sites:
             avail_sites.remove(plane_action[0])  # 从可用站点中移除已采样站点
     
-    for plane_id, plane in env.planes.items():
-        bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
-        
-    
     for batch_idx in range(current_batch+1):
         if len(env.planes) and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == batch_idx]):
             takeoff_planes = []
@@ -132,21 +128,27 @@ def run_arrangement(config, render_mode=None):
     # ========= 固定随机种子 =========
     random.seed(config['seed'])
     np.random.seed(config['seed'])
+
+    if 'interfere' not in config:
+        config['interfere'] = [-1, [], 0]
+    if 'force_chosen' not in config:
+        config['force_chosen'] = [-1, '', 0]
+
     # 初始化环境
     env = ScheduleEnv(config, render_mode=render_mode)
 
-    # 第一阶段：着陆
     landing_list = []
-    batch_num = 5
-    plane_num_per_batch = 12
+    batch_num = config['batch_num']
+    plane_num_per_batch = config['plane_num_per_batch']
     for bidx in range(batch_num):
         landing_list += [item + bidx*3600 for item in list(range(0, 120*plane_num_per_batch, 120))]
-    sampled_sites = [random.sample(env.get_avail_sites(), k=plane_num_per_batch)]
-    config['force_chosen'][0] = min([num for num in landing_list if num > config['force_chosen'][0]])
+    config['force_chosen'][0] = min([num for num in landing_list if num > config['force_chosen'][0]]) if config['force_chosen'][0] > 0 else config['force_chosen'][0]
 
     total_time = 0
     step_time = 0
     current_batch = 0
+    force_chosen_plane = None
+    action_history = []
 
     while True:
         if total_time in landing_list or step_time == 0 or total_time == config['interfere'][0] or total_time == config['force_chosen'][0]:
@@ -172,45 +174,78 @@ def run_arrangement(config, render_mode=None):
                 env.sites[force_site].is_interfered = False
                 # env.sites[force_site].is_occupied = False
                 force_chosen = [bidx, pidx, force_site]
+                force_chosen_plane = f"Plane_{bidx}_{pidx}"
+                config['force_chosen'][0] = -1
                 print(f"Forced site chosen: {force_site} at time {total_time} for Plane_{bidx}_{pidx}")
-                config['force_chosen'][0] = 0  # 只触发一次
             else:
                 force_chosen = None
             
             action = random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force_chosen)
-            obs, rewards, done = env.step(action, env.step_time - step_time)
+
+            for bid in range(batch_num):
+                for pid in range(plane_num_per_batch):
+                    plane_id = f"Plane_{bid}_{pid}"
+                    plane_action = action["planes"][bid][pid]
+                    if plane_id in env.planes and (plane_action[0] or plane_action[1]):
+                        plane = env.planes[plane_id]
+                        transporter = plane.site.get_avail_transporter()
+                        transporter = transporter.code if transporter else None
+                        action_history.append({'Time:': seconds_to_datetime("00:08:00", total_time), 'Plane': plane_id, 'Start_Site': plane.site.code, 'End_Site': plane_action[0], 'Job': plane_action[1],'Transporter': transporter})
+
+            reward, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
+
+            # 添加修理时间
+            if force_chosen_plane:
+                plane = env.planes[force_chosen_plane]
+                if plane.is_transporting:
+                    plane.left_trans_time += config['force_chosen'][2]
+                print(f"Plane {force_chosen_plane} will be repaired for {config['force_chosen'][2]} seconds.")
+                force_chosen_plane = None
 
             # ===== 调用渲染 =====
             env.render()
-
+            
             if done:
                 print(f"All planes have taken off. Total time: {total_time}")
                 break 
             elif step_time == 0:
                 continue
-        else:
-            step_time -= 1
-        # print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}")
+        step_time -= 1
         total_time += 1
+        print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}, Reward: {reward}")
         if total_time == landing_list[plane_num_per_batch*bidx-1]:
             print(f"All planes in batch {bidx} have landed. Total time: {total_time}")
-        if total_time % 3600 == 0 and total_time != 0:
-            sampled_sites.append(random.sample(env.get_avail_sites(), k=plane_num_per_batch))
-        elif len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
+        if len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
             print(f"All planes in batch {current_batch} have completed their jobs.")
             current_batch += 1
             current_batch = min(current_batch, batch_num - 1)
+        
+    return action_history
 
 
 if __name__ == "__main__":
+    import json
     config = {
+        'batch_num': 5,
+        'plane_num_per_batch': 12,
         'jobs_path': 'utils/config/jobs.json',
         'fixed_res_path': 'utils/config/fixed_resources.json',
         'mobile_res_path': 'utils/config/mobile_resources.json',
         'sites_path': 'utils/config/sites.json',
         'seed': 42
     }
-    config['interfere'] = [1500, ['1', '21', '13', '14', '26'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
-    config['force_chosen'] = [4000, '20']  # [start_time, site_code]
-    run_arrangement(config)
+    # config['interfere'] = [2100, ['10', '11', '12', '13', '14', '15'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
+    # config['interfere'] = [-1, ['10', '11', '12', '13', '14', '15'], 1800] 
+
+    # config['force_chosen'] = [8100, '4', 1800]  # [start_time, site_code, time_span]
+    # config['force_chosen'] = [-1, '4', 1800]
+    action_history = run_arrangement(config)
+
+    # 写入文件
+    save_dir = "utils"
+    file_name = "output.txt"
+    with open(f"{save_dir}/{file_name}", "w", encoding="utf-8") as f:
+        json.dump({'Data': action_history}, f, ensure_ascii=False, indent=4)
+    print(f"Action history saved to {save_dir}/{file_name}")
+    print("Arrangement completed.")
