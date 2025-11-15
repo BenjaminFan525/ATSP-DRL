@@ -56,6 +56,7 @@ class Site:
 
     def remove_plane(self):
         assert self.is_occupied is True, f"Site {self.code} is already empty!"
+        print(f"Plane {self.plane.code} has left Site {self.code}.")
         self.plane = None
         self.is_occupied = False
 
@@ -87,14 +88,32 @@ class Site:
                 self.resources[self.onging_jobs[job.code][1]].remove_service(self.code)
             self.onging_jobs.pop(job.code)
 
-    def start_interfere(self):
+    def start_interfere(self, rec_time):
+        if self.is_interfered:
+            print(6666)
+        
         assert self.is_interfered is False, f"Site {self.code} is already interfered!"
         self.is_interfered = True
+        self.left_rec_time = rec_time
+        if self.is_occupied:
+            # 暂停当前正在进行的作业
+            suspended_jobs = []
+            for job_code in self.onging_jobs:
+                suspended_jobs.append(job_code)
+            self.finish_jobs([self.config['jobs'][job] for job in suspended_jobs])
+            # 处理当前飞机的作业
+            self.plane.current_jobs = [job for job in self.plane.current_jobs if job not in suspended_jobs]
+            self.plane.finished_jobs += self.plane.current_jobs
+            self.plane.left_jobs = [job for job in self.plane.left_jobs if job not in self.plane.current_jobs]
+            self.plane.current_jobs = []
+            self.plane.is_busy = False
+            # self.plane.site = None
+            return self.plane.code
 
-    def finish_interfere(self, rec_time):
+    def finish_interfere(self):
         assert self.is_interfered is True, f"Site {self.code} is not being interfered!"
         self.is_interfered = False
-        self.left_rec_time = rec_time
+        self.reset()
 
     def get_avail_transporter(self):
         self.update_resources()
@@ -112,14 +131,13 @@ class Site:
     
     def update(self, time):
         ret = 0
-        # if self.is_interfered:
-        #     return
-        # if self.left_rec_time > 0:
-        #     self.left_rec_time -= time
-        #     if self.left_rec_time > 0:
-        #         return
-        #     else:
-        #         self.is_interfered = False
+        if self.is_interfered:
+            self.left_rec_time -= time
+            assert self.left_rec_time >= 0, "Site recovery time cannot be negative."
+            if self.left_rec_time == 0:
+                self.finish_interfere()
+            return self.left_rec_time 
+
         finished_jobs = []
         for job_code in self.onging_jobs:
             self.onging_jobs[job_code][0] -= time
@@ -147,8 +165,8 @@ class Site:
         self.is_interfered = False
         self.left_rec_time = 0
         self.onging_jobs = {}
-        for res in self.resources.values():
-            res.reset()
+        # for res in self.resources.values():
+        #     res.reset()
         self.update_resources()
 
 if __name__ == "__main__":
