@@ -52,7 +52,7 @@ def get_mixer_args(args):
     args.epsilon_anneal_scale = 'step'
 
     # the number of the epoch to train the agent
-    args.n_epoch = 15000
+    args.n_epoch = 200
 
     # the number of the episodes in one epoch
     args.n_episodes = 5
@@ -61,7 +61,7 @@ def get_mixer_args(args):
     args.train_steps = 2
 
     # # how often to evaluate
-    args.evaluate_cycle = 50
+    args.evaluate_cycle = 20
 
     # experience replay
     args.batch_size = 32
@@ -142,13 +142,13 @@ def get_centralv_args(args):
     args.epsilon_anneal_scale = 'epoch'
 
     # the number of the epoch to train the agent
-    args.n_epoch = 20000
+    args.n_epoch = 50
 
     # the number of the episodes in one epoch
     args.n_episodes = 1
 
     # how often to evaluate
-    args.evaluate_cycle = 100
+    args.evaluate_cycle = 10
 
     # lambda of td-lambda return
     args.td_lambda = 0.8

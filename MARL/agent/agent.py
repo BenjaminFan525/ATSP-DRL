@@ -42,7 +42,7 @@ class Agents:
     # 有可能分布选出来不符合要求的动作,目前貌似用不到这个东西
     def random_choice_with_mask(self, avail_actions):
         temp = []
-        wait = self.n_actions-3
+        wait = self.n_actions-1
         for i, eve in enumerate(avail_actions):
             if eve == 1:
                 temp.append(i)  # 可选站位
@@ -99,7 +99,7 @@ class Agents:
                 action = torch.argmax(q_value).cpu()  # 此处应该判断一下是不是都是-inf
                 # print(66666,action,q_value)
 
-        return action
+        return int(np.clip(action, 0, self.n_actions - 1))
 
     def _choose_action_from_softmax(self, inputs, avail_actions, epsilon, evaluate=False):
         """

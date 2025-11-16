@@ -2,27 +2,31 @@ import random
 import numpy as np
 import pulp
 from scipy.spatial.distance import cdist
-from env import ScheduleEnv
+from environment import ScheduleEnv
 from datetime import datetime, timedelta
 
 def seconds_to_datetime(start: str, delta_seconds: int) -> str:
-    """
-    start: "HH:MM:SS"
+    '''start: "HH:MM:SS"
     return: "HH:MM:SS"  24h制，不跨天
-    """
+    '''
     t = datetime.strptime(start, "%H:%M:%S") + timedelta(seconds=delta_seconds)
     # 折回同一天
     t = t.replace(day=1)          # 把日期固定到同一天
     return t.strftime("%H:%M:%S")
 
 def datetime_to_seconds(now: str, start: str) -> int:
+    '''计算时间差（秒数）'''
     def to_sec(t: str) -> int:
         h, m, s = map(int, t.split(":"))
         return h * 3600 + m * 60 + s
     return (to_sec(now) - to_sec(start)) % (24 * 3600)
 
 def arrange_devices(devices, planes):
-    '''使用线性规划安排转运车'''
+    '''使用线性规划安排转运车
+    
+    通过最小化总运输距离，将空闲转运车分配给等待的飞机
+    支持车多任务少的情况，确保每个任务点至少被服务一次
+    '''
     # 按等待时间排序，筛选前n个等待时间最长的飞机
     if len(planes) >= len(devices):
         # planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
@@ -64,6 +68,11 @@ def arrange_devices(devices, planes):
     return ret
 
 def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force_chosen=None):
+    '''随机安排环境和设备动作
+    
+    为飞机和设备生成随机动作，处理飞机转运、作业选择逻辑
+    支持强制选择特定站点和转运车调度优化
+    '''
     # ========= 固定随机种子 =========
     # random.seed(seed)
     # np.random.seed(seed)
@@ -79,7 +88,7 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
         if plane.is_idle():
             if force_chosen and plane_id == f"Plane_{force_chosen[0]}_{force_chosen[1]}":
                 plane_action[0] = force_chosen[2]  # 强制选择站点
-            elif plane.site == None or plane.site.code == 'Z' or plane_id in env.force_transfer_planes or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
+            elif plane.site.code == 'Z' or plane_id in env.force_transfer_planes or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
                 plane_action[0] = random.choice(avail_sites) # 随机选取
                 avail_sites.remove(plane_action[0])
                 if plane_id in env.force_transfer_planes:
@@ -88,7 +97,8 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
                 plane_action[0] = plane.site.code  # 保持在当前位置
         jobs = plane.get_avail_jobs(env.sites[plane_action[0]]) if plane_action[0] else []
         if jobs and plane.is_idle():  # 非空
-            plane_action[1] = random.choice(jobs)
+            # plane_action[1] = random.choice(jobs)
+            plane_action[1] = sorted(jobs, key=lambda x: plane.jobs[x].time, reverse=True)[0]
         action["planes"][bidx_][pidx_] = plane_action
         if plane_action[0] in avail_sites:
             avail_sites.remove(plane_action[0])  # 从可用站点中移除已采样站点
@@ -125,6 +135,11 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
     return action
 
 def run_arrangement(config, render_mode=None):
+    '''运行完整的调度安排流程
+    
+    初始化环境，按批次添加飞机，处理干涉和强制选择事件
+    生成动作历史并保存到文件
+    '''
     # ========= 固定随机种子 =========
     random.seed(config['seed'])
     np.random.seed(config['seed'])
@@ -180,7 +195,7 @@ def run_arrangement(config, render_mode=None):
             else:
                 force_chosen = None
             
-            action = random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force_chosen)
+            action = random_arrangement(env, plane_num_per_batch, batch_num, min(current_batch, batch_num - 1), force_chosen)
 
             for bid in range(batch_num):
                 for pid in range(plane_num_per_batch):
@@ -207,19 +222,19 @@ def run_arrangement(config, render_mode=None):
             env.render()
             
             if done:
-                print(f"All planes have taken off. Total time: {total_time}")
+                print(f"All planes have taken off. Total time: {total_time}, Reward: {reward}")
                 break 
             elif step_time == 0:
                 continue
         step_time -= 1
         total_time += 1
-        print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}, Reward: {reward}")
+        # print(f"Step: {env.steps}, Step Time: {step_time}, Total Time: {total_time}, Reward: {reward}")
         if total_time == landing_list[plane_num_per_batch*bidx-1]:
             print(f"All planes in batch {bidx} have landed. Total time: {total_time}")
-        if len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]):
+        if len(env.planes) >= 12 and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == current_batch]) and current_batch <= batch_num - 1:
             print(f"All planes in batch {current_batch} have completed their jobs.")
             current_batch += 1
-            current_batch = min(current_batch, batch_num - 1)
+            # current_batch = min(current_batch, batch_num - 1)
         
     return action_history
 
@@ -235,10 +250,10 @@ if __name__ == "__main__":
         'sites_path': 'utils/config/sites.json',
         'seed': 42
     }
-    # config['interfere'] = [2100, ['10', '11', '12', '13', '14', '15'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
+    config['interfere'] = [2100, ['10', '11', '12', '13', '14', '15'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
     # config['interfere'] = [-1, ['10', '11', '12', '13', '14', '15'], 1800] 
 
-    # config['force_chosen'] = [8100, '4', 1800]  # [start_time, site_code, time_span]
+    # config['force_chosen'] = [8100, '11', 1800]  # [start_time, site_code, time_span]
     # config['force_chosen'] = [-1, '4', 1800]
     action_history = run_arrangement(config)
 
