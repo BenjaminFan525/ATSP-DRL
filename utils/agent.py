@@ -13,6 +13,8 @@ class Device:
         self.is_transporting = False  # 设备是否处于运输状态
         self.left_trans_time = 0  # 当前运输任务剩余时间（秒）
         self.is_busy = False  # 设备是否忙碌（资源被占用）
+        self.left_rec_time = 0
+        self.is_disable = False
         # 将设备注册到站点设备列表中
         self.site.devices.append(self)
 
@@ -67,8 +69,15 @@ class Device:
             if device.is_idle():  # 检查设备是否可用
                 device.start_transport(target_site)
         '''
-        return not self.is_busy and not self.is_transporting
+        return not self.is_busy and not self.is_transporting and not self.is_disable
     
+    def start_disable(self, time):
+        self.is_disable = True
+        self.left_rec_time = time
+
+    def finish_disable(self):
+        self.is_disable = False
+
     def update(self, time):
         '''更新设备状态（时间推进）
         
@@ -85,8 +94,13 @@ class Device:
         '''
         assert not self.is_idle(), "Device must be either busy or transporting."
         ret = np.inf
+        if self.is_disable:
+            self.left_rec_time -= time
+            if self.left_rec_time == 0:
+                self.finish_disable()
+            return self.left_rec_time  
         # 处理运输状态
-        if self.is_transporting:
+        elif self.is_transporting:
             self.left_trans_time -= time
             # if self.left_trans_time <= 0 and self.resource.type != 'R014':
             assert self.left_trans_time >= 0, "Device transport time cannot be negative."

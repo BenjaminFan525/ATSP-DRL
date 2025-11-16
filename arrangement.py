@@ -21,6 +21,43 @@ def datetime_to_seconds(now: str, start: str) -> int:
         return h * 3600 + m * 60 + s
     return (to_sec(now) - to_sec(start)) % (24 * 3600)
 
+def site_disable(env: ScheduleEnv, disable_time: int):
+    """
+    禁用指定站点
+    :param env: 调度环境
+    :param site_code: 站点代码
+    :param disable_time: 禁用时间
+    """
+    site_code = random.choice([site.code for site in env.sites if site.code != 'Z'])
+    if site_code in env.sites:
+        env.add_interfere_sites([site_code], disable_time)
+        print(f"Site {site_code} disabled for {disable_time} seconds.")
+    else:
+        print(f"Site {site_code} does not exist in the environment.")
+
+def device_disable(env: ScheduleEnv, res_type: str, disable_time: int):
+    """
+    禁用指定设备
+    :param env: 调度环境
+    :param res_type: 资源类型
+    :param device_code: 设备代码
+    :param disable_time: 禁用时间
+    """
+    res_type = random.choice(list(env.mobile_devices.keys()))
+    device_code = random.choice([device.resource.code for device in env.mobile_devices.get(res_type, [])])
+    if res_type in env.mobile_devices and device_code in [device.resource.code for device in env.mobile_devices[res_type]]:
+        for device in env.mobile_devices[res_type]:
+            if device.resource.code == device_code:
+                for site_code in device.resource.on_service:
+                    # 将正在服务的飞机调离
+                    env.add_interfere_sites([site_code], 0)
+                    env.sites[site_code].is_interfered = False
+                device.disable(disable_time)
+                print(f"Device {device_code} of type {res_type} disabled for {disable_time} seconds.")
+                return
+    print(f"Device {device_code} of type {res_type} does not exist in the environment.")
+
+
 def arrange_devices(devices, planes):
     '''使用线性规划安排转运车
     
@@ -134,6 +171,70 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
 
     return action
 
+def marl_arrangement(env, agents, last_action, epsilon, plane_num_per_batch, batch_num, current_batch, force_chosen=None):
+    '''使用深度强化学习策略规划停机位和设备动作
+    
+    每一个batch使用单独的一个agent来决策,从而避免智能体数量大幅变化
+    
+    为飞机和设备生成随机动作，处理飞机转运、作业选择逻辑
+    支持强制选择特定站点和转运车调度优化
+    '''
+    obs = env.get_obs(plane_num_per_batch*batch_num)  # [[],[],...]
+    state = env.get_state(plane_num_per_batch*batch_num) # []
+    avail_actions = [[env.get_avail_agent_actions() for _ in range(plane_num_per_batch)] for _ in range(batch_num)]
+    
+    action = {}
+    action["planes"] = [[[] for _ in range(plane_num_per_batch)] for _ in range(plane_num_per_batch)]
+    chosen_actions = []
+    # 选择动作
+    for plane_id, plane in env.planes.items():
+        bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
+        plane_action = [None, None]
+
+        avail_action = env.get_avail_agent_actions(plane_id)  # 获取该agent可用动作列表
+
+        if len(env.planes) and all([plane.is_completed_all_jobs() for plane_id, plane in env.planes.items() if int(plane_id.split('_')[1]) == 0]):
+            avail_action[-4:-1] = [1 if not site.is_occupied else 0 for site in env.sites.values() if site.code in ['29', '30', '31']]
+        for a in chosen_actions:
+            avail_action[a] = 0
+        # 全0时保证等待
+        if all(x == 0 for x in avail_action):    
+            avail_action[-1] = 1
+        agent_action = agents[batch_num].choose_action(obs[pidx_], last_action[pidx_],pidx_,                                                    avail_action, epsilon, True)
+        # 除去等待的情况
+        if agent_action != len(avail_action) -1:
+            chosen_actions.append(agent_action)
+            plane_action[0] = list(env.sites.keys())[agent_action]
+        jobs = plane.get_avail_jobs(env.sites[plane_action[0]]) if plane_action[0] else []
+        if jobs and plane.is_idle(): 
+            plane_action[1] = sorted(jobs, key=lambda x: plane.jobs[x].time, reverse=True)[0]
+        if len(env.planes) == 1 and plane.is_completed_all_jobs():
+            if plane_action[0] == None:
+                if plane.is_idle():
+                    print(6666)
+        action["planes"][bidx_][pidx_] = plane_action             
+    
+    action["devices"] = {}
+    for device_type, devices in env.mobile_devices.items():
+        action["devices"][device_type] = [device.site.code for device in devices]
+    
+    for job_code, waiting_sites in env.waiting_sites.items():
+        if len(waiting_sites) > 0:
+            devices = env.get_idle_devices(env.jobs[job_code].resources)
+            if len(devices) > 0:
+                planes = [plane for plane in env.planes.values() if plane.site.code in waiting_sites]
+                assignments = arrange_devices(devices, planes)
+                for device_type, device_code, target_site in assignments:
+                    for idx, device in enumerate(env.mobile_devices[device_type]):
+                        if device.resource.code == device_code:
+                            action["devices"][device_type][idx] = target_site
+                            waiting_sites.remove(target_site)
+                            break
+
+    return action
+
+
+
 def run_arrangement(config, render_mode=None):
     '''运行完整的调度安排流程
     
@@ -187,7 +288,6 @@ def run_arrangement(config, render_mode=None):
                 force_site = config['force_chosen'][1]
                 env.add_interfere_sites([force_site], 0)
                 env.sites[force_site].is_interfered = False
-                # env.sites[force_site].is_occupied = False
                 force_chosen = [bidx, pidx, force_site]
                 force_chosen_plane = f"Plane_{bidx}_{pidx}"
                 config['force_chosen'][0] = -1
@@ -196,6 +296,7 @@ def run_arrangement(config, render_mode=None):
                 force_chosen = None
             
             action = random_arrangement(env, plane_num_per_batch, batch_num, min(current_batch, batch_num - 1), force_chosen)
+            # action = marl_arrangement(env, plane_num_per_batch, batch_num, min(current_batch, batch_num - 1), force_chosen)
 
             for bid in range(batch_num):
                 for pid in range(plane_num_per_batch):
@@ -205,7 +306,7 @@ def run_arrangement(config, render_mode=None):
                         plane = env.planes[plane_id]
                         transporter = plane.site.get_avail_transporter()
                         transporter = transporter.code if transporter else None
-                        action_history.append({'Time:': seconds_to_datetime("00:08:00", total_time), 'Plane': plane_id, 'Start_Site': plane.site.code, 'End_Site': plane_action[0], 'Job': plane_action[1],'Transporter': transporter})
+                        action_history.append({'Time:': seconds_to_datetime("08:00:00", total_time), 'Plane': plane_id, 'Start_Site': plane.site.code, 'End_Site': plane_action[0], 'Job': plane_action[1],'Transporter': transporter})
 
             reward, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
@@ -259,7 +360,7 @@ if __name__ == "__main__":
 
     # 写入文件
     save_dir = "utils"
-    file_name = "output.txt"
+    file_name = "output.json"
     with open(f"{save_dir}/{file_name}", "w", encoding="utf-8") as f:
         json.dump({'Data': action_history}, f, ensure_ascii=False, indent=4)
     print(f"Action history saved to {save_dir}/{file_name}")

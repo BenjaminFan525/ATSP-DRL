@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from torch.distributions import one_hot_categorical
 import os
-from arrangement import arrange_devices
+from arrangement import arrange_devices, site_disable, device_disable
+import random
 
 class RolloutWorker:
     def __init__(self, env, agents, args):
@@ -59,6 +60,12 @@ class RolloutWorker:
         step_time = 0
         
         while not terminated and step < self.episode_limit:
+            if step % 20*60 == 0:
+                # 每隔20分钟随机选取一个停机位(包含起飞跑道,但是不包含降落跑道)不可用
+                site_disable(self.env, 20*1200)
+            if step % 10*60 == 0:
+                # 每隔10分钟随机选取一个移动设备不可用
+                device_disable(self.env, 10*60)
             if step in landing_list or step_time == 0:
                 obs = self.env.get_obs(self.n_agents)  # [[],[],...]
                 state = self.env.get_state(self.n_agents) # []
