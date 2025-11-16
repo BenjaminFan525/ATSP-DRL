@@ -13,20 +13,6 @@ from utils.arguments import get_common_args, get_coma_args, get_mixer_args, get_
 
 np.random.seed(42)
 
-def site_disable(env: ScheduleEnv, site_code: str, disable_time: int):
-    """
-    禁用指定站点
-    :param env: 调度环境
-    :param site_code: 站点代码
-    :param disable_time: 禁用时间
-    """
-    if site_code in env.sites:
-        env.sites[site_code].disable(disable_time)
-        print(f"Site {site_code} disabled for {disable_time} seconds.")
-    else:
-        print(f"Site {site_code} does not exist in the environment.")
-
-
 # 强化学习决策函数，带入来自DRL的强化学习agent
 def marl_agent_wrapper():
     args = get_common_args()
