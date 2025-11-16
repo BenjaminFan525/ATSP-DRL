@@ -38,17 +38,21 @@ class ReplayBuffer:
         with self.lock:
             idxs = self._get_storage_idx(inc=batch_size)
             # store the informations
-            self.buffers['o'][idxs] = episode_batch['o']
-            self.buffers['u'][idxs] = episode_batch['u']
-            self.buffers['s'][idxs] = episode_batch['s']
-            self.buffers['r'][idxs] = episode_batch['r']
-            self.buffers['o_next'][idxs] = episode_batch['o_next']
-            self.buffers['s_next'][idxs] = episode_batch['s_next']
-            self.buffers['avail_u'][idxs] = episode_batch['avail_u']
-            self.buffers['avail_u_next'][idxs] = episode_batch['avail_u_next']
-            self.buffers['u_onehot'][idxs] = episode_batch['u_onehot']
-            self.buffers['padded'][idxs] = episode_batch['padded']
-            self.buffers['terminated'][idxs] = episode_batch['terminated']
+            for key in self.buffers.keys():
+                L = episode_batch[key].shape[1]
+                self.buffers[key][idxs, :L] = episode_batch[key]
+            
+            # self.buffers['o'][idxs] = episode_batch['o']
+            # self.buffers['u'][idxs] = episode_batch['u']
+            # self.buffers['s'][idxs] = episode_batch['s']
+            # self.buffers['r'][idxs] = episode_batch['r']
+            # self.buffers['o_next'][idxs] = episode_batch['o_next']
+            # self.buffers['s_next'][idxs] = episode_batch['s_next']
+            # self.buffers['avail_u'][idxs] = episode_batch['avail_u']
+            # self.buffers['avail_u_next'][idxs] = episode_batch['avail_u_next']
+            # self.buffers['u_onehot'][idxs] = episode_batch['u_onehot']
+            # self.buffers['padded'][idxs] = episode_batch['padded']
+            # self.buffers['terminated'][idxs] = episode_batch['terminated']
             if self.args.alg == 'maven':
                 self.buffers['z'][idxs] = episode_batch['z']
     # 随机采样

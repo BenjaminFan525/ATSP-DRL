@@ -7,7 +7,28 @@ import matplotlib.pyplot as plt
 import sys
 import json
 from datetime import datetime
+from typing import Dict, List, Any
+import numpy as np
+from tqdm import tqdm
 
+def pad_and_concat(episodes, key, axis=0):
+    pieces = [ep[key] for ep in episodes]          # list of (1, L, 12, 68)
+    # Already same shape → direct concat
+    if all(p.shape == pieces[0].shape for p in pieces):
+        return np.concatenate(pieces, axis=axis)
+
+    # 找出每一维的最大长度
+    max_shape = list(pieces[0].shape)              # [1, L_max, 12, 68]
+    for dim in range(len(max_shape)):
+        max_shape[dim] = max(p.shape[dim] for p in pieces)
+
+    # 对每一 piece 按 max_shape 补 0（只补需要的维）
+    padded = []
+    for p in pieces:
+        pad_width = [(0, max_shape[d] - p.shape[d]) for d in range(len(max_shape))]
+        padded.append(np.pad(p, pad_width, mode='constant', constant_values=0))
+
+    return np.concatenate(padded, axis=axis)
 
 class Runner:
     def __init__(self, env, args):
@@ -53,13 +74,13 @@ class Runner:
         for_gantt_data =[]
         r_s = [0]
         evaluate_times = 1
-        for epoch in range(self.args.n_epoch):
+        for epoch in tqdm(range(self.args.n_epoch), desc="Training"):
 
             if epoch % self.args.evaluate_cycle == 0 and epoch != 0:
                 print('\nevaluate times:', evaluate_times, end=' ')
-                win_rate, reward, time, move_time = self.evaluate()
-                print('Evaluate win_rate: {}, reward: {}, makespan: {}, move_times: {}'.format(win_rate, reward, time, move_time))
-                self.win_rates.append(win_rate)
+                _, reward, time, _ = self.evaluate()
+                print(f'Evaluate reward: {reward}, makespan: {time}')
+                # self.win_rates.append(win_rate)
                 self.episode_rewards.append(reward)
                 evaluate_times += 1
 
@@ -68,20 +89,20 @@ class Runner:
             t_s = []
 
             for episode_idx in range(self.args.n_episodes):
-                episode, train_reward, train_time, _, _, train_move_time = self.rolloutWorker.generate_episode(episode_idx)
+                episode, train_reward, train_time, _, _, _ = self.rolloutWorker.generate_episode(episode_idx)
                 self.results['train_reward'].append(train_reward)
                 self.results['train_makespan'].append(train_time)
-                self.results['train_move_time'].append(train_move_time)
+                # self.results['train_move_time'].append(train_move_time)
                 episodes.append(episode)
                 r_s.append(sum(episode['r'][0])[0])
                 t_s.append(train_time)
             
 
-            episode_batch = episodes[0]
+            episode_batch = episodes[0].copy()   # 保留第一份
             episodes.pop(0)
-            for episode in episodes:
-                for key in episode_batch.keys():
-                    episode_batch[key] = np.concatenate((episode_batch[key], episode[key]), axis=0)
+            for key in episode_batch.keys():
+                # 对可能变长的 key 做填充拼接
+                episode_batch[key] = pad_and_concat(episodes, key)
             
             if self.args.alg.find('coma') > -1 or self.args.alg.find('central_v') > -1 or self.args.alg.find('reinforce') > -1:
                 loss = self.agents.train(episode_batch, train_steps, self.rolloutWorker.epsilon)
@@ -113,31 +134,31 @@ class Runner:
         win_number = 0
         reward = 0
         time = 0
-        move_time = 0
+        # move_time = 0
         for epoch in range(self.args.evaluate_epoch):
-            _, episode_reward, episode_time, win_tag, for_gant, episode_move_time = self.rolloutWorker.generate_episode(epoch, evaluate=True)
+            _, episode_reward, episode_time, _, _, _ = self.rolloutWorker.generate_episode(epoch, evaluate=True)
             self.results['evaluate_reward'].append(episode_reward)
             self.results['evaluate_makespan'].append(episode_time)
-            self.results['evaluate_move_time'].append(episode_move_time)
-            self.results['schedule_results'].append(for_gant)
+            # self.results['evaluate_move_time'].append(episode_move_time)
+            # self.results['schedule_results'].append(for_gant)
             reward += episode_reward
             time += episode_time
-            move_time += episode_move_time
-            if win_tag:
-                win_number += 1
-        win_rate = win_number / self.args.evaluate_epoch
+            # move_time += episode_move_time
+            # if win_tag:
+            #     win_number += 1
+        # win_rate = win_number / self.args.evaluate_epoch
         reward = reward / self.args.evaluate_epoch
         time = time / self.args.evaluate_epoch
-        move_time = move_time / self.args.evaluate_epoch
+        # move_time = move_time / self.args.evaluate_epoch
         self.results['average_reward'].append(reward)
         self.results['average_makespan'].append(time)
-        self.results['average_move_time'].append(move_time)
-        self.results['win_rates'].append(win_rate)
+        # self.results['average_move_time'].append(move_time)
+        # self.results['win_rates'].append(win_rate)
         if self.args.load_model and not self.args.learn:
             file_name = f"evaluat.json"
             file_path = os.path.join(self.save_path, file_name)
             with open(file_path, 'w') as f:
                 json.dump(self.results, f, indent=4)
 
-        return win_rate, reward, time , move_time
+        return _, reward, time , _
 
