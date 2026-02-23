@@ -6,7 +6,7 @@ from utils.agent import Plane, Device
 from utils.env_utils import Job, Resource, Site
 import json
 import matplotlib.pyplot as plt
-from gym.utils import seeding
+from gymnasium.utils import seeding
 import math
 
 
@@ -573,68 +573,290 @@ class ScheduleEnv(gym.Env):
         return global_reward
 
     def render(self):
-        '''渲染环境可视化
-        
-        作用:
-            使用Matplotlib绘制机场布局，显示站点、飞机、设备状态
-        可视化元素:
-            - 空心方块：空闲站点
-            - 实心方块： occupied站点（标注飞机ID）
-            - 圆形：移动设备（标注设备代码）
-        示例:
-            env.render()  # 显示当前状态
-        '''
-        # 如果没开可视化模式，可以直接返回
+        """渲染环境可视化（模仿 path_test_3 画风，并自动截屏）
+
+        功能：
+        - 画停机坪 / 跑道（彩色矩形）
+        - 画飞机（彩色圆点 + 编号）
+        - 画移动设备（紫色小方块 + 编号）
+        - 每次调用 render 时，自动按“5 个波次 × 每波 5 张”保存前 25 张图片，
+          然后额外保存一张“空白底图”（只有停机坪，没有飞机和设备）。
+
+        说明：
+        - 是否保存、保存目录、波次数量、每波张数都可以在下面的默认参数里改。
+        - 假设你在外部控制“隔多久调用一次 render”，环境只负责
+          在调用的前 25 次里自动保存图片。
+        """
         if self.render_mode is None:
             return
 
-        # 第一次调用时创建大一点的画布
+        import os
+        import matplotlib.pyplot as plt
+
+        # ========= 字体设置（解决中文变方框问题，只做一次） =========
+        if not hasattr(self, "_font_inited"):
+            # 依次尝试这些中文字体，环境里有哪个就用哪个
+            plt.rcParams["font.sans-serif"] = [
+                "SimHei",               # Windows 常见
+                "Microsoft YaHei",      # Windows 常见
+                "WenQuanYi Micro Hei",  # Ubuntu 常见
+                "Noto Sans CJK SC",     # 常用 CJK 字体
+                "DejaVu Sans",          # 兜底（不一定全支持中文）
+            ]
+            plt.rcParams["axes.unicode_minus"] = False
+            self._font_inited = True
+
+        # ========= 截图参数初始化（只做一次） =========
+        if not hasattr(self, "_render_save_inited"):
+            self._render_save_inited = True
+            # 你可以按需修改这些默认参数（也可以在外部手动改属性）
+            self.render_num_waves = getattr(self, "render_num_waves", 5)           # 波次数
+            self.render_frames_per_wave = getattr(self, "render_frames_per_wave", 20)  # 每波张数
+            self.render_save_dir = getattr(self, "render_save_dir", "render_output")  # 保存目录
+            self.render_auto_save = getattr(self, "render_auto_save", True)        # 是否自动保存
+            # ✅ 新增：截图间隔（例如 20 表示每 20 次 render 保存一张）
+            self.render_save_stride = getattr(self, "render_save_stride", 30)
+
+            self._render_saved_count = 0
+            self._render_blank_saved = False
+            self._render_call_count = 0
+            if self.render_auto_save:
+                os.makedirs(self.render_save_dir, exist_ok=True)
+
+        # ========= 创建 / 清空 画布 =========
         if self.fig is None or self.ax is None:
             plt.ion()
-            # 图像大一些：10x8
-            self.fig, self.ax = plt.subplots(figsize=(16, 14), dpi=120)
-            self.ax.set_title("Airport Schedule Environment", fontsize=14)
+            self.fig, self.ax = plt.subplots(figsize=(16, 11), dpi=120)
+            self.ax.set_title("机场调度可视化", fontsize=16, fontweight="bold")
 
-        self.ax.clear()
+        ax = self.ax
+        ax.clear()
 
-        # ==== 计算可视区域（根据所有站位自动缩放） ====
+        # ========= 1. 计算视野范围 =========
         xs = [site.pos[0] for site in self.sites.values()]
         ys = [site.pos[1] for site in self.sites.values()]
         if xs and ys:
             margin = 10
             xmin, xmax = min(xs) - margin, max(xs) + margin
             ymin, ymax = min(ys) - margin, max(ys) + margin
-            self.ax.set_xlim(xmin, xmax)
-            self.ax.set_ylim(ymin, ymax)
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
 
-        # 1. 画所有机位（背景）
+        ax.set_facecolor("#f7f7f7")
+        ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.3)
+
+        # 小工具：根据站位 code 决定区域类型
+        def _zone_type(code: str) -> str:
+            if code == "Z":
+                return "landing"   # 降落区
+            if code in ["29", "30", "31"]:
+                return "takeoff"   # 起飞区
+            return "parking"       # 普通停机坪
+
+        # ========= 2. 画所有机位（停机坪矩形，模仿 path_test_3） =========
         for code, site in self.sites.items():
             x, y = site.pos
-            # 空机位：空心方块
-            self.ax.scatter(x, y, marker='s', s=120, edgecolors='gray', facecolors='none')
-            self.ax.text(x, y - 2, code, ha='center', va='top', fontsize=7, color='gray')
+            zone = _zone_type(code)
 
-        # 2. 画有飞机的机位（高亮）  
-        for plane_id, plane in self.planes.items():
+            if zone == "landing":
+                facecolor = "lightgreen"
+                edgecolor = "darkgreen"
+                lw = 2.0
+                alpha = 0.7
+            elif zone == "takeoff":
+                facecolor = "lightyellow"
+                edgecolor = "orange"
+                lw = 2.0
+                alpha = 0.7
+            else:
+                facecolor = "lightblue"
+                edgecolor = "blue"
+                lw = 1.5
+                alpha = 0.6
+
+            rect = plt.Rectangle(
+                (x - 4, y - 4),
+                8,
+                8,
+                facecolor=facecolor,
+                edgecolor=edgecolor,
+                linewidth=lw,
+                alpha=alpha,
+                zorder=1,
+            )
+            ax.add_patch(rect)
+            ax.text(
+                x,
+                y,
+                code,
+                ha="center",
+                va="center",
+                fontsize=8,
+                fontweight="bold",
+                color="black",
+                zorder=2,
+            )
+
+        # ========= 3. 画飞机（彩色圆点 + 编号） =========
+        for idx, (plane_id, plane) in enumerate(self.planes.items()):
             x, y = plane.site.pos
-            self.ax.scatter(x, y, marker='s', s=200)  # 实心方块
-            self.ax.text(x, y + 2, plane_id, ha='center', va='bottom', fontsize=8)
+            bidx, pidx = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])  # 提取飞机编号
+            color = plt.cm.tab10(pidx % 12)
 
-        # 3. 画移动设备（小车等）
+            ax.scatter(
+                x,
+                y,
+                s=150,
+                marker="o",
+                c=[color],
+                edgecolors="black",
+                zorder=5,
+            )
+            ax.text(
+                x,
+                y + 5,
+                plane_id,
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color="black",
+                zorder=6,
+            )
+
+        # ========= 4. 画移动设备（紫色小方块 + 编号） =========
         for device_type, devices in self.mobile_devices.items():
-            for d in devices:
-                x, y = d.site.pos
-                # 稍微上移一点，避免跟机位完全重合
-                self.ax.scatter(x, y + 1.5, marker='o', s=40)
-                self.ax.text(x, y + 3, d.code, ha='center', va='bottom', fontsize=6)
+            if device_type == "R014":
+                for d in devices:
+                    x, y = d.site.pos
+                    ax.scatter(
+                        x,
+                        y - 3,
+                        s=100,
+                        marker="s",
+                        c=["purple"],
+                        edgecolors="black",
+                        zorder=4,
+                    )
+                    ax.text(
+                        x,
+                        y - 7,
+                        d.code,
+                        ha="center",
+                        va="top",
+                        fontsize=7,
+                        color="purple",
+                        zorder=6,
+                    )
 
-        self.ax.set_xlabel("X")
-        self.ax.set_ylabel("Y")
-        self.ax.set_aspect("equal", adjustable="box")
-        self.ax.grid(True, linestyle='--', linewidth=0.5)
+        # ========= 5. 坐标轴 & 图例（中文不再方框） =========
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_aspect("equal", adjustable="box")
 
+        legend_elements = [
+            plt.Rectangle((0, 0), 1, 1, facecolor="lightgreen", edgecolor="darkgreen",
+                          alpha=0.7, label="Landing Zone (Z)"),
+            plt.Rectangle((0, 0), 1, 1, facecolor="lightyellow", edgecolor="orange",
+                          alpha=0.7, label="Takeoff Area (29/30/31)"),
+            plt.Rectangle((0, 0), 1, 1, facecolor="lightblue", edgecolor="blue",
+                          alpha=0.6, label="Aircraft parking area"),
+            plt.Line2D([0], [0], marker="o", color="w", label="Plane",
+                       markerfacecolor="red", markeredgecolor="black", markersize=10),
+            plt.Line2D([0], [0], marker="s", color="w", label="Device",
+                       markerfacecolor="purple", markeredgecolor="black", markersize=8),
+        ]
+        ax.legend(handles=legend_elements, loc="upper right", fontsize=8, framealpha=0.9)
+
+        # ========= 6. 刷新画面 =========
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+        # ========= 7. 截图保存逻辑（按间隔保存） =========
+        if not self.render_auto_save:
+            return
+
+        # 统计 render 被调用了多少次
+        self._render_call_count += 1
+
+        max_images = self.render_num_waves * self.render_frames_per_wave
+
+        # 7.1 只在“到达间隔点”时尝试保存：
+        #     比如 stride=20，就只有第 1, 21, 41, ... 次 render 会保存。
+        if self._render_saved_count < max_images:
+            if (self._render_call_count - 1) % self.render_save_stride != 0:
+                # 还没到保存间隔，直接返回
+                return
+
+            wave_idx = self._render_saved_count // self.render_frames_per_wave
+            frame_idx = self._render_saved_count % self.render_frames_per_wave
+            filename = f"wave{wave_idx + 1}_frame{frame_idx + 1}_step{self.steps:05d}.png"
+            filepath = os.path.join(self.render_save_dir, filename)
+            # self.fig.savefig(filepath, dpi=150, bbox_inches="tight")
+            self._render_saved_count += 1
+
+        # 7.2 保存一张“空白底图”（只有停机坪）
+        elif not self._render_blank_saved:
+            blank_fig, blank_ax = plt.subplots(figsize=(16, 11), dpi=120)
+            blank_ax.set_facecolor("#f7f7f7")
+            blank_ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.3)
+
+            if xs and ys:
+                blank_ax.set_xlim(min(xs) - 10, max(xs) + 10)
+                blank_ax.set_ylim(min(ys) - 10, max(ys) + 10)
+
+            # 只画停机坪 / 跑道，不画飞机和设备
+            for code, site in self.sites.items():
+                x, y = site.pos
+                zone = _zone_type(code)
+
+                if zone == "landing":
+                    facecolor = "lightgreen"
+                    edgecolor = "darkgreen"
+                    lw = 2.0
+                    alpha = 0.7
+                elif zone == "takeoff":
+                    facecolor = "lightyellow"
+                    edgecolor = "orange"
+                    lw = 2.0
+                    alpha = 0.7
+                else:
+                    facecolor = "lightblue"
+                    edgecolor = "blue"
+                    lw = 1.5
+                    alpha = 0.6
+
+                rect = plt.Rectangle(
+                    (x - 4, y - 4),
+                    8,
+                    8,
+                    facecolor=facecolor,
+                    edgecolor=edgecolor,
+                    linewidth=lw,
+                    alpha=alpha,
+                    zorder=1,
+                )
+                blank_ax.add_patch(rect)
+                blank_ax.text(
+                    x,
+                    y,
+                    code,
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    fontweight="bold",
+                    color="black",
+                    zorder=2,
+                )
+
+            blank_ax.set_xlabel("X")
+            blank_ax.set_ylabel("Y")
+            blank_ax.set_aspect("equal", adjustable="box")
+
+            blank_path = os.path.join(self.render_save_dir, "blank.png")
+            # blank_fig.savefig(blank_path, dpi=150, bbox_inches="tight")
+            # plt.close(blank_fig)
+
+            self._render_blank_saved = True
 
 
     def close(self):

@@ -4,6 +4,9 @@ import pulp
 from scipy.spatial.distance import cdist
 from environment import ScheduleEnv
 from datetime import datetime, timedelta
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import PIL.Image as Image
+import matplotlib.pyplot as plt
 
 def seconds_to_datetime(start: str, delta_seconds: int) -> str:
     '''start: "HH:MM:SS"
@@ -266,6 +269,7 @@ def run_arrangement(config, render_mode=None):
     force_chosen_plane = None
     action_history = []
 
+    figures = []
     while True:
         if total_time in landing_list or step_time == 0 or total_time == config['interfere'][0] or total_time == config['force_chosen'][0]:
             bidx = total_time // 3600
@@ -321,6 +325,15 @@ def run_arrangement(config, render_mode=None):
 
             # ===== 调用渲染 =====
             env.render()
+            canvas = FigureCanvasAgg(plt.gcf())
+            w, h = canvas.get_width_height()
+            canvas.draw()
+            buf = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
+            buf.shape = (w, h, 3)
+            buf = buf[:, :, [2, 1, 0]]
+            # buf = np.roll(buf, 3, axis=2)
+            image = Image.frombytes("RGB", (w, h), buf.tobytes())
+            figures.append(np.asarray(image)[:, :, :3])
             
             if done:
                 print(f"All planes have taken off. Total time: {total_time}, Reward: {reward}")
@@ -337,11 +350,14 @@ def run_arrangement(config, render_mode=None):
             current_batch += 1
             # current_batch = min(current_batch, batch_num - 1)
         
-    return action_history
+    return action_history, figures
 
 
 if __name__ == "__main__":
     import json
+    import os
+    import cv2
+    from tqdm import tqdm
     config = {
         'batch_num': 5,
         'plane_num_per_batch': 12,
@@ -351,12 +367,19 @@ if __name__ == "__main__":
         'sites_path': 'utils/config/sites.json',
         'seed': 42
     }
-    config['interfere'] = [2100, ['10', '11', '12', '13', '14', '15'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
+    # config['interfere'] = [2100, ['10', '11', '12', '13', '14', '15'], 1800]  # [start_time, [site_code1, ...site_code2, ...], time_span]
     # config['interfere'] = [-1, ['10', '11', '12', '13', '14', '15'], 1800] 
 
     # config['force_chosen'] = [8100, '11', 1800]  # [start_time, site_code, time_span]
     # config['force_chosen'] = [-1, '4', 1800]
-    action_history = run_arrangement(config)
+    action_history, figures = run_arrangement(config, render_mode="human")
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    videoWriter = cv2.VideoWriter(os.path.join('/home/fanyx/HKBZ-environment', "render_origin.mp4"), fourcc, 12, (figures[0].shape[1], figures[0].shape[0]), True)
+    # map(videoWriter.write, figs)
+    for fig in figures:
+        videoWriter.write(fig)
+    videoWriter.release() 
 
     # 写入文件
     save_dir = "utils"
