@@ -1,0 +1,36 @@
+common_cfg:
+  embed_dim: 64 
+  activation:  relu  
+
+encoder_cfg:
+  gnn_cfg:
+    gnn_cfg:
+      node_dim: 3  
+      edge_dim: 4  
+      embedding_layer: 2 
+      nhead: 4  
+      layer_num: 8
+      dropout: 0.1
+    gff_cfg:
+      layer: 2
+  veh_dim: 5  
+  embedding_layer: 2 
+  enc_type: enc   
+  layer_num: 2  
+  nhead: 4  
+
+sel_encoder_cfg:
+  input_dim: 66  
+
+actor_cfg:
+  query_dim: 256  
+  nhead: 4 
+
+critic_cfg:
+   query_dim: 256  
+   nhead: 4 
+
+critic_list:
+  - s
+  - t
+  - c
