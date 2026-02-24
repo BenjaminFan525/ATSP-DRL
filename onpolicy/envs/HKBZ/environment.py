@@ -2,12 +2,10 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from utils.agent import Plane, Device
-from utils.env_utils import Job, Resource, Site
+from onpolicy.envs.HKBZ.core import Plane, Device, Job, Resource, Site
 import json
 import matplotlib.pyplot as plt
 from gymnasium.utils import seeding
-from gym import spaces
 import math
 
 
@@ -528,7 +526,7 @@ class ScheduleEnv(gym.Env):
                         if not plane.is_completed_all_jobs(): # 资源不足
                             plane.start_waiting()
                             self.waiting_sites[target_job.code].append(plane.site.code)
-                            self.choosed_job = target_job
+                            plane.choosed_job = target_job
                     else:
                         step_time = min(step_time, plane.choose_job(target_job))
                         real_did += 1
