@@ -1,18 +1,19 @@
 import torch
 import torch.nn as nn
 from torch.nn import Module
-from copy import deepcopy
 import torch.nn.functional as F
-from onpolicy.algorithms.utils.util import FeatureBlock, activations, Embedding_layer, PositionalEncoding
 from typing import Optional, Tuple
-from torch.nn.utils.rnn import pad_sequence
+from onpolicy.algorithms.utils.util import activations, Embedding_layer
 
 class MaPtrNet(Module):
     def __init__(self, query_dim, embed_dim, bias=True, device=None, dtype=None) -> None:
+        """
+        标准指针网络核心层。
+        计算 Query 对一组 Key 的 Attention 概率分布。
+        """
         self.factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
         self.embed_dim = embed_dim
-
         self.bias = bias
 
         self.q_proj_weight = nn.Linear(query_dim, embed_dim, bias, **self.factory_kwargs)
@@ -27,60 +28,34 @@ class MaPtrNet(Module):
             nn.init.constant_(self.q_proj_weight.bias, 0.)
             nn.init.constant_(self.k_proj_weight.bias, 0.)
 
-    def dist(
-            self,
-            query: torch.Tensor,
-            key: torch.Tensor,
-            key_padding_mask: Optional[torch.Tensor] = None,
-            tau: float = 1,
-            ):
-        key_padding_mask = torch.zeros((key.shape[0], key.shape[1] + 1), dtype=torch.bool, device=key.device) if key_padding_mask is None else key_padding_mask
-        masked_ptr = F._canonical_mask(
-            mask=key_padding_mask,
-            mask_name="key_padding_mask",
-            other_type=None,
-            other_name="",
-            target_type=query.dtype,
-            check_other=False,
-        )
-        
+    def dist(self, query: torch.Tensor, key: torch.Tensor, key_padding_mask: Optional[torch.Tensor] = None, tau: float = 1.0):
+        """
+        输出经过 Mask 屏蔽后的概率分布。
+        注意：PyTorch 标准中，key_padding_mask 为 True 代表是被屏蔽的非法位置 (Padding)。
+        """
         q = self.q_proj_weight(query)
         k = self.k_proj_weight(key)
 
-        ptr = torch.tanh(torch.bmm(q, k.transpose(2, 1)) / torch.sqrt(torch.tensor(self.embed_dim)))
+        # 缩放点积注意力 (Scaled Dot-Product Attention)
+        ptr = torch.tanh(torch.bmm(q, k.transpose(2, 1)) / torch.sqrt(torch.tensor(self.embed_dim, dtype=torch.float32)))
         
-        masked_ptr = masked_ptr.unsqueeze(1)
-        key_padding_mask = key_padding_mask.unsqueeze(1)
-        masked_ptr[~key_padding_mask] = ptr[~key_padding_mask]
-        return F.softmax(masked_ptr / tau, dim=-1)
+        # 掩码处理：将非法节点的 Logits 设为负无穷
+        if key_padding_mask is not None:
+            # 确保 mask 的维度是 [Batch, 1, Seq_len] 以便进行 broadcast
+            if key_padding_mask.dim() == 2:
+                key_padding_mask = key_padding_mask.unsqueeze(1)
+            ptr = ptr.masked_fill(key_padding_mask, float('-inf'))
+            
+        return F.softmax(ptr / tau, dim=-1)
 
-    def forward(
-            self,
-            query: torch.Tensor,
-            key: torch.Tensor,
-            key_padding_mask: Optional[torch.Tensor] = None,
-            deterministic: bool = False,
-            tau = 1,
-            idx = None
-        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
-        prob_v = self.dist(query, key, key_padding_mask)
-        if idx is not None:
-            index = idx.unsqueeze(1)
-            prob = torch.gather(prob_v, dim=-1, index=index)
-        elif deterministic:
-            prob, index = prob_v.max(-1, keepdim=True)
-        else:
-            choice_soft = F.gumbel_softmax(torch.log(prob_v), tau=tau)
-            index = choice_soft.max(-1, keepdim=True)[1]
-            prob = torch.gather(prob_v, dim=-1, index=index)
-        choice_hard = torch.zeros_like(prob_v, memory_format=torch.legacy_contiguous_format).scatter_(-1, index, 1.0)
-        choice = choice_hard # - choice_soft.detach() + choice_soft
-
-        return choice, index.squeeze(-1), prob.squeeze(-1)
-
-class PtrEntryActor(Module):
-    def __init__(self, query_dim=192, embed_dim=64, nhead=4, activation=F.relu, device=None, dtype=None) -> None:
+class CascadePtrActor(Module):
+    def __init__(self, query_dim, embed_dim=64, nhead=4, activation=F.relu, device=None, dtype=None) -> None:
+        """
+        两级级联指针网络 (Actor)。
+        Level 1: 选工序 (Operation)
+        Level 2: 结合选中的工序特征，选机位 (Site)
+        """
         self.factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
         if isinstance(activation, str):
@@ -88,19 +63,22 @@ class PtrEntryActor(Module):
         self.activation = activation
         self.embed_dim = embed_dim
         
-        self.query_ff = Embedding_layer(query_dim, self.embed_dim, 2, activation=self.activation, **self.factory_kwargs)
-        self.query_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
-        self.query_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
+        # Query 预处理层 (融合全局和局部特征)
+        self.op_query_ff = Embedding_layer(query_dim, self.embed_dim, 2, activation=self.activation, **self.factory_kwargs)
+        self.op_query_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
+        self.op_query_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
 
-        self.ptr_net = MaPtrNet(query_dim=embed_dim, embed_dim=self.embed_dim, **self.factory_kwargs)
+        # 级联的第一级：工序选择指针网络
+        self.op_ptr_net = MaPtrNet(query_dim=embed_dim, embed_dim=self.embed_dim, **self.factory_kwargs)
 
-        self.entry_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
-        self.entry_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
-        self.entry_ff = nn.Sequential(
-            nn.Linear(2 * embed_dim, 32, **self.factory_kwargs),
-            nn.ReLU(),
-            nn.Linear(32, 2, **self.factory_kwargs)
-        )
+        # 级联过渡层：融合 Query 和 第一级选中的工序 Embedding
+        self.site_query_ff = Embedding_layer(query_dim + self.embed_dim, self.embed_dim, 2, activation=self.activation, **self.factory_kwargs)
+        self.site_query_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
+        self.site_query_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
+
+        # 级联的第二级：机位选择指针网络
+        self.site_ptr_net = MaPtrNet(query_dim=embed_dim, embed_dim=self.embed_dim, **self.factory_kwargs)
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -108,58 +86,84 @@ class PtrEntryActor(Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
     
-    def forward(self, query, agt, key_padding_mask=None, deterministic: bool = False, tau=1, chosen_idx=None, chosen_entry=None, force_chosen_mask=None):
+    def forward(self, query, op_nodes, site_nodes, op_valid_mask, site_mask_matrix, 
+                deterministic: bool = False, chosen_op=None, chosen_site=None, tau=1.0):
         """
-        Choosing the next node and its corresponding entrance.
+        两级级联前向传播
+        """
+        B = query.shape[0]
 
-        Input:
-            agt: encoder output agent embedding, B x N x d
-            query: the query, B x 1 x D
-            key_padding_mask: specify which agts have been arranged for each batch, B x N
-            deterministic: use the most probably choice or sample from the distrbution.
-            tau: the temperature factor in gumbel soft max.
-            chosen_idx: the chosen index, to get the new prob.
-            chosen_entry: the chosen entry, to get the new prob.
-            force_chosen_mask: if an element is True, it's corresponding chosen_idx and chosen_entry will be chosen with p(a|s) = 1, B. 
-        Output:
-            chosen_agt: chosen agts' encoding sampled from agt, concated with the 2d 1-hot vector of entrance, B x 1 x (d + 2).
-            choice: the one-hot choice.
-            index: chosen index, B x 1.
-            chosen_entry: chosen entrance, B x 1.
-            prob: probability of the choice, B x 1.
-        """
-        query = self.query_ff(query)
-        query = self.query_norm(query + self.query_attn(query, agt, agt, key_padding_mask)[0])
-        
-        # 1. Choose the node and corresponding probability p(n|s). 
-        node_prob_v = self.ptr_net.dist(query, agt, key_padding_mask, tau)
-        agt_embed = self.entry_norm(agt + self.entry_attn(agt, agt, agt, key_padding_mask)[0])
-        entry_feature = torch.cat([query.repeat(1, agt.shape[1], 1), agt_embed], dim=-1)
-        
-        # 2. Choose the corresponding entrance.
-        entry_prob_v = F.softmax(self.entry_ff(entry_feature) / tau, dim=-1).squeeze(1)
-        prob_v = node_prob_v.transpose(1, 2).repeat(1, 1, 2) * entry_prob_v
-        prob_v = prob_v.view((query.shape[0], -1))
-        if force_chosen_mask is not None:
-            assert chosen_idx is not None and chosen_entry is not None, "chosen_idx and chosen_entry should be given if force_chosen_mask is not None."
-            prob_v[force_chosen_mask] = torch.zeros_like(prob_v).scatter_(-1, chosen_idx * 2 + chosen_entry, 1.0)[force_chosen_mask]
-        dist = torch.distributions.Categorical(prob_v)
-        if chosen_idx is not None and force_chosen_mask is None:
-            prob = torch.gather(prob_v, -1, chosen_idx * 2 + chosen_entry)
-            index = chosen_idx
+        # =======================================================
+        # Level 1: 预处理与工序选择 (Operation)
+        # =======================================================
+        # PyTorch 的 Padding Mask 习惯：True 代表要被屏蔽(屏蔽掉非法工序)
+        op_pad_mask = ~op_valid_mask 
+
+        # 1. 第一级 Query 特征抽取与交叉注意力
+        op_q = self.op_query_ff(query)
+        op_attn_out, _ = self.op_query_attn(op_q, op_nodes, op_nodes, key_padding_mask=op_pad_mask)
+        op_q = self.op_query_norm(op_q + op_attn_out)
+
+        # 2. 第一级指针网络打分
+        op_prob_v = self.op_ptr_net.dist(op_q, op_nodes, key_padding_mask=op_pad_mask, tau=tau).squeeze(1)
+
+        # 3. 确定工序动作
+        if chosen_op is not None:
+            op_idx = chosen_op
         else:
             if deterministic:
-                prob, idx = torch.max(prob_v, dim=-1)
-                prob = prob.view(-1, 1)
-                idx = idx.view(-1, 1)
+                op_idx = torch.argmax(op_prob_v, dim=-1)
             else:
-                idx = dist.sample([1]).view(-1, 1)
-                prob = torch.gather(prob_v, dim=-1, index=idx)
-            index = idx // 2
-            chosen_entry = idx % 2
-        choice = torch.zeros_like(node_prob_v, memory_format=torch.legacy_contiguous_format).scatter_(-1, index.unsqueeze(-1), 1.0)
+                op_dist = torch.distributions.Categorical(op_prob_v)
+                op_idx = op_dist.sample()
 
-        # 3. Concate the chosen nodes' encoding and the corredponding entrance one-hot vector.
-        entry_choice = torch.zeros((query.shape[0], 2), device=query.device).scatter_(-1, chosen_entry, 1.0).unsqueeze(1)
+        # 提取选中工序的概率
+        batch_indices = torch.arange(B, device=query.device)
+        op_prob = op_prob_v[batch_indices, op_idx]
 
-        return choice, index, chosen_entry, prob, prob_v
+        # =======================================================
+        # Level 2: 预处理与机位选择 (Site)
+        # =======================================================
+        # 1. 提取选中工序的高阶特征，并与原始 Query 拼接
+        chosen_op_emb = op_nodes[batch_indices, op_idx, :].unsqueeze(1) # [B, 1, embed_dim]
+        # 注意：这里的拼接维度是 query_dim + embed_dim
+        site_q_input = torch.cat([query, chosen_op_emb], dim=-1) 
+
+        # 2. 初始机位查询向量生成
+        site_q = self.site_query_ff(site_q_input)
+
+        # 3. 提取“特定于该工序”的机位合法掩码
+        cur_site_valid_mask = site_mask_matrix[batch_indices, op_idx, :] # [B, N_sites]
+        site_pad_mask = ~cur_site_valid_mask
+
+        # 4. 新增的亮点：机位意图交叉注意力 (Site Cross-Attention)
+        # 让 site_q 提前关注那些合法机位的状态（拥挤度、距离等）
+        site_attn_out, _ = self.site_query_attn(site_q, site_nodes, site_nodes, key_padding_mask=site_pad_mask)
+        site_q = self.site_query_norm(site_q + site_attn_out)
+
+        # 5. 第二级指针网络打分
+        site_prob_v = self.site_ptr_net.dist(site_q, site_nodes, key_padding_mask=site_pad_mask, tau=tau).squeeze(1)
+
+        # 6. 确定机位动作
+        if chosen_site is not None:
+            site_idx = chosen_site
+        else:
+            if deterministic:
+                site_idx = torch.argmax(site_prob_v, dim=-1)
+            else:
+                site_dist = torch.distributions.Categorical(site_prob_v)
+                site_idx = site_dist.sample()
+
+        # 提取选中机位的概率
+        site_prob = site_prob_v[batch_indices, site_idx]
+
+        # =======================================================
+        # 联合输出 (Joint Output)
+        # =======================================================
+        # 联合概率 P = P(工序) * P(机位 | 工序)
+        joint_prob = op_prob * site_prob 
+        
+        # 将两个分布打包返回，便于 PPO 算 Entropy 和 Loss
+        joint_dist = (op_prob_v, site_prob_v)
+
+        return op_idx, site_idx, joint_prob, joint_dist

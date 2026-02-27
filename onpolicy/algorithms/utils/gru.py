@@ -30,24 +30,6 @@ class SelectionEncoder(Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def reset_buffer(self, batch_size: int, zero_node: torch.Tensor, veh: torch.Tensor):
-        '''
-        zero_node: the node No. 0, which usually represents the garbage for vehicles 
-                    or the simbol of the end of a nodes' slice, B x 1 x D. 
-        veh: the first vehicle. B x 1 x veh_dim.
-        batch_size: the number of sequences in the batch.
-
-        output:
-        zero_embedding: the embedding of the zero node, B x 1 x d.
-        veh: the first vehicle, B x 1 x veh_dim.
-        '''
-        self.zero_node = self.embedding(zero_node)
-        _, self.zero_node_hidden = self.seq_encoder(self.zero_node)
-        self.seq_hidden = torch.zeros_like(self.zero_node_hidden)
-        self.zero_embedding = self.seq_block(self.zero_node, 
-                                             torch.ones(batch_size, device=zero_node.device, dtype=torch.bool))
-        return self.zero_embedding, veh
-
     def seq_block(self, seq: torch.Tensor, hidden_state: torch.Tensor):
         '''
         Embedding the current sequence.

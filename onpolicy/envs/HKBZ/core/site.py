@@ -19,6 +19,10 @@ class Site:
         for res in self.config['fixed_resources'] + self.config['mobile_resources']:
             if self.code in res.sites:
                 self.resources[res.code] = res
+        
+        self.target_jobs = [job for job in self.config['jobs'].values() if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']]
+        self.avail_job_onehot = [0] * len(self.target_jobs)
+        
         self.update_resources()
 
     def add_plane(self, plane):
@@ -105,6 +109,7 @@ class Site:
                     break
             # 记录作业状态：[剩余时间, 资源代码]
             self.onging_jobs[job.code] = [job.time, res]
+        self.update_resources()
     
     def finish_jobs(self, jobs):
         '''完成站点的一组作业
@@ -123,6 +128,7 @@ class Site:
                 self.resources[self.onging_jobs[job.code][1]].remove_service(self.code)
             # 从正在作业列表中移除
             self.onging_jobs.pop(job.code)
+        self.update_resources()
 
     def start_interfere(self, rec_time):
         '''启动站点干涉状态
@@ -182,7 +188,7 @@ class Site:
         示例:
             transporter = site.get_avail_transporter()  # 获取可用运输车
         '''
-        self.update_resources()
+        # self.update_resources()
         # 检查是否有运输车资源R014可用
         if "R014" in self.res_avail:
             res = self.resources[self.res_avail["R014"][-1]]
@@ -205,7 +211,7 @@ class Site:
             if site.is_avail_job(job_instance):  # 检查作业可行性
                 site.start_jobs([job_instance])
         '''
-        self.update_resources()
+        # self.update_resources()
         # 遍历作业所需资源类型，检查是否有可用资源
         for res_code in job.resources:
             if res_code in self.res_avail:
@@ -279,21 +285,45 @@ class Site:
                 else:
                     self.res_avail[res.type] = [code]
 
+        new_onehot = []
+        for job in self.target_jobs:
+            # 只要作业需要的资源都在当前 res_avail 里，就算可用
+            is_avail = 1
+            for res_code in job.resources:
+                if res_code not in self.res_avail:
+                    is_avail = 0
+                    break
+            new_onehot.append(is_avail)
+        self.avail_job_onehot = new_onehot
+
     def reset(self):
         '''重置站点到初始状态
         
         作用:
             清空所有运行状态，包括飞机、作业、干涉等
-            保留资源配置，更新可用资源字典
+            清空外来设备，恢复初始的资源绑定关系，并更新可用资源字典
         示例:
             site.reset()  # 重置站点
         '''
+        # 1. 基础状态清空
         self.plane = None
         self.is_occupied = False
         self.is_interfered = False
         self.left_rec_time = 0
         self.onging_jobs = {}
         self.left_job_time = 0
-        # for res in self.resources.values():
-        #     res.reset()
+        
+        # 2. 清空当前机位上的设备列表
+        # (因为外部环境会调用 Device.reset()，那些原本就属于本站点的设备会自动重新 append 进来)
+        self.devices = []
+        
+        # 3. 恢复初始的资源绑定关系
+        # 必须重新初始化 dict，把上个回合跑过来的移动资源剔除，找回自己原本的资源
+        self.resources = {}
+        for res in self.config['fixed_resources'] + self.config['mobile_resources']:
+            # 注意：环境在外部通常会先 reset 设备和资源，所以此时 res.sites 已经是初始状态了
+            if self.code in res.sites:
+                self.resources[res.code] = res
+                
+        # 4. 刷新可用资源状态与 one-hot 编码
         self.update_resources()

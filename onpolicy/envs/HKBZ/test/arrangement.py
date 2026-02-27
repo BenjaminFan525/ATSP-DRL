@@ -11,110 +11,15 @@ sys.path.insert(0, root_dir)
 env_dir = os.path.abspath(os.path.join(current_dir, '../')) # 指向 IA
 sys.path.insert(0, env_dir)
 
-from onpolicy.envs.HKBZ.environment import ScheduleEnv
+from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv as ScheduleEnv
+from onpolicy.envs.HKBZ.utils import seconds_to_datetime, datetime_to_seconds, site_disable, device_disable, arrange_devices
 from datetime import datetime, timedelta
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import PIL.Image as Image
 import matplotlib.pyplot as plt
-
-def seconds_to_datetime(start: str, delta_seconds: int) -> str:
-    '''start: "HH:MM:SS"
-    return: "HH:MM:SS"  24h制，不跨天
-    '''
-    t = datetime.strptime(start, "%H:%M:%S") + timedelta(seconds=delta_seconds)
-    # 折回同一天
-    t = t.replace(day=1)          # 把日期固定到同一天
-    return t.strftime("%H:%M:%S")
-
-def datetime_to_seconds(now: str, start: str) -> int:
-    '''计算时间差（秒数）'''
-    def to_sec(t: str) -> int:
-        h, m, s = map(int, t.split(":"))
-        return h * 3600 + m * 60 + s
-    return (to_sec(now) - to_sec(start)) % (24 * 3600)
-
-def site_disable(env: ScheduleEnv, disable_time: int):
-    """
-    禁用指定站点
-    :param env: 调度环境
-    :param site_code: 站点代码
-    :param disable_time: 禁用时间
-    """
-    site_code = random.choice([site.code for site in env.sites if site.code != 'Z'])
-    if site_code in env.sites:
-        env.add_interfere_sites([site_code], disable_time)
-        print(f"Site {site_code} disabled for {disable_time} seconds.")
-    else:
-        print(f"Site {site_code} does not exist in the environment.")
-
-def device_disable(env: ScheduleEnv, res_type: str, disable_time: int):
-    """
-    禁用指定设备
-    :param env: 调度环境
-    :param res_type: 资源类型
-    :param device_code: 设备代码
-    :param disable_time: 禁用时间
-    """
-    res_type = random.choice(list(env.mobile_devices.keys()))
-    device_code = random.choice([device.resource.code for device in env.mobile_devices.get(res_type, [])])
-    if res_type in env.mobile_devices and device_code in [device.resource.code for device in env.mobile_devices[res_type]]:
-        for device in env.mobile_devices[res_type]:
-            if device.resource.code == device_code:
-                for site_code in device.resource.on_service:
-                    # 将正在服务的飞机调离
-                    env.add_interfere_sites([site_code], 0)
-                    env.sites[site_code].is_interfered = False
-                device.disable(disable_time)
-                print(f"Device {device_code} of type {res_type} disabled for {disable_time} seconds.")
-                return
-    print(f"Device {device_code} of type {res_type} does not exist in the environment.")
-
-
-def arrange_devices(devices, planes):
-    '''使用线性规划安排转运车
-    
-    通过最小化总运输距离，将空闲转运车分配给等待的飞机
-    支持车多任务少的情况，确保每个任务点至少被服务一次
-    '''
-    # 按等待时间排序，筛选前n个等待时间最长的飞机
-    if len(planes) >= len(devices):
-        # planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)-1]
-        planes = sorted(planes, key=lambda x: x.waiting_time, reverse=True)[:len(devices)]
-
-    # 提取位置信息
-    device_positions = np.array([transporter.site.pos for transporter in devices])
-    plane_positions = np.array([plane.site.pos for plane in planes])
-    # 计算代价矩阵
-    cost_matrix = cdist(device_positions, plane_positions, metric='cityblock')
-    # 定义线性规划问题
-    prob = pulp.LpProblem("Transporter_Assignment", pulp.LpMinimize)
-    # 定义决策变量: x[i][j] = 1 表示车辆i分配给任务点j
-    x = pulp.LpVariable.dicts('分配', (range(len(devices)), range(len(planes))), cat='Binary')
-    # 目标函数: 最小化总运输距离
-    prob += pulp.lpSum([
-        cost_matrix[i][j] * x[i][j] 
-        for i in range(len(devices)) for j in range(len(planes))
-    ])
-
-    # 约束1: 每个任务点至少被一辆车服务 (车多情况)
-    for j in range(len(planes)):
-        prob += pulp.lpSum([x[i][j] for i in range(len(devices))]) >= 1
-
-    # 约束2: 每辆车最多服务一个任务点
-    for i in range(len(devices)):
-        prob += pulp.lpSum([x[i][j] for j in range(len(planes))]) <= 1
-
-    # 求解线性规划问题
-    prob.solve(pulp.PULP_CBC_CMD(msg=False))
-
-    ret = []
-    for i in range(len(devices)):
-        for j in range(len(planes)):
-            if pulp.value(x[i][j]) == 1:
-                device, plane = devices[i], planes[j]
-                ret.append((device.resource.type, device.code, plane.site.code))
-
-    return ret
+import numpy as np
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
 def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force_chosen=None):
     '''随机安排环境和设备动作
@@ -135,9 +40,7 @@ def random_arrangement(env, plane_num_per_batch, batch_num, current_batch, force
         bidx_, pidx_ = int(plane_id.split('_')[1]), int(plane_id.split('_')[2])
         plane_action = [None, None]
         if plane.is_idle():
-            if force_chosen and plane_id == f"Plane_{force_chosen[0]}_{force_chosen[1]}":
-                plane_action[0] = force_chosen[2]  # 强制选择站点
-            elif plane.site.code == 'Z' or plane_id in env.force_transfer_planes or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
+            if plane.site.code == 'Z' or plane_id in env.force_transfer_planes or (random.uniform(0, 1) < 0.05 and not plane.is_completed_all_jobs()):
                 plane_action[0] = random.choice(avail_sites) # 随机选取
                 avail_sites.remove(plane_action[0])
                 if plane_id in env.force_transfer_planes:
@@ -311,16 +214,6 @@ def run_arrangement(config, render_mode=None):
             action = random_arrangement(env, plane_num_per_batch, batch_num, min(current_batch, batch_num - 1), force_chosen)
             # action = marl_arrangement(env, plane_num_per_batch, batch_num, min(current_batch, batch_num - 1), force_chosen)
 
-            for bid in range(batch_num):
-                for pid in range(plane_num_per_batch):
-                    plane_id = f"Plane_{bid}_{pid}"
-                    plane_action = action["planes"][bid][pid]
-                    if plane_id in env.planes and (plane_action[0] or plane_action[1]):
-                        plane = env.planes[plane_id]
-                        transporter = plane.site.get_avail_transporter()
-                        transporter = transporter.code if transporter else None
-                        action_history.append({'Time:': seconds_to_datetime("08:00:00", total_time), 'Plane': plane_id, 'Start_Site': plane.site.code, 'End_Site': plane_action[0], 'Job': plane_action[1],'Transporter': transporter})
-
             reward, done = env.step(action, env.step_time - step_time)
             step_time = env.step_time
 
@@ -331,18 +224,6 @@ def run_arrangement(config, render_mode=None):
                     plane.left_trans_time += config['force_chosen'][2]
                 print(f"Plane {force_chosen_plane} will be repaired for {config['force_chosen'][2]} seconds.")
                 force_chosen_plane = None
-
-            # ===== 调用渲染 =====
-            # env.render()
-            # canvas = FigureCanvasAgg(plt.gcf())
-            # w, h = canvas.get_width_height()
-            # canvas.draw()
-            # buf = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
-            # buf.shape = (w, h, 3)
-            # buf = buf[:, :, [2, 1, 0]]
-            # # buf = np.roll(buf, 3, axis=2)
-            # image = Image.frombytes("RGB", (w, h), buf.tobytes())
-            # figures.append(np.asarray(image)[:, :, :3])
             
             if done:
                 print(f"All planes have taken off. Total time: {total_time}, Reward: {reward}")
@@ -367,8 +248,14 @@ if __name__ == "__main__":
     import os
     import cv2
     from tqdm import tqdm
+    import cProfile
+    import pstats
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    
     config = {
-        'batch_num': 5,
+        'batch_num': 1,
         'plane_num_per_batch': 12,
         'jobs_path': 'utils/config/jobs.json',
         'fixed_res_path': 'utils/config/fixed_resources.json',
@@ -389,6 +276,10 @@ if __name__ == "__main__":
     # for fig in figures:
     #     videoWriter.write(fig)
     # videoWriter.release() 
+
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('cumtime')
+    stats.print_stats(30) # 打印耗时前20的函数
 
     # 写入文件
     save_dir = "utils"

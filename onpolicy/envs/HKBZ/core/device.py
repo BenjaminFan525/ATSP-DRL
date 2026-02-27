@@ -114,8 +114,28 @@ class Device:
         '''重置设备状态
         
         作用:
-            清除运输状态
+            将设备恢复到初始配置状态，包括初始站点、空闲状态，并清除所有倒计时。
         示例:
             device.reset()  # 重置设备
         '''
+        # 1. 如果设备当前记录的站点不是初始站点，将其从当前站点的设备列表中移除
+        if self.site != self.config['site']:
+            if self in self.site.devices:
+                self.site.devices.remove(self)
+                
+        # 2. 恢复初始站点
+        self.site = self.config['site']
+        
+        # 3. 重新注册到初始站点（去重保护）
+        if self not in self.site.devices:
+            self.site.devices.append(self)
+            
+        # 4. 重置绑定资源的站点位置
+        self.resource.sites = [self.site.code]
+        
+        # 5. 清除所有的状态标志位和倒计时
         self.is_transporting = False
+        self.left_trans_time = 0
+        self.is_busy = False
+        self.is_disable = False
+        self.left_rec_time = 0

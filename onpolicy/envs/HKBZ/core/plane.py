@@ -18,6 +18,8 @@ class Plane:
         self.left_trans_time = 0  # 当前运输剩余时间（秒）
         self.is_waiting = False  # 飞机是否处于等待状态
         self.waiting_time = 0  # 已等待时间
+        self.last_site_code = -1  # 记录刚才选的机位
+        self.last_job_code = -1    # 记录刚才选的工序 (如果是对象，取其 code)
 
         # 初始化飞机作业字典，过滤和配置作业参数
         self.jobs = {}
@@ -33,6 +35,7 @@ class Plane:
             job.predecessor = set(job.predecessor)
             job.resources = set(job.resources)
         self.left_jobs = list(self.jobs.keys())  # 初始剩余作业列表
+        self.current_avail_jobs = self.get_avail_jobs(self.site)
 
     def get_avail_jobs(self, site = None):
         '''获取当前站点可用的作业列表
@@ -268,6 +271,7 @@ class Plane:
             assert self.left_trans_time >= 0, "Plane transport time cannot be negative."
             if self.left_trans_time <= 0:
                 self.finish_transport()
+                self.current_avail_jobs = self.get_avail_jobs(self.site)
                 # 运输完成后，如果有预选的作业则立即启动
                 if self.choosed_job:
                     if self.choosed_job in self.get_avail_jobs(self.site):
@@ -288,6 +292,7 @@ class Plane:
                 self.left_jobs = [job for job in self.left_jobs if job not in self.current_jobs]
                 self.current_jobs = []
                 self.is_busy = False
+                self.current_avail_jobs = self.get_avail_jobs(self.site)
                 # 作业完成后，如果有预选的作业则立即启动
                 if self.choosed_job:
                     if self.choosed_job in self.get_avail_jobs(self.site):
@@ -301,16 +306,41 @@ class Plane:
         '''重置飞机状态到初始配置
         
         作用:
-            恢复所有状态参数，重置作业列表，清空临时状态
+            恢复所有状态参数，重置作业列表，清空临时状态，并修复站点拓扑关系。
         示例:
             plane.reset()  # 重置飞机
         '''
+        # 1. 拓扑关系复位：如果飞机当前不在初始站点，将其从当前站点的记录中移除
+        if self.site != self.config['site']:
+            if getattr(self.site, 'plane', None) == self:
+                self.site.remove_plane()
+                
+        # 2. 恢复初始基础配置
         self.velocity = self.config['velocity']  # 飞机速度
         self.site = self.config['site']  # 位置
+        
+        # 确保飞机被正确注册到了初始站点上
+        if getattr(self.site, 'plane', None) != self:
+            self.site.add_plane(self)
+
+        # 3. 清除引用目标与队列
+        self.choosed_job = None
+        self.destination = None
+        self.transporter = None
         self.current_jobs = []
         self.finished_jobs = []
+        
+        # 4. 重置所有的状态标志位和时间倒计时
         self.is_busy = False
-        self.destination = None
         self.is_transporting = False
         self.left_trans_time = 0
+        self.is_waiting = False
+        self.waiting_time = 0
+        
+        # 5. 强化学习 (RL) 动作记忆锚点复位 (极其重要，用于处理冷启动)
+        self.last_site_idx = -1
+        self.last_job_idx = -1
+        
+        # 6. 重置作业清单
         self.left_jobs = list(self.jobs.keys())
+        self.current_avail_jobs = self.get_avail_jobs(self.site)
