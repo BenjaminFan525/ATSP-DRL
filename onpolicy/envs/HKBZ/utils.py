@@ -1,8 +1,6 @@
 import random
 import numpy as np
 from scipy.spatial.distance import cdist
-
-from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv as ScheduleEnv
 from datetime import datetime, timedelta
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -24,7 +22,7 @@ def datetime_to_seconds(now: str, start: str) -> int:
         return h * 3600 + m * 60 + s
     return (to_sec(now) - to_sec(start)) % (24 * 3600)
 
-def site_disable(env: ScheduleEnv, disable_time: int):
+def site_disable(env, disable_time: int):
     """
     禁用指定站点
     :param env: 调度环境
@@ -38,7 +36,7 @@ def site_disable(env: ScheduleEnv, disable_time: int):
     else:
         print(f"Site {site_code} does not exist in the environment.")
 
-def device_disable(env: ScheduleEnv, res_type: str, disable_time: int):
+def device_disable(env, res_type: str, disable_time: int):
     """
     禁用指定设备
     :param env: 调度环境

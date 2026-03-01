@@ -18,8 +18,8 @@ class Plane:
         self.left_trans_time = 0  # 当前运输剩余时间（秒）
         self.is_waiting = False  # 飞机是否处于等待状态
         self.waiting_time = 0  # 已等待时间
-        self.last_site_code = -1  # 记录刚才选的机位
-        self.last_job_code = -1    # 记录刚才选的工序 (如果是对象，取其 code)
+        self.last_site_idx = -1  # 记录刚才选的机位
+        self.last_job_idx = -1    # 记录刚才选的工序 (如果是对象，取其 code)
 
         # 初始化飞机作业字典，过滤和配置作业参数
         self.jobs = {}
@@ -104,6 +104,7 @@ class Plane:
         '''
         assert job_code in self.get_avail_jobs(self.site), f"Job {job_code} is not available."
         self.current_jobs = self.get_parallel_jobs(job_code)
+        self.left_jobs = [job for job in self.left_jobs if job not in self.current_jobs]
         self.is_busy = True
         self.site.start_jobs([self.jobs[job] for job in self.current_jobs])
         # print(f"Plane {self.code} starts job {job_code} at site {self.site.code}.")
@@ -220,7 +221,7 @@ class Plane:
             if plane.is_completed_all_jobs():  # 检查作业完成状态
                 print("所有作业完成")
         '''
-        return len(self.left_jobs) == 0
+        return (len(self.left_jobs) == 0) and (len(self.current_jobs) == 0)
 
     def is_idle(self):
         '''检查飞机是否处于空闲状态
@@ -289,7 +290,6 @@ class Plane:
             ret = self.site.update(time)
             if self.site.is_all_finished():
                 self.finished_jobs += self.current_jobs
-                self.left_jobs = [job for job in self.left_jobs if job not in self.current_jobs]
                 self.current_jobs = []
                 self.is_busy = False
                 self.current_avail_jobs = self.get_avail_jobs(self.site)
