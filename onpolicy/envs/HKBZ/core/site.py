@@ -287,11 +287,10 @@ class Site:
 
         new_onehot = []
         for job in self.target_jobs:
-            # 只要作业需要的资源都在当前 res_avail 里，就算可用
-            is_avail = 1
+            is_avail = 0
             for res_code in job.resources:
-                if res_code not in self.res_avail:
-                    is_avail = 0
+                if res_code in self.res_avail:
+                    is_avail = 1
                     break
             new_onehot.append(is_avail)
         self.avail_job_onehot = new_onehot

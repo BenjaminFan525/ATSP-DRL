@@ -1,36 +1,32 @@
 common_cfg:
   embed_dim: 64 
-  activation:  relu  
+  activation: relu  
 
 encoder_cfg:
   gnn_cfg:
-    gnn_cfg:
-      node_dim: 3  
-      edge_dim: 4  
-      embedding_layer: 2 
-      nhead: 4  
-      layer_num: 8
-      dropout: 0.1
-    gff_cfg:
-      layer: 2
-  veh_dim: 5  
-  embedding_layer: 2 
-  enc_type: enc   
-  layer_num: 2  
-  nhead: 4  
+    op_dim: 6           # 工序节点特征维度 [Status, Proc_time, Rem_ops, Req_res, Wait_time, PID]
+    site_dim: 20        # 机位节点特征维度 [Occ, Interf, Rem_time] + 18维作业 One-hot 掩码
+    dev_dim: 5          # 设备节点特征维度 [Type, Status, Rem_time, Pos_X, Pos_Y]
+    edge_dim: 1         # 边特征维度 (距离或时间预测)
+    
+    embedding_layer: 2  # Embedding_layer 的 MLP 层数
+    layer_num: 4        # 异构图卷积层数 (建议4层，太深容易过平滑)
+    nhead: 4            # TransformerConv 的多头注意力头数
+    dropout: 0.1        # 防止过拟合的 Dropout 率
+
+  gff_cfg:
+    layer: 2
 
 sel_encoder_cfg:
-  input_dim: 66  
+  input_dim: 64
 
 actor_cfg:
-  query_dim: 256  
+  query_dim: 192  
   nhead: 4 
 
 critic_cfg:
-   query_dim: 256  
-   nhead: 4 
+  query_dim: 192  
+  nhead: 4 
 
 critic_list:
-  - s
   - t
-  - c

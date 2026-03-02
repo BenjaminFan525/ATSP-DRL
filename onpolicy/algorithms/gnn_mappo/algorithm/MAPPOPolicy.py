@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from torch_geometric.data import Batch, HeteroData
 from onpolicy.algorithms.gnn_mappo.algorithm.gnn_actor_critic import GNN_Actor_Critic
 from onpolicy.utils.util import update_linear_schedule, update_linear_anneal
 
@@ -34,25 +35,39 @@ class GNN_MAPPOPolicy:
                                                  eps=self.opti_eps,
                                                  weight_decay=self.weight_decay)
 
+    def _to_tensor(self, x, dtype=torch.float32):
+        """安全的类型转换器"""
+        if x is None:
+            return None
+        if isinstance(x, torch.Tensor):
+            return x.to(self.device, dtype=dtype)
+        if isinstance(x, np.ndarray):
+            return torch.from_numpy(x).to(self.device, dtype=dtype)
+        return torch.tensor(x, dtype=dtype, device=self.device)
+
     def _build_inputs(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices):
-        """
-        极其精简的输入构建器。
-        将 Runner 传来的 numpy 数组或 PyG Batch 转换为大网络 forward 需要的字典格式。
-        """
-        # 1. 构建 data 字典
+        """将 Numpy/List 数据组装成网络所需的 Tensor/Batch"""
+        
+        # 1. 图数据自动 Batching (兼容单环境测试与多线程环境收集)
+        if isinstance(graph_obs, np.ndarray):
+            graph_obs = Batch.from_data_list(graph_obs.tolist())
+        elif isinstance(graph_obs, list):
+            graph_obs = Batch.from_data_list(graph_obs)
+        elif isinstance(graph_obs, HeteroData):
+            graph_obs = Batch.from_data_list([graph_obs])
+            
+        graph_obs = graph_obs.to(self.device)
+        
+        # 2. 构建输入字典
         data = {
-            # graph_obs 应该是 PyG 的 Batch(HeteroData) 对象
-            'graph': graph_obs.to(self.device), 
-            'hidden_states': torch.from_numpy(rnn_states).to(self.device, dtype=torch.float32) if rnn_states is not None else None
+            'graph': graph_obs, 
+            'hidden_states': self._to_tensor(rnn_states, torch.float32)
         }
         
-        # 2. 构建 info 字典
         info = {
-            # 布尔类型掩码
-            'active_agents': torch.from_numpy(active_agents).to(self.device, dtype=torch.bool),
-            # 动作索引 (Long类型)
-            'last_op_indices': torch.from_numpy(last_op_indices).to(self.device, dtype=torch.long),
-            'last_site_indices': torch.from_numpy(last_site_indices).to(self.device, dtype=torch.long),
+            'active_agents': self._to_tensor(active_agents, torch.bool),
+            'last_op_indices': self._to_tensor(last_op_indices, torch.long),
+            'last_site_indices': self._to_tensor(last_site_indices, torch.long),
         }
         
         return data, info
@@ -73,7 +88,6 @@ class GNN_MAPPOPolicy:
         """
         data, info = self._build_inputs(graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices)
         
-        # 调用底层 GNN_Actor_Critic 的 forward
         values, actions, action_log_probs, new_rnn_states = self.ac(data, info, deterministic=deterministic)
 
         return values, actions, action_log_probs, new_rnn_states
@@ -83,8 +97,6 @@ class GNN_MAPPOPolicy:
         计算广义优势估计 (GAE) 时，获取状态的基线价值 V(s)。
         """
         data, info = self._build_inputs(graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices)
-
-        # criticize_only=True，底层网络只计算并返回 Critic 结果
         values = self.ac(data, info, criticize_only=True)
 
         return values
@@ -95,32 +107,21 @@ class GNN_MAPPOPolicy:
         强制给定历史动作 (actions)，评估在当前最新策略下的对数概率 (用于计算 Ratio) 和信息熵。
         """
         data, info = self._build_inputs(graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices)
-
-        # 拆解动作张量：actions 形状通常为 [Batch, M, 2]，其中 [..., 0] 是工序，[..., 1] 是机位
-        chosen_op = torch.from_numpy(actions[:, :, 0]).long().to(self.device)
-        chosen_site = torch.from_numpy(actions[:, :, 1]).long().to(self.device)
-
-        # eval_action=True, 强制给定动作计算概率
-        action_log_probs, dist_entropy = self.ac(
-            data, info, 
-            chosen_idx=chosen_op, 
-            chosen_entry=chosen_site, 
-            eval_action=True
-        )
+        actions = self._to_tensor(actions, torch.long)
+        chosen_op, chosen_site = actions[..., 0], actions[..., 1]
+        action_log_probs, dist_entropy = self.ac(data, info, chosen_op=chosen_op, chosen_site=chosen_site, eval_action=True)
 
         return action_log_probs, dist_entropy
-    
+
     def evaluate_values(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices, actions):
         """
-        (备用) 评估阶段单纯获取 V(s)
+        PPO 更新网络阶段 (Update) 调用。
+        强制给定历史动作 (actions)，评估在当前最新策略下的对数概率 (用于计算 Ratio) 和信息熵。
         """
         data, info = self._build_inputs(graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices)
-        
-        values = self.ac(
-            data, info, 
-            actor_grad=False, 
-            criticize_only=True
-        )
+        actions = self._to_tensor(actions, torch.long)
+        chosen_op, chosen_site = actions[..., 0], actions[..., 1]
+        values = self.ac(data, info, chosen_op=chosen_op, chosen_site=chosen_site, actor_grad=False, criticize_only=True)
 
         return values
 
@@ -130,8 +131,5 @@ class GNN_MAPPOPolicy:
         不需要计算 Critic，直接吐出动作和新的状态。
         """
         data, info = self._build_inputs(graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices)
-
-        # criticize=False，直接关闭价值评估分支以加速推理
         actions, new_rnn_states = self.ac(data, info, deterministic=deterministic, criticize=False)
-        
         return actions, new_rnn_states
