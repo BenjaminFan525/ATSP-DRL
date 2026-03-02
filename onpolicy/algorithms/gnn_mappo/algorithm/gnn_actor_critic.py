@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from copy import deepcopy
 import numpy as np
-from onpolicy.algorithms.utils.gnn import HeteroFJSPEncoder
+from onpolicy.algorithms.utils.gnn import HeteroGraphEncoder
 from onpolicy.algorithms.utils.gru import SelectionEncoder
 from onpolicy.algorithms.utils.ptr_actor import CascadePtrActor
 from onpolicy.algorithms.utils.step_critic import StepCritic
@@ -19,7 +19,7 @@ class GNN_Actor_Critic(nn.Module):
         self.critic_cfg = critic_cfg
 
         # 1. 异构图编码器
-        self.encoder = HeteroFJSPEncoder(self.common, self.encoder_cfg, self.common, **self.factory_kwargs)        
+        self.encoder = HeteroGraphEncoder(self.common, self.encoder_cfg['gnn_cfg'], self.encoder_cfg['gff_cfg'], **self.factory_kwargs)        
         
         # 2. GRU 时序记忆编码器
         self.sel_enc = SelectionEncoder(**self.common, **self.selection_enc, **self.factory_kwargs)         
@@ -87,6 +87,9 @@ class GNN_Actor_Critic(nn.Module):
         last_op_indices = info['last_op_indices']
         
         M = active_agents.shape[1] # 最大飞机数 n_agents
+        n_sites = data['graph'].site_mask_matrix.shape[-1]
+        op_valid_mask = data['graph'].op_mask.clone().view(bsz, M, -1)
+        site_mask_matrix = data['graph'].site_mask_matrix.clone().view(bsz, -1, n_sites)
         
         op_choice = -torch.ones((bsz, M), device=global_emb.device, dtype=torch.long)
         site_choice = -torch.ones((bsz, M), device=global_emb.device, dtype=torch.long)
@@ -140,7 +143,7 @@ class GNN_Actor_Critic(nn.Module):
                 hidden_state_i = data['hidden_states'][active_mask_i, agent_idx:agent_idx+1, :].squeeze(1).transpose(0, 1)
                 
                 seq_embed, slice_embed, new_hidden_state_i = self.sel_enc(
-                    last_selection=last_selection_emb, 
+                    selection=last_selection_emb, 
                     veh=veh_emb, 
                     hidden_state=hidden_state_i
                 )

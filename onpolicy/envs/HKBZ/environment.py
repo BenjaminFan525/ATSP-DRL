@@ -254,7 +254,7 @@ class AircraftScheduleEnv(gym.Env):
 
     def _get_obs(self):
         """
-        更新环境状态并构建异构图数据对象 (HeteroData)。
+        更新环境状态并构建异构图数据对象 (HeteroData)。 
         【采用静态拓扑】：无论飞机是否在场，恒定生成 n_agents * n_ops 个工序节点，
         确保网络在不同 Step、不同 Episode 获得的张量形状绝对一致。
         """
@@ -358,7 +358,7 @@ class AircraftScheduleEnv(gym.Env):
                     # 站点掩码计算
                     for s_idx, site in enumerate(site_list):
                         if not global_site_valid[s_idx]:
-                            if site == plane.site and not site.is_interfered:
+                            if site.code != 'Z' and site == plane.site and not site.is_interfered:
                                 ptr_site_mask_matrix[u_idx, s_idx] = True
                             continue
                             
@@ -506,13 +506,13 @@ class AircraftScheduleEnv(gym.Env):
         """
         获取环境的额外信息，包括用于 GRU 时序记忆的上一次动作索引。
         """
-        active_agents = [True] * self.n_agents
+        active_agents = [False] * self.n_agents
         for plane in self.planes.values():
             # 活跃条件 1：飞机处于空闲状态（不忙碌、不在运输、不在等待）
             # 活跃条件 2：飞机还有未完成的作业
             pid = int(plane.code.split('_')[-1])
             if plane.is_idle() and not plane.is_completed_all_jobs():
-                active_agents[pid] = False
+                active_agents[pid] = True
 
 
         # 准备全局固定顺序的机位列表 (与 _get_obs 中的 site_list 顺序保持绝对一致)
@@ -577,7 +577,7 @@ class AircraftScheduleEnv(gym.Env):
             if plane.is_idle() and not plane.is_completed_all_jobs():
                 # 解析 RL 动作
                 if self.current_active_agents[pid]:
-                    job_idx = action[pid][0]  # 0号位是作业(Job)
+                    job_idx = action[pid][0] - pid * len(self.job_code_list)  # 0号位是作业(Job)
                     site_idx = action[pid][1] # 1号位是机位(Site)
                     
                     target_job_code = self.job_code_list[job_idx]
