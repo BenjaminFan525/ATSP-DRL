@@ -544,46 +544,29 @@ class AircraftScheduleEnv(gym.Env):
         }
     
     def step(self, action):
-        '''执行一步纯事件驱动动作，并自动进行时间跃迁
-        
-        输入:
-            action: numpy array - RL网络输出的动作索引 [n_agents, 2] (或兼容旧版dict)
-        返回:
-            tuple - (obs, reward, done, info)
-        '''
+        '''执行一步纯事件驱动动作，并在内部自动快进时间直到出现可决策状态'''
         self.steps += 1
 
-        # 获取当前 RL 决策前的活跃状态掩码
+        # =====================================================================
+        # Phase 1A: 动作分配 (Agents' Turn) —— 每次 step 只执行一次
+        # =====================================================================
         active_agents = [False] * self.n_agents
         for plane in self.planes.values():
-            # 活跃条件 1：飞机处于空闲状态（不忙碌、不在运输、不在等待）
-            # 活跃条件 2：飞机还有未完成的作业
             pid = int(plane.code.split('_')[-1])
             if plane.is_idle() and not plane.is_completed_all_jobs():
                 active_agents[pid] = True
         self.current_active_agents = active_agents
         
-        # =====================================================================
-        # Phase 1: 动作分配与内部事件时间预期计算
-        # =====================================================================
-        internal_step_time = np.inf
-        
-        # -----------------------------------------------------------
-        # A. 飞机动作分配 (Agents' Turn)
-        # -----------------------------------------------------------
         for plane_id, plane in self.planes.items():
             pid = int(plane_id.split('_')[2])
-            
             if plane.is_idle() and not plane.is_completed_all_jobs():
                 # 解析 RL 动作
                 if self.current_active_agents[pid]:
-                    job_idx = action[pid][0] - pid * len(self.job_code_list)  # 0号位是作业(Job)
-                    site_idx = action[pid][1] # 1号位是机位(Site)
-                    
+                    job_idx = action[pid][0] - pid * len(self.job_code_list)  
+                    site_idx = action[pid][1] 
                     target_job_code = self.job_code_list[job_idx]
                     target_site_code = self.site_code_list[site_idx]
                     target_job = self.jobs[target_job_code]
-                    # 记录强化学习的状态锚点
                     plane.last_site_idx = job_idx
                     plane.last_job_idx = site_idx
                 else:
@@ -594,153 +577,130 @@ class AircraftScheduleEnv(gym.Env):
                 if target_site_code != plane.site.code:
                     if plane.site.get_avail_transporter() is None:
                         if plane.site.code == 'Z': 
-                            time_needed = plane.start_transport(self.sites[target_site_code], None)
-                            internal_step_time = min(internal_step_time, time_needed)
+                            plane.start_transport(self.sites[target_site_code], None)
                             plane.choosed_job = target_job_code
                         else:
-                            # 缺车，进入转运等待队列
                             plane.start_waiting()
                             self.waiting_sites['ZY-T'].append(plane.site.code)
                             plane.destination = self.sites[target_site_code]
                             plane.destination.add_plane(plane)
                             plane.choosed_job = target_job_code
-                            internal_step_time = 0  # 状态改变，算作即刻事件
                     else:
-                        time_needed = plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter())
-                        internal_step_time = min(internal_step_time, time_needed)
+                        plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter())
                         plane.choosed_job = target_job_code
                 else:
                     if target_job and target_job.code not in plane.get_avail_jobs(plane.site):
                         if not plane.is_completed_all_jobs():
-                            # 缺作业设备，进入作业等待队列
                             plane.start_waiting()
                             self.waiting_sites[target_job.code].append(plane.site.code)
                             plane.choosed_job = target_job_code
-                            internal_step_time = 0 
                     elif target_job:
-                        time_needed = plane.choose_job(target_job.code)
-                        internal_step_time = min(internal_step_time, time_needed)
-                    else:
-                        print(f"[Warning] Plane {plane_id} took a no-op action. It will remain idle this step.")
-
-        # -----------------------------------------------------------
-        # B. 环境设备自治调度 (NPCs' Turn)
-        # 此时飞机已经做完了决定，如果有需要等待设备的飞机，它们已经在 waiting_sites 里了
-        # -----------------------------------------------------------
-        for job_code, waiting_sites_list in self.waiting_sites.items():
-            if not waiting_sites_list:
-                continue
-                
-            # 获取这种需求需要的特定设备类型 ('ZY-T' 是转运需求，特殊处理为 'R014')
-            if job_code == 'ZY-T':
-                needed_res_types = ['R014']
-            else:
-                job_obj = self.jobs.get(job_code)
-                if not job_obj: continue
-                # 找出这种作业依赖的移动设备类型
-                needed_res_types = [res for res in job_obj.resources if res in self.mobile_devices]
-                
-            if not needed_res_types:
-                continue
-
-            # 获取对应的空闲设备
-            idle_devices = self.get_idle_devices(needed_res_types)
-            if idle_devices:
-                # 找出需要该设备的飞机对象
-                waiting_planes = [p for p in self.planes.values() if p.site.code in waiting_sites_list]
-                
-                # 调用环境内部的匈牙利算法进行指派
-                assignments = arrange_devices(idle_devices, waiting_planes)
-                
-                for device, target_site in assignments:
-                    # 设备开始前往目标机位
-                    time_needed = device.start_transport(target_site)
-                    internal_step_time = min(internal_step_time, time_needed)
-                    # 从等待队列中移除已被响应的需求
-                    if target_site.code in waiting_sites_list:
-                        waiting_sites_list.remove(target_site.code)
-
-        # -----------------------------------------------------------
-        # C. 统计所有忙碌实体的剩余预期时间
-        # -----------------------------------------------------------
-        for plane in self.planes.values():
-            if plane.is_transporting:
-                internal_step_time = min(internal_step_time, plane.left_trans_time)
-            elif plane.is_busy:
-                internal_step_time = min(internal_step_time, plane.site.left_job_time)
-                
-        for devices in self.mobile_devices.values():
-            for device in devices:
-                if not device.is_idle():
-                    left_t = device.left_trans_time if device.is_transporting else device.left_rec_time
-                    internal_step_time = min(internal_step_time, left_t)
-                    
-        for site in self.sites.values():
-            if site.is_interfered:
-                internal_step_time = min(internal_step_time, site.left_rec_time)
+                        plane.choose_job(target_job.code)
 
         # =====================================================================
-        # Phase 2: 时间跃迁 dt 计算 (统筹内部与外部事件)
+        # 核心重构：内部事件推演循环 (Fast-Forward Loop)
         # =====================================================================
-        future_landings = [t for t in self.landing_list if t > self.total_time]
-        next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
-        
-        dt = min(internal_step_time, next_landing_dt)
-        if dt == np.inf:
-            print("[Warning] No upcoming events detected! Setting dt to 0 to avoid infinite loop.")
+        while True:
+            internal_step_time = np.inf
             
-        self.total_time += dt
-        self.step_time = dt 
+            # -----------------------------------------------------------
+            # Phase 1B: 环境设备自治调度 (NPCs' Turn)
+            # -----------------------------------------------------------
+            for job_code, waiting_sites_list in self.waiting_sites.items():
+                if not waiting_sites_list: continue
+                needed_res_types = ['R014'] if job_code == 'ZY-T' else [res for res in self.jobs.get(job_code).resources if res in self.mobile_devices]
+                if not needed_res_types: continue
 
-        # =====================================================================
-        # Phase 3: 物理状态推演 (时间流逝)
-        # =====================================================================
-        if dt >= 0:
+                idle_devices = self.get_idle_devices(needed_res_types)
+                if idle_devices:
+                    waiting_planes = [p for p in self.planes.values() if p.site.code in waiting_sites_list]
+                    assignments = arrange_devices(idle_devices, waiting_planes)
+                    for device, target_site in assignments:
+                        device.start_transport(target_site)
+                        if target_site.code in waiting_sites_list:
+                            waiting_sites_list.remove(target_site.code)
+
+            # -----------------------------------------------------------
+            # Phase 1C: 统计所有忙碌实体的剩余预期时间
+            # -----------------------------------------------------------
+            for plane in self.planes.values():
+                if plane.is_transporting:
+                    internal_step_time = min(internal_step_time, plane.left_trans_time)
+                elif plane.is_busy:
+                    internal_step_time = min(internal_step_time, plane.site.left_job_time)
+                    
             for devices in self.mobile_devices.values():
                 for device in devices:
                     if not device.is_idle():
-                        device.update(dt)
+                        left_t = device.left_trans_time if device.is_transporting else device.left_rec_time
+                        internal_step_time = min(internal_step_time, left_t)
                         
-            for plane in self.planes.values():
-                if not plane.is_idle():
-                    plane.update(dt)
-                    
             for site in self.sites.values():
                 if site.is_interfered:
-                    site.update(dt)
+                    internal_step_time = min(internal_step_time, site.left_rec_time)
 
-        # =====================================================================
-        # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落)
-        # =====================================================================
-        while self.landing_list and self.total_time >= self.landing_list[0]:
-            land_time = self.landing_list.pop(0)
-            bidx = land_time // 3600
-            pidx = (land_time % 3600) // 120
-            plane_cfg = {
-                'velocity': 5,
-                'site': self.sites['Z'],
-                # 兼容不同 numpy 版本的随机数生成
-                'fuel': self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30),
-                'jobs': self.jobs.values()
-            }
-            self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
+            # -----------------------------------------------------------
+            # Phase 2: 时间跃迁 dt 计算
+            # -----------------------------------------------------------
+            future_landings = [t for t in self.landing_list if t > self.total_time]
+            next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
+            
+            dt = min(internal_step_time, next_landing_dt)
+            if dt == np.inf:
+                print("[Warning] No upcoming events detected! Force break loop.")
+                break
+                
+            self.total_time += dt
+            self.step_time = dt 
 
-        # =====================================================================
-        # Phase 5: 清理已完成的飞机
-        # =====================================================================
-        # remove_planes = []
-        # for plane_id, plane in self.planes.items():
-        #     if plane.is_completed_all_jobs() and plane.is_idle():
-        #         remove_planes.append(plane_id)
-        #         print(f"Plane {plane_id} has completed all jobs and will be removed from the environment.")
-        # self.remove_planes(remove_planes)
+            # -----------------------------------------------------------
+            # Phase 3: 物理状态推演 (时间流逝)
+            # -----------------------------------------------------------
+            if dt >= 0:
+                for devices in self.mobile_devices.values():
+                    for device in devices:
+                        if not device.is_idle():
+                            device.update(dt)
+                for plane in self.planes.values():
+                    if not plane.is_idle():
+                        plane.update(dt)
+                for site in self.sites.values():
+                    if site.is_interfered:
+                        site.update(dt)
 
-        # =====================================================================
-        # Phase 6: 判断回合结束与数据返回
-        # =====================================================================
-        # 当场上没飞机了，且未来降落时刻表也空了，宣告 Episode 结束
-        self.done = (len(self.planes) == 0 and len(self.landing_list) == 0)
-        
+            # -----------------------------------------------------------
+            # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落)
+            # -----------------------------------------------------------
+            while self.landing_list and self.total_time >= self.landing_list[0]:
+                land_time = self.landing_list.pop(0)
+                bidx = land_time // 3600
+                pidx = (land_time % 3600) // 120
+                plane_cfg = {
+                    'velocity': 5,
+                    'site': self.sites['Z'],
+                    'fuel': self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30),
+                    'jobs': [job for job in self.jobs.values() if job.code in self.job_code_list]
+                }
+                self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
+
+            # -----------------------------------------------------------
+            # Phase 5: 检查是否可以退出快进循环
+            # -----------------------------------------------------------
+            self.done = (len(self.planes) == 0 and len(self.landing_list) == 0)
+            if self.done:
+                break # 环境结束，跳出循环
+                
+            # 检查场上是否出现了活跃的（可以做决策的）飞机
+            has_active = False
+            for plane in self.planes.values():
+                if plane.is_idle() and not plane.is_completed_all_jobs():
+                    has_active = True
+                    break
+                    
+            if has_active:
+                break # 有飞机空闲了需要下发动作，跳出循环
+
+        # 最终返回观测和奖励
         return self._get_obs(), self._get_reward(), self._get_done(), self._get_info()
 
     def reset(self, seed=None, options=None):

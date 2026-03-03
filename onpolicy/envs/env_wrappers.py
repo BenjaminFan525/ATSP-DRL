@@ -254,12 +254,8 @@ class GraphSubprocVecEnv(ShareVecEnv):
         for remote in self.work_remotes:
             remote.close()
 
-        self.remotes[0].send(('get_spaces', None))
-        observation_space, share_observation_space, action_space = self.remotes[0].recv()
-        self.remotes[0].send(('get_nums_fields', None))
-        self.num_fields = self.remotes[0].recv()
-        ShareVecEnv.__init__(self, len(env_fns), observation_space,
-                             share_observation_space, action_space)
+        
+        ShareVecEnv.__init__(self, len(env_fns), None, None, None)
 
     def step_async(self, actions):
         for remote, action in zip(self.remotes, actions):
@@ -270,14 +266,14 @@ class GraphSubprocVecEnv(ShareVecEnv):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
         obs, rews, dones, infos = zip(*results)
-        return np.stack(obs), self.stack_infos(rews), np.stack(dones), self.stack_infos(infos)
+        return obs, np.stack(rews), np.stack(dones), self.stack_infos(infos)
 
     def reset(self):
         for remote in self.remotes:
             remote.send(('reset', None))
         results = [remote.recv() for remote in self.remotes]
         obs, dones, infos = zip(*results)
-        return np.stack(obs), np.stack(dones), self.stack_infos(infos)
+        return obs, np.stack(dones), self.stack_infos(infos)
     
     def get_graph(self):
         for remote in self.remotes:

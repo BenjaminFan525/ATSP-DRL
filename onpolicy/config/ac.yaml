@@ -27,6 +27,3 @@ actor_cfg:
 critic_cfg:
   query_dim: 192  
   nhead: 4 
-
-critic_list:
-  - t

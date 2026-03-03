@@ -8,7 +8,7 @@ from onpolicy.algorithms.utils.ptr_actor import CascadePtrActor
 from onpolicy.algorithms.utils.step_critic import StepCritic
 
 class GNN_Actor_Critic(nn.Module):
-    def __init__(self, common_cfg=None, encoder_cfg=None, sel_encoder_cfg=None, actor_cfg=None, critic_cfg=None, critic_list=['default'], device='cpu', dtype=torch.float32) -> None:
+    def __init__(self, common_cfg=None, encoder_cfg=None, sel_encoder_cfg=None, actor_cfg=None, critic_cfg=None, device='cpu', dtype=torch.float32) -> None:
         super().__init__()
         self.factory_kwargs = {'device': device, 'dtype': dtype}
 
@@ -28,9 +28,7 @@ class GNN_Actor_Critic(nn.Module):
         self.actor = CascadePtrActor(**self.common, **self.actor_cfg, **self.factory_kwargs)
         
         # 4. Critic 价值网络
-        self.critic = nn.ModuleDict({})
-        for name in critic_list:
-            self.critic.update({name: StepCritic(**self.common, **self.critic_cfg, **self.factory_kwargs)})
+        self.critic = StepCritic(**self.common, **self.critic_cfg, **self.factory_kwargs)
         
         self.tau = 1.0
 
@@ -40,7 +38,6 @@ class GNN_Actor_Critic(nn.Module):
             'sel_encoder_cfg': self.selection_enc,
             'actor_cfg': self.actor_cfg,
             'critic_cfg': self.critic_cfg,
-            'critic_list': critic_list
         }
 
         # 优化器参数分组
@@ -95,7 +92,7 @@ class GNN_Actor_Critic(nn.Module):
         site_choice = -torch.ones((bsz, M), device=global_emb.device, dtype=torch.long)
         prob = torch.ones((bsz, M), device=global_emb.device)
         value_mask = torch.zeros((bsz, M), dtype=torch.bool, device=global_emb.device)
-        value = {name: torch.zeros((bsz, M), device=global_emb.device) for name in self.critic.keys()}
+        value = torch.zeros((bsz, M), device=global_emb.device)
         
         # 继承并克隆 GRU 的历史记忆
         new_hidden_state = data['hidden_states'].clone()
@@ -108,7 +105,7 @@ class GNN_Actor_Critic(nn.Module):
         # 3. 遍历智能体 (飞机) 进行串行自回归决策
         # ========================================================
         for agent_idx in range(M):
-            active_mask_i = active_agents[:, agent_idx]
+            active_mask_i = active_agents[:, agent_idx].view(-1).bool()
             if not active_mask_i.any():
                 continue
                 
@@ -117,7 +114,7 @@ class GNN_Actor_Critic(nn.Module):
             # ---------------------------------------------------------
             # A. 提取 GRU 的输入 1：上一次的选择 (刚做完的工序)
             # ---------------------------------------------------------
-            last_op_idx = last_op_indices[active_mask_i, agent_idx]
+            last_op_idx = last_op_indices[:, agent_idx].view(-1)[active_mask_i]
             valid_last_op = (last_op_idx >= 0)
             safe_last_op_idx = torch.clamp(last_op_idx, min=0)
             
@@ -157,8 +154,8 @@ class GNN_Actor_Critic(nn.Module):
             # ---------------------------------------------------------
             # D. PPO 强制动作注入 (算 Loss 用)
             # ---------------------------------------------------------
-            cur_chosen_op = chosen_op[active_mask_i, agent_idx].squeeze(-1) if chosen_op is not None else None
-            cur_chosen_site = chosen_site[active_mask_i, agent_idx].squeeze(-1) if chosen_site is not None else None
+            cur_chosen_op = chosen_op[:, agent_idx].view(-1)[active_mask_i] if chosen_op is not None else None
+            cur_chosen_site = chosen_site[:, agent_idx].view(-1)[active_mask_i] if chosen_site is not None else None
             # ---------------------------------------------------------
             # E. 级联 Actor 决策
             # ---------------------------------------------------------
@@ -203,14 +200,14 @@ class GNN_Actor_Critic(nn.Module):
                 cur_op_pad_mask = ~cur_agent_mask[active_mask_i] 
                 cur_site_pad_mask = None # 全局资源视角
                 
-                for key, value_head in self.critic.items():
-                    value[key][active_mask_i, agent_idx] = value_head(
-                        query=query.unsqueeze(1), 
-                        op_nodes=op_nodes[active_mask_i], 
-                        site_nodes=site_nodes[active_mask_i], 
-                        op_pad_mask=cur_op_pad_mask,
-                        site_pad_mask=cur_site_pad_mask
-                    ).squeeze(-1)
+                # 直接使用 .view(-1) 强制展平为 1D 向量
+                value[active_mask_i, agent_idx] = self.critic(
+                    query=query.unsqueeze(1), 
+                    op_nodes=op_nodes[active_mask_i], 
+                    site_nodes=site_nodes[active_mask_i], 
+                    op_pad_mask=cur_op_pad_mask,
+                    site_pad_mask=cur_site_pad_mask
+                ).view(-1)
 
             # ---------------------------------------------------------
             # G. 自回归动态掩码刷新 (避免同一个 Batch 互相抢资源)

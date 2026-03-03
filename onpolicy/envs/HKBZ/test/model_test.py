@@ -79,7 +79,6 @@ def main(args):
 
     # 这里的 obs_space 和 act_space 传 None 或者 mock 均可，由于全图网络不依赖固定 dim
     policy = Policy(all_args, ac_config, 
-                    obs_space=None, cent_obs_space=None, act_space=None, 
                     device=device)
 
     # 如果有预训练模型，可以在这里 Load
@@ -98,8 +97,6 @@ def main(args):
     
     obs, done, info = env.reset()
     
-    # 初始化 GRU 隐藏状态: Shape [Batch, N_agents, Recurrent_N, Hidden_Size]
-    # 我们用 Batch = 1 模拟单环境评估
     rnn_states = np.zeros(
         (1, all_args.max_agent_num, all_args.recurrent_N, all_args.hidden_size), 
         dtype=np.float32
@@ -109,15 +106,13 @@ def main(args):
     total_rewards = np.zeros(all_args.max_agent_num)
     
     while not np.all(done):
-        # 组装网络所需的输入 (添加 Batch=1 的维度)
-        graph_obs = [obs]  # PyG Batch 需要的 List 形式
+        graph_obs = [obs] 
         
-        # 维度扩展 [N_agents] -> [1, N_agents]
         active_mask = np.expand_dims(info['active_agents'], axis=0)
         last_op = np.expand_dims(info['last_op_indices'], axis=0)
         last_site = np.expand_dims(info['last_site_indices'], axis=0)
 
-        # 执行推理 (Deterministic = True 用于评估)
+        # 1. 神经网络做决策
         action, rnn_states = policy.act(
             graph_obs=graph_obs,
             rnn_states=rnn_states,
@@ -127,26 +122,21 @@ def main(args):
             deterministic=True
         )
         
-        # 将张量转为 Numpy, 去掉 Batch 维度 [1, N_agents, 2] -> [N_agents, 2]
         action = _t2n(action)[0]
         rnn_states = _t2n(rnn_states)
 
-        # 打印部分活跃飞机的动作分配
         active_pids = np.where(info['active_agents'])[0]
         active = info['active_agents']
         if len(active_pids) > 0:
             print(f"[Step {step_count} | Env Time {env.total_time}s] 活跃飞机: {active_pids.tolist()}")
 
-        # 推演环境步
+        # 2. 与环境交互（这里内部会自动快进，不需要你操心了！）
         obs, rewards, done, info = env.step(action)
-        total_rewards += rewards.flatten()*active
         
-        while not np.any(info['active_agents']) and not np.all(done):
-            obs, rewards, done, info = env.step(action)
-         
+        # 3. 统计
+        total_rewards += rewards.flatten() * active
         step_count += 1
         
-        # 死锁安全逃生舱
         if step_count > 2000:
             print("\n【警告】达到最大测试步数，强制终止。")
             break
