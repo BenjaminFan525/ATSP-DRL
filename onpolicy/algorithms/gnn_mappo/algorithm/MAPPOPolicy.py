@@ -10,7 +10,7 @@ class GNN_MAPPOPolicy:
     包装了 Actor 和 Critic 网络，用于在 PPO 训练循环中计算动作、价值和对数概率。
     """
 
-    def __init__(self, args, ac_cfg, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
+    def __init__(self, args, ac_cfg, device=torch.device("cpu")):
         self.device = device
         self.lr = args.lr
         self.critic_lr = args.critic_lr
@@ -18,10 +18,6 @@ class GNN_MAPPOPolicy:
         self.weight_decay = args.weight_decay
         self.anneal_final = args.anneal_final
         self.anneal_original = args.anneal_original
-
-        self.obs_space = obs_space
-        self.share_obs_space = cent_obs_space
-        self.act_space = act_space
 
         # 初始化重构后的 GNN_Actor_Critic
         self.ac = GNN_Actor_Critic(**ac_cfg, device=device)

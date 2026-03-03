@@ -11,7 +11,8 @@ import copy
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from onpolicy.utils.shared_buffer import SharedReplayBuffer
-from onpolicy.algorithms.gnn_mappo.algorithm.gnn_actor_critic import GNN_Actor_Critic
+import cProfile
+import pstats
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -80,13 +81,10 @@ class HKBZ_Runner(Runner):
         from onpolicy.algorithms.gnn_mappo.gnn_mappo import MAPPO_Trainer as TrainAlgo
         from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
-        share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
+        # share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
         
         # policy network
         self.policy = Policy(self.all_args, self.ac_config,
-                            self.envs.observation_space[0],
-                            share_observation_space,
-                            self.envs.action_space[0],
                             device = self.device)
 
         if self.checkpoint_dir is not None:
@@ -97,9 +95,7 @@ class HKBZ_Runner(Runner):
         # buffer
         self.buffer = SharedReplayBuffer(self.all_args,
                                         self.num_agents,
-                                        self.envs.observation_space[0],
-                                        share_observation_space,
-                                        self.envs.action_space[0])
+                                        None, None, None)
 
     def run(self):   
         
@@ -113,8 +109,8 @@ class HKBZ_Runner(Runner):
               total=episodes,       
               ncols=120)
         for episode in pbar:
-            # profiler = cProfile.Profile()
-            # profiler.enable()
+            profiler = cProfile.Profile()
+            profiler.enable()
             # self.envs.shuffer_data()
             training_rewards = []
             self.episode = episode
@@ -123,61 +119,55 @@ class HKBZ_Runner(Runner):
                 render_dir = os.path.join(self.render_dir, f'episode_{episode+1}')
                 os.makedirs(render_dir, exist_ok=True)
 
-            for idx in range(self.envs.num_fields):
-                global_nodes, nodes, node_key_padding_mask = self.warmup()
-                if self.use_linear_lr_decay:
-                    self.trainer.policy.lr_decay(episode, episodes)
+            self.warmup()
+            if self.use_linear_lr_decay:
+                self.trainer.policy.lr_decay(episode, episodes)
 
-                if self.use_anneal:
-                    self.trainer.policy.hyperparams_anneal(episode, episodes)
+            if self.use_anneal:
+                self.trainer.policy.hyperparams_anneal(episode, episodes)
 
-                for step in range(self.episode_length):
-                    # Sample actions
-                    values, actions, action_log_probs, rnn_states = self.collect(step, global_nodes, nodes, node_key_padding_mask)
-                        
-                    # Obser reward and next obs
-                    obs, rewards, dones, infos = self.envs.step(actions)
+            for step in range(self.episode_length):
+                # Sample actions
+                values, actions, action_log_probs, rnn_states = self.collect(step)
+                    
+                # Obser reward and next obs
+                obs, rewards, dones, infos = self.envs.step(actions)
 
-                    data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states
+                data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states
 
-                    # insert data into buffer
-                    self.insert(data)
+                # insert data into buffer
+                self.insert(data)
 
-                # compute return and update network
-                self.compute(global_nodes, nodes, node_key_padding_mask)
+            # compute return and update network
+            self.compute()
 
-                train_infos = self.train()
+            train_infos = self.train()
+        
+            # post process
+            # train_infos['distance'] = np.mean(rewards['s'])
+            # train_infos['time'] = np.mean(rewards['t'])
+            # train_infos['fuel consumption'] = np.mean(rewards['c'])
+
+            # eval
+            if (self.total_num_steps == 0 or self.total_num_steps % self.eval_interval == 0) and self.use_eval:
+                train_infos['distance'], train_infos['time'], train_infos['fuel consumption'] = self.eval(render=True)
             
-                # post process
-                if self.auto_fuse and self.obj != 's' and self.episode < self.start_epoch:
-                    rewards = self.envs.get_episode_rewards()
-                    if (0.5 * np.sum(rewards['s']) + 0.5 * np.sum(rewards[self.obj])) > np.sum(rewards['s']):
-                        self.start_epoch = self.episode
-                        print(f"np.sum(rewards['s']): {np.sum(rewards['s'])}, np.sum(rewards[self.obj]): {np.sum(rewards[self.obj])}")
-                        print(f"Auto fuse {self.obj} with s from episode {self.start_epoch}")
-                # train_infos['distance'] = np.mean(rewards['s'])
-                # train_infos['time'] = np.mean(rewards['t'])
-                # train_infos['fuel consumption'] = np.mean(rewards['c'])
-
-                # eval
-                if (self.total_num_steps == 0 or self.total_num_steps % self.eval_interval == 0) and self.use_eval:
-                    if idx == 0:
-                        train_infos['distance'], train_infos['time'], train_infos['fuel consumption'] = self.eval(render=True)
-                    else:
-                        train_infos['distance'], train_infos['time'], train_infos['fuel consumption'] = self.eval(render=False)
-                
-                self.total_num_steps += self.n_rollout_threads
-                self.log_train(train_infos, self.total_num_steps)
-                training_rewards.append(train_infos["rewards"] / (self.reward_coef[self.obj]))
-                pbar.set_description(f"[Episode {episode+1}]")
-                pbar.set_postfix(
-                    average_episode_rewards=np.mean(training_rewards),
-                    total_num_steps=self.total_num_steps,
-                    fps=int(self.total_num_steps / (time.time() - start)))
+            self.total_num_steps += self.n_rollout_threads
+            self.log_train(train_infos, self.total_num_steps)
+            training_rewards.append(train_infos["rewards"] / (self.reward_coef[self.obj]))
+            pbar.set_description(f"[Episode {episode+1}]")
+            pbar.set_postfix(
+                average_episode_rewards=np.mean(training_rewards),
+                total_num_steps=self.total_num_steps,
+                fps=int(self.total_num_steps / (time.time() - start)))
 
             # save model
             if (episode % self.save_interval == 0 or episode == episodes - 1):
                 self.save(episode)
+
+            profiler.disable()
+            stats = pstats.Stats(profiler).sort_stats('cumtime')
+            stats.print_stats(30) # 打印耗时前20的函数
 
             # log information
             # if episode % self.log_interval == 0:
@@ -186,24 +176,23 @@ class HKBZ_Runner(Runner):
                 # self.log_env(env_infos, total_num_steps)
 
     @torch.no_grad()
-    def compute(self, global_nodes, nodes, node_key_padding_mask):
+    def compute(self):
         """Calculate returns for the collected data."""
         self.trainer.prep_rollout()
         next_values = self.trainer.policy.get_values(
-                                    global_nodes, nodes, node_key_padding_mask,
-                                    self.buffer.obs[-1],
-                                    self.buffer.rnn_states[-1],
-                                    self.buffer.masks[-1],
-                                    self.buffer.active_masks[-1],
-                                    self.buffer.available_actions[-1],
-                                    self.buffer.veh_nums[-1])
-        next_values = _t2n(next_values[self.obj]).reshape(self.n_rollout_threads, self.num_agents, 1)
+                            Batch.from_data_list(self.buffer.graph_obs[-1]),
+                            self.buffer.rnn_states[-1],
+                            self.buffer.active_masks[-1],
+                            self.buffer.actions[- 2, ..., 0],
+                            self.buffer.actions[ 2, ..., 1],
+                            )
+        next_values = _t2n(next_values).reshape(self.n_rollout_threads, self.num_agents, 1)
         self.buffer.compute_returns(next_values)
 
     def train(self):
         """Train policies with data in buffer. """
         self.trainer.prep_training()
-        train_infos = self.trainer.train(self.envs.get_graph(), self.buffer)      
+        train_infos = self.trainer.train(self.buffer)      
         return train_infos
 
     def warmup(self):
@@ -211,7 +200,8 @@ class HKBZ_Runner(Runner):
         # reset env
         obs, dones, infos = self.envs.reset()
 
-        self.buffer.obs[0] = obs.copy()
+        for thread_idx in range(self.n_rollout_threads):
+            self.buffer.graph_obs[0][thread_idx] = obs[thread_idx].clone()
 
         self.buffer.rnn_states[0] = np.zeros((self.n_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
         
@@ -221,27 +211,19 @@ class HKBZ_Runner(Runner):
         self.buffer.active_masks[0] = np.zeros((self.n_rollout_threads, self.num_agents), dtype=np.float32).reshape(self.n_rollout_threads, self.num_agents, 1)
         self.buffer.active_masks[0][infos['active_agents'] == True] = np.ones(((infos['active_agents'] == True).sum(), 1), dtype=np.float32)
 
-        self.buffer.available_actions[0] = np.zeros((self.n_rollout_threads, self.episode_length), dtype=np.float32)
-        self.buffer.available_actions[0][infos['available_actions'] == True] = np.ones(((infos['available_actions'] == True).sum()), dtype=np.float32)
-
-        self.buffer.veh_nums[0] = infos['veh_nums'].copy()[:, None]
-
-        return self.trainer.policy.ac.encoder.nodes_encoder(Batch.from_data_list(self.envs.get_graph()).to(self.device))
-
     @torch.no_grad()
-    def collect(self, step, global_nodes, nodes, node_key_padding_mask):
+    def collect(self, step):
         self.trainer.prep_rollout()
         value, action, action_log_prob, rnn_states \
             = self.trainer.policy.get_actions(
-                            global_nodes, nodes, node_key_padding_mask,
-                            self.buffer.obs[step],
+                            Batch.from_data_list(self.buffer.graph_obs[step]),
                             self.buffer.rnn_states[step],
-                            self.buffer.masks[step],
                             self.buffer.active_masks[step],
-                            self.buffer.available_actions[step],
-                            self.buffer.veh_nums[step])
+                            self.buffer.actions[step - 1, ..., 0] if step > 0 else -np.ones((self.n_rollout_threads, self.num_agents), dtype=np.float32),
+                            self.buffer.actions[step - 1, ..., 1] if step > 0 else -np.ones((self.n_rollout_threads, self.num_agents), dtype=np.float32)
+                            )
         # [self.envs, agents, dim]
-        values = _t2n(value[self.obj])
+        values = _t2n(value)
         actions = _t2n(action)
         action_log_probs = _t2n(action_log_prob)
         rnn_states = _t2n(rnn_states)
@@ -258,24 +240,8 @@ class HKBZ_Runner(Runner):
 
         active_masks = np.zeros((self.n_rollout_threads, self.num_agents), dtype=np.float32)
         active_masks[infos['active_agents'] == True] = np.ones(((infos['active_agents'] == True).sum()), dtype=np.float32)
-
-        available_actions = np.zeros((self.n_rollout_threads, self.episode_length), dtype=np.float32)
-        available_actions[infos['available_actions'] == True] = np.ones(((infos['available_actions'] == True).sum()), dtype=np.float32)
-
-        veh_nums = infos['veh_nums'][:, None]
-
-        for key in rewards.keys():
-            rewards[key] *= self.reward_coef[key]
         
-        if self.fuse_s and self.obj != 's':
-            if self.episode < self.start_epoch:
-                rewards[self.obj] = rewards['s']
-            elif self.episode <= self.start_epoch + self.fuse_epoch:
-                rewards[self.obj] = 0.5 * rewards['s'] + 0.5 * rewards[self.obj]
-            # elif self.episode == self.fuse_epoch:
-            #     rewards[self.obj] += 0.5 * rewards['s']
-        
-        self.buffer.graph_insert(obs, rnn_states, actions, action_log_probs, values, rewards[self.obj], masks, active_masks, available_actions, veh_nums)
+        self.buffer.graph_insert(obs, rnn_states, actions, action_log_probs, values, rewards, masks, active_masks)
 
     @torch.no_grad()
     def eval(self, render=False):

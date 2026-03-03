@@ -14,12 +14,6 @@ def _cast(x):
 def _graph_cast(x):
     return x.reshape(-1, *x.shape[2:])
 
-def _shuffle_agent_grid(x, y):
-    rows = np.indices((x, y))[0]
-    # cols = np.stack([np.random.permutation(y) for _ in range(x)])
-    cols = np.stack([np.arange(y) for _ in range(x)])
-    return rows, cols
-
 class SharedReplayBuffer(object):
     """
     Buffer to store training data.
@@ -44,21 +38,19 @@ class SharedReplayBuffer(object):
         self.algo = args.algorithm_name
         self.num_agents = num_agents
 
-        obs_shape = get_shape_from_obs_space(obs_space)
-        share_obs_shape = get_shape_from_obs_space(cent_obs_space)
+        # obs_shape = get_shape_from_obs_space(obs_space)
+        # share_obs_shape = get_shape_from_obs_space(cent_obs_space)
 
-        if type(obs_shape[-1]) == list:
-            obs_shape = obs_shape[:1]
+        # if type(obs_shape[-1]) == list:
+        #     obs_shape = obs_shape[:1]
 
-        if type(share_obs_shape[-1]) == list:
-            share_obs_shape = share_obs_shape[:1]
+        # if type(share_obs_shape[-1]) == list:
+        #     share_obs_shape = share_obs_shape[:1]
 
-        self.share_obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, 1, *share_obs_shape),
-                                  dtype=np.float32)
-        self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *obs_shape), dtype=np.float32)
+        # self.share_obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, 1, *share_obs_shape),
+        #                           dtype=np.float32)
+        # self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *obs_shape), dtype=np.float32)
         self.graph_obs =  [[None for _ in range(self.n_rollout_threads)] for _ in range(self.episode_length + 1)]
-
-        self.veh_nums =  np.zeros((self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.float32)
 
         self.rnn_states = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads, num_agents, self.recurrent_N, self.hidden_size),
@@ -71,16 +63,15 @@ class SharedReplayBuffer(object):
         self.advantages = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
 
-        if act_space.__class__.__name__ == 'Discrete':
-            self.available_actions = np.zeros((self.episode_length + 1, self.n_rollout_threads, act_space.n),
-                                             dtype=np.float32)
-        else:
-            self.available_actions = None
+        # if act_space.__class__.__name__ == 'Discrete':
+        #     self.available_actions = np.zeros((self.episode_length + 1, self.n_rollout_threads, act_space.n),
+        #                                      dtype=np.float32)
+        # else:
+        #     self.available_actions = None
 
-        act_shape = get_shape_from_act_space(act_space)
+        # act_shape = get_shape_from_act_space(act_space)
 
-        # TODO: this should be a config
-        self.actions = np.zeros(
+        self.actions = -np.ones(
             (self.episode_length, self.n_rollout_threads, num_agents, 2), dtype=np.float32)
         self.action_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
@@ -96,11 +87,10 @@ class SharedReplayBuffer(object):
         self.step = 0
 
     def graph_insert(self, obs, rnn_states, actions, action_log_probs,
-               value_preds, rewards, masks, active_masks, available_actions, veh_nums):
+               value_preds, rewards, masks, active_masks):
         """
-        Insert data into the buffer. This insert function is used specifically for IA, which has graph data observations.
-        :param share_obs: (argparse.Namespace) arguments containing relevant model, policy, and env information.
-        :param obs: (np.ndarray) local agent observations.
+        Insert data into the buffer. This insert function is used specifically for PyG graph data observations.
+        :param obs: (list of HeteroData) local agent observations, length equals n_rollout_threads.
         :param rnn_states: (np.ndarray) RNN states for actor network.
         :param actions:(np.ndarray) actions taken by agents.
         :param action_log_probs:(np.ndarray) log probs of actions taken by agents
@@ -108,20 +98,27 @@ class SharedReplayBuffer(object):
         :param rewards: (np.ndarray) reward collected at each step.
         :param masks: (np.ndarray) denotes whether the environment has terminated or not.
         :param active_masks: (np.ndarray) denotes whether an agent is active or dead in the env.
-        :param available_actions: (np.ndarray) actions available to each agent. If None, all actions are available.
         """
-        # self.share_obs[self.step + 1] = share_obs.copy()
-        self.obs[self.step + 1] = obs.copy()
+        
+        # ========================================================
+        # 1. 异构图数据存入逻辑 (遍历列表存入，绝对对齐线程索引)
+        # ========================================================
+        for thread_idx in range(self.n_rollout_threads):
+            self.graph_obs[self.step + 1][thread_idx] = obs[thread_idx].clone()
+
+        # ========================================================
+        # 2. 常规 Numpy 张量存入逻辑
+        # ========================================================
         self.rnn_states[self.step + 1] = rnn_states.copy()
         self.actions[self.step] = actions.copy()
+        
         self.action_log_probs[self.step] = action_log_probs.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.value_preds[self.step] = value_preds.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.rewards[self.step] = rewards.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
+        
         self.masks[self.step + 1] = masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.active_masks[self.step + 1] = active_masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
-        self.available_actions[self.step + 1] = available_actions.copy()
-        self.veh_nums[self.step + 1] = veh_nums.copy()
-
+        # 游标步进
         self.step = (self.step + 1) % self.episode_length
 
     def graph_after_update(self):
@@ -136,85 +133,64 @@ class SharedReplayBuffer(object):
         if self.available_actions is not None:
             self.available_actions[0] = self.available_actions[-1].copy()
 
-    def compute_returns(self, next_value):
+    def compute_returns(self, next_value, value_normalizer=None):
         """
-        极简版顺序 GAE (Sequential GAE without Done Masks).
-        逻辑：
-        - active_mask == False (0): 决策点。计算 TD Error，更新 GAE，截断 next_value。
-        - active_mask == True (1):  传递点。GAE 保持不变传给上一步，next_value 保持不变。
+        向量化版本 SMDP GAE (Vectorized Sequential GAE without Done Masks).
+        支持 PopArt / ValueNorm。
         """
         # T: Episode Length, N: Threads, M: Agents
         T, N, M, _ = self.rewards.shape
         
+        use_v_norm = (getattr(self, '_use_popart', False) or getattr(self, '_use_valuenorm', False)) and (value_normalizer is not None)
+        
         if self._use_gae:
-            # ------------------------------------------------------------------
-            # Step A: 维度重排与展平 (Permute & Flatten)
-            # ------------------------------------------------------------------
-            # 目标顺序: (Time 0, Agent 0), (Time 0, Agent 1)... (Time 1, Agent 0)...
-            # 变换: (T, N, M, 1) -> (T, M, N, 1) -> (T*M, N, 1)
+            # --- 1. 一次性反归一化 (保留原维度 T, N, M, 1) ---
+            if use_v_norm:
+                denorm_values = value_normalizer.denormalize(self.value_preds[:-1])
+                denorm_next_value = value_normalizer.denormalize(next_value)
+            else:
+                denorm_values = self.value_preds[:-1]
+                denorm_next_value = next_value
+                
+            # 【修复点 1】：绝对不能用 self.returns = xxx 覆盖原数组！
+            # 必须把真实尺度的 next_value 存在第 T+1 步 ([-1] 哨兵位)
+            self.returns[-1] = denorm_next_value
             
-            # 展平 Values, Rewards, Active Masks
-            flat_values = self.value_preds[:-1].transpose(0, 2, 1, 3).reshape(-1, N, 1)
-            flat_rewards = self.rewards.transpose(0, 2, 1, 3).reshape(-1, N, 1)
-            flat_active_masks = self.active_masks[:-1].transpose(0, 2, 1, 3).reshape(-1, N, 1)
+            # gae 现在的形状是 (N, M, 1)，每个环境的每架飞机都有独立计算的优势
+            gae = np.zeros((N, M, 1), dtype=np.float32)
             
-            # 初始化返回容器
-            flat_returns = np.zeros_like(flat_values)
-            
-            # ------------------------------------------------------------------
-            # Step B: 初始化
-            # ------------------------------------------------------------------
-            gae = 0
-            # next_active_value 初始指向整个 Episode 结束后的预测值
-            next_active_value = next_value[:, 0, :]
+            # next_active_value 的形状也是 (N, M, 1)
+            next_active_value = denorm_next_value
 
-            # ------------------------------------------------------------------
-            # Step C: 反向链式迭代 (Back-propagation through Sequence)
-            # ------------------------------------------------------------------
-            # 遍历所有时间步和所有智能体构成的长链条
-            for i in reversed(range(T * M)):
-                # 定义当前步骤的性质
-                # 根据你的定义：False(0) = 需要行动 (Decision Node)
-                #               True(1)  = 不需要行动 (Pass-through Node)
-                is_decision_step = 1.0 - flat_active_masks[i] 
+            # --- 2. 仅在时间维度 T 上反向迭代 ---
+            for step in reversed(range(T)):
+                is_decision_step = 1.0 - self.active_masks[step]
                 
-                # --- 1. 计算 Delta (TD Error) ---
-                # 只在 Decision Step 有意义。
-                # 注意：这里我们移除了 use_mask (self.masks)，假设序列是连续的
-                delta = flat_rewards[i] + self.gamma * next_active_value - flat_values[i]
+                # --- A. 计算 Delta ---
+                delta = self.rewards[step] + self.gamma * next_active_value - denorm_values[step]
                 
-                # --- 2. 更新 GAE (Advantage) ---
-                # 逻辑分支：
-                # If Decision Step: 标准 GAE 更新 (引入 Delta, 进行衰减)
-                # If Pass-through:  保持 GAE 不变 (纯传递，无衰减，无 Delta)
-                
-                # 计算如果当前是 Decision Step 的 GAE
+                # --- B. 更新 GAE ---
                 gae_update = delta + self.gamma * self.gae_lambda * gae
+                gae = is_decision_step * gae_update + (1.0 - is_decision_step) * gae
                 
-                # 组合：如果是 Decision Step 就用更新值，否则沿用旧值(即未来的GAE)
-                gae = is_decision_step * gae_update + (1 - is_decision_step) * gae
+                # --- C. 计算 Returns ---
+                # 【修复点 2】：安全地原地赋值给已有的 returns 数组
+                self.returns[step] = gae + denorm_values[step]
                 
-                # --- 3. 计算 Returns ---
-                # Returns = Advantage + Value
-                flat_returns[i] = gae + flat_values[i]
-                
-                # --- 4. 更新 Bootstrap 指针 (next_active_value) ---
-                # If Decision Step: 当前 Value 变成上一步的 Target
-                # If Pass-through:  Target 穿透过去，保持不变
-                next_active_value = is_decision_step * flat_values[i] + (1 - is_decision_step) * next_active_value
+                # --- D. 更新 Bootstrap 指针 ---
+                next_active_value = is_decision_step * denorm_values[step] + (1.0 - is_decision_step) * next_active_value
 
-            # ------------------------------------------------------------------
-            # Step D: 还原形状 (Reshape back)
-            # ------------------------------------------------------------------
-            # (T*M, N, 1) -> (T, M, N, 1) -> (T, N, M, 1)
-            self.returns = flat_returns.reshape(T, M, N, 1).transpose(0, 2, 1, 3)
-            
-            # 哨兵位更新
+            # 哨兵位更新保持归一化原值
             self.value_preds[-1] = next_value
 
         else:
-            self.returns[-1] = next_value
-            for step in reversed(range(self.rewards.shape[0])):
+            # 不使用 GAE 的情况 (也做了向量化对齐)
+            if use_v_norm:
+                self.returns[-1] = value_normalizer.denormalize(next_value)
+            else:
+                self.returns[-1] = next_value
+                
+            for step in reversed(range(T)):
                 self.returns[step] = self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]
 
     def graph_recurrent_generator(self, advantages, mini_batch_size):
@@ -236,140 +212,27 @@ class SharedReplayBuffer(object):
             end_id = min(start_id + mini_batch_size, n_rollout_threads)
             ind = rand[start_id:end_id]
 
-            obs_batch = _graph_cast(self.obs[:-1, ind])
+            graph_obs_batch = []
+            for step in range(episode_length):
+                for thread_idx in ind:
+                    graph_obs_batch.append(self.graph_obs[step][thread_idx])
+
             rnn_states_batch = _graph_cast(self.rnn_states[:-1, ind])
             actions_batch = _graph_cast(self.actions[:, ind])
-            
-            if self.available_actions is not None:
-                available_actions_batch = _graph_cast(self.available_actions[:-1, ind])
-            else:
-                available_actions_batch = None
+
+            current_actions = self.actions[:, ind]
+            last_actions = np.full_like(current_actions, -1)
+            last_actions[1:] = current_actions[:-1]
+            last_op_batch = _graph_cast(last_actions[..., 0])
+            last_site_batch = _graph_cast(last_actions[..., 1])
 
             value_preds_batch = _graph_cast(self.value_preds[:-1, ind])
-            return_batch = _graph_cast(self.returns[:, ind])
+            return_batch = _graph_cast(self.returns[:-1, ind])
             rewards_batch = _graph_cast(self.rewards[:, ind])
-            masks_batch = _graph_cast(self.masks[:-1, ind])
             active_masks_batch = _graph_cast(self.active_masks[:-1, ind])
             old_action_log_probs_batch = _graph_cast(self.action_log_probs[:, ind])
-            
-            if advantages is not None:
-                adv_targ = _graph_cast(advantages[:, ind])
-            else:
-                adv_targ = None
-            
-            veh_nums_batch = _graph_cast(self.veh_nums[:-1, ind])
+            adv_targ = _graph_cast(advantages[:, ind])
 
-            yield obs_batch, rnn_states_batch, actions_batch,\
-                  value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch,\
-                  adv_targ, available_actions_batch, veh_nums_batch, rewards_batch, ind
-
-    def recurrent_generator(self, advantages, num_mini_batch, data_chunk_length):
-        """
-        Yield training data for chunked RNN training.
-        :param advantages: (np.ndarray) advantage estimates.
-        :param num_mini_batch: (int) number of minibatches to split the batch into.
-        :param data_chunk_length: (int) length of sequence chunks with which to train RNN.
-        """
-        episode_length, n_rollout_threads, num_agents = self.rewards.shape[0:3]
-        batch_size = n_rollout_threads * episode_length * num_agents
-        data_chunks = batch_size // data_chunk_length  # [C=r*T*M/L]
-        mini_batch_size = data_chunks // num_mini_batch
-
-        rand = torch.randperm(data_chunks).numpy()
-        sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]
-
-        if len(self.share_obs.shape) > 4:
-            share_obs = self.share_obs[:-1].transpose(1, 2, 0, 3, 4, 5).reshape(-1, *self.share_obs.shape[3:])
-            obs = self.obs[:-1].transpose(1, 2, 0, 3, 4, 5).reshape(-1, *self.obs.shape[3:])
-        else:
-            share_obs = _cast(self.share_obs[:-1])
-            obs = _cast(self.obs[:-1])
-
-        actions = _cast(self.actions)
-        action_log_probs = _cast(self.action_log_probs)
-        advantages = _cast(advantages)
-        value_preds = _cast(self.value_preds[:-1])
-        returns = _cast(self.returns[:-1])
-        masks = _cast(self.masks[:-1])
-        active_masks = _cast(self.active_masks[:-1])
-        # rnn_states = _cast(self.rnn_states[:-1])
-        # rnn_states_critic = _cast(self.rnn_states_critic[:-1])
-        rnn_states = self.rnn_states[:-1].transpose(1, 2, 0, 3, 4).reshape(-1, *self.rnn_states.shape[3:])
-        rnn_states_critic = self.rnn_states_critic[:-1].transpose(1, 2, 0, 3, 4).reshape(-1,
-                                                                                         *self.rnn_states_critic.shape[
-                                                                                          3:])
-
-        if self.available_actions is not None:
-            available_actions = _cast(self.available_actions[:-1])
-
-        for indices in sampler:
-            share_obs_batch = []
-            obs_batch = []
-            rnn_states_batch = []
-            rnn_states_critic_batch = []
-            actions_batch = []
-            available_actions_batch = []
-            value_preds_batch = []
-            return_batch = []
-            masks_batch = []
-            active_masks_batch = []
-            old_action_log_probs_batch = []
-            adv_targ = []
-
-            for index in indices:
-
-                ind = index * data_chunk_length
-                # size [T+1 N M Dim]-->[T N M Dim]-->[N,M,T,Dim]-->[N*M*T,Dim]-->[L,Dim]
-                share_obs_batch.append(share_obs[ind:ind + data_chunk_length])
-                obs_batch.append(obs[ind:ind + data_chunk_length])
-                actions_batch.append(actions[ind:ind + data_chunk_length])
-                if self.available_actions is not None:
-                    available_actions_batch.append(available_actions[ind:ind + data_chunk_length])
-                value_preds_batch.append(value_preds[ind:ind + data_chunk_length])
-                return_batch.append(returns[ind:ind + data_chunk_length])
-                masks_batch.append(masks[ind:ind + data_chunk_length])
-                active_masks_batch.append(active_masks[ind:ind + data_chunk_length])
-                old_action_log_probs_batch.append(action_log_probs[ind:ind + data_chunk_length])
-                adv_targ.append(advantages[ind:ind + data_chunk_length])
-                # size [T+1 N M Dim]-->[T N M Dim]-->[N M T Dim]-->[N*M*T,Dim]-->[1,Dim]
-                rnn_states_batch.append(rnn_states[ind])
-                rnn_states_critic_batch.append(rnn_states_critic[ind])
-
-            L, N = data_chunk_length, mini_batch_size
-
-            # These are all from_numpys of size (L, N, Dim)           
-            share_obs_batch = np.stack(share_obs_batch, axis=1)
-            obs_batch = np.stack(obs_batch, axis=1)
-
-            actions_batch = np.stack(actions_batch, axis=1)
-            if self.available_actions is not None:
-                available_actions_batch = np.stack(available_actions_batch, axis=1)
-            value_preds_batch = np.stack(value_preds_batch, axis=1)
-            return_batch = np.stack(return_batch, axis=1)
-            masks_batch = np.stack(masks_batch, axis=1)
-            active_masks_batch = np.stack(active_masks_batch, axis=1)
-            old_action_log_probs_batch = np.stack(old_action_log_probs_batch, axis=1)
-            adv_targ = np.stack(adv_targ, axis=1)
-
-            # States is just a (N, -1) from_numpy
-            rnn_states_batch = np.stack(rnn_states_batch).reshape(N, *self.rnn_states.shape[3:])
-            rnn_states_critic_batch = np.stack(rnn_states_critic_batch).reshape(N, *self.rnn_states_critic.shape[3:])
-
-            # Flatten the (L, N, ...) from_numpys to (L * N, ...)
-            share_obs_batch = _flatten(L, N, share_obs_batch)
-            obs_batch = _flatten(L, N, obs_batch)
-            actions_batch = _flatten(L, N, actions_batch)
-            if self.available_actions is not None:
-                available_actions_batch = _flatten(L, N, available_actions_batch)
-            else:
-                available_actions_batch = None
-            value_preds_batch = _flatten(L, N, value_preds_batch)
-            return_batch = _flatten(L, N, return_batch)
-            masks_batch = _flatten(L, N, masks_batch)
-            active_masks_batch = _flatten(L, N, active_masks_batch)
-            old_action_log_probs_batch = _flatten(L, N, old_action_log_probs_batch)
-            adv_targ = _flatten(L, N, adv_targ)
-
-            yield share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch,\
-                  value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch,\
-                  adv_targ, available_actions_batch
+            yield graph_obs_batch, rnn_states_batch, actions_batch,\
+                  value_preds_batch, return_batch, active_masks_batch, old_action_log_probs_batch,\
+                  adv_targ, last_op_batch, last_site_batch, rewards_batch

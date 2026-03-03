@@ -161,7 +161,7 @@ def get_config():
     parser.add_argument("--algorithm_name", type=str,
                         default='gnn_mappo', choices=["rmappo", "mappo", "happo", "gnn_mappo", "hatrpo", "mat", "mat_dec"])
 
-    parser.add_argument("--experiment_name", type=str, default="train-full-fusion-ppo3", help="an identifier to distinguish different experiment.")
+    parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=16874536, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
     parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
@@ -169,7 +169,7 @@ def get_config():
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
                         default=1, help="Number of torch threads for training")
-    parser.add_argument("--n_rollout_threads", type=int, default=360,
+    parser.add_argument("--n_rollout_threads", type=int, default=10,
                         help="Number of parallel envs for training rollouts")
     parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
                         help="Number of parallel envs for evaluating rollouts")
@@ -177,7 +177,7 @@ def get_config():
                         help="Number of parallel envs for rendering rollouts")
     parser.add_argument("--num_env_steps", type=int, default=10e6,
                         help='Number of environment steps to train (default: 10e6)')
-    parser.add_argument("--num_episodes", type=int, default=100,
+    parser.add_argument("--num_episodes", type=int, default=40,
                         help='Number of episodes to train (default: 40)')
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
@@ -207,7 +207,7 @@ def get_config():
     parser.add_argument("--use_ReLU", action='store_false',
                         default=True, help="Whether to use ReLU")
     parser.add_argument("--use_popart", action='store_true', default=False, help="by default False, use PopArt to normalize rewards.")
-    parser.add_argument("--use_valuenorm", action='store_false', default=False, help="by default True, use running mean and std to normalize rewards.")
+    parser.add_argument("--use_valuenorm", action='store_false', default=True, help="by default True, use running mean and std to normalize rewards.")
     parser.add_argument("--use_feature_normalization", action='store_false',
                         default=True, help="Whether to apply layernorm to the inputs")
     parser.add_argument("--use_orthogonal", action='store_false', default=True,
@@ -248,7 +248,7 @@ def get_config():
                         action='store_false', default=True, help="by default, clip loss value. If set, do not clip loss value.")
     parser.add_argument("--clip_param", type=float, default=0.2,
                         help='ppo clip parameter (default: 0.2)')
-    parser.add_argument("--mini_batch_size", type=int, default=180,
+    parser.add_argument("--mini_batch_size", type=int, default=10,
                         help='size of training batch for ppo (default: 1)')
     parser.add_argument("--entropy_coef", type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
@@ -278,7 +278,7 @@ def get_config():
                         default=False, help='use a linear schedule on the learning rate')
     parser.add_argument("--gnn_pretrain", action='store_false', 
                         default=True, help="by default True, use pretrain gnn model. If set, do not use pretrain gnn model.")
-    parser.add_argument("--gnn_freeze_epochs", type=int, default=2, help="the number of epochs to freeze gnn model, default 2")
+    parser.add_argument("--gnn_freeze_epochs", type=int, default=0, help="the number of epochs to freeze gnn model, default 2")
     parser.add_argument("--use_anneal", action='store_false', 
                         default=True, help="by default True, use anneal to adjust hyperparameters. If set, do not use anneal.")
     parser.add_argument("--anneal_original", type=float, default=1.0, help="the original value of anneal, default 1.0")
@@ -291,7 +291,7 @@ def get_config():
     parser.add_argument("--log_interval", type=int, default=1, help="time duration between contiunous twice log printing.")
 
     # eval parameters
-    parser.add_argument("--use_eval", action='store_false', default=True, help="by default, do not start evaluation. If set`, start evaluation alongside with training.")
+    parser.add_argument("--use_eval", action='store_false', default=False, help="by default, do not start evaluation. If set`, start evaluation alongside with training.")
     parser.add_argument("--eval_interval", type=int, default=3000, help="time duration between contiunous twice evaluation progress.")
     parser.add_argument("--eval_episodes", type=int, default=32, help="number of episodes of a single evaluation.")
 
@@ -314,5 +314,5 @@ def get_config():
     parser.add_argument("--auto_fuse", action='store_false', default=True, help="whether to fuse s(distance) into reward")
     parser.add_argument('--start_epoch', type=int, default=60, help="the epoch to start fusing reward, default 10")
     parser.add_argument('--fuse_epoch', type=int, default=20, help="the epoch to start fusing reward, default 10")
-    parser.add_argument('--max_agent_num', type=int, default=6, help="the max number of agents, default 6")    
+    parser.add_argument('--max_agent_num', type=int, default=12, help="the max number of agents, default 6")    
     return parser
