@@ -127,6 +127,7 @@ class GNN_Actor_Critic(nn.Module):
             # B. 提取 GRU 的输入 2：当前飞机的诉求 (当前可用工序上下文)
             # ---------------------------------------------------------
             cur_agent_mask = op_valid_mask[:, agent_idx, :] # [B, N_ops]
+            cur_site_mask = site_mask_matrix[:, agent_idx, :] # [B, N_ops, N_sites] 全局资源视角
             valid_ops_emb = op_nodes[active_mask_i] * cur_agent_mask[active_mask_i].unsqueeze(-1).float()
             
             counts = cur_agent_mask[active_mask_i].sum(dim=1, keepdim=True).clamp(min=1e-5)
@@ -165,7 +166,7 @@ class GNN_Actor_Critic(nn.Module):
                     op_nodes=op_nodes[active_mask_i], 
                     site_nodes=site_nodes[active_mask_i], 
                     op_valid_mask=cur_agent_mask[active_mask_i], 
-                    site_mask_matrix=site_mask_matrix[active_mask_i], 
+                    site_valid_mask=cur_site_mask[active_mask_i], 
                     deterministic=deterministic, 
                     tau=self.tau,
                     chosen_op=cur_chosen_op, 
@@ -175,7 +176,7 @@ class GNN_Actor_Critic(nn.Module):
                 with torch.no_grad():
                     cur_op, cur_site, cur_prob, cur_dist = self.actor(
                         query.unsqueeze(1), op_nodes[active_mask_i], site_nodes[active_mask_i], 
-                        cur_agent_mask[active_mask_i], site_mask_matrix[active_mask_i], 
+                        cur_agent_mask[active_mask_i], cur_site_mask[active_mask_i], 
                         deterministic, cur_chosen_op, cur_chosen_site, self.tau
                     )
 
@@ -214,7 +215,7 @@ class GNN_Actor_Critic(nn.Module):
             # ---------------------------------------------------------
             batch_indices = torch.nonzero(active_mask_i).squeeze(1)
             # 刚才被选走的工序不能再选
-            op_valid_mask[batch_indices, agent_idx, cur_op] = False
+            # op_valid_mask[batch_indices, agent_idx, cur_op] = False
             # 刚才被分配的机位不能再选
             site_mask_matrix[batch_indices, :, cur_site] = False
 

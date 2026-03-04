@@ -86,7 +86,7 @@ class CascadePtrActor(Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
     
-    def forward(self, query, op_nodes, site_nodes, op_valid_mask, site_mask_matrix, 
+    def forward(self, query, op_nodes, site_nodes, op_valid_mask, site_valid_mask, 
                 deterministic: bool = False, chosen_op=None, chosen_site=None, tau=1.0):
         """
         两级级联前向传播
@@ -133,8 +133,7 @@ class CascadePtrActor(Module):
         site_q = self.site_query_ff(site_q_input)
 
         # 3. 提取“特定于该工序”的机位合法掩码
-        cur_site_valid_mask = site_mask_matrix[batch_indices, op_idx, :] # [B, N_sites]
-        site_pad_mask = ~cur_site_valid_mask
+        site_pad_mask = ~site_valid_mask
 
         # 4. 新增的亮点：机位意图交叉注意力 (Site Cross-Attention)
         # 让 site_q 提前关注那些合法机位的状态（拥挤度、距离等）

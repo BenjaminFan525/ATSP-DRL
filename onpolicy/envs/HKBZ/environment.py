@@ -297,7 +297,7 @@ class AircraftScheduleEnv(gym.Env):
             site_features.append([occ, interf, rem_time] + job_onehot)
             
             # 物理限制
-            if site.code in ['Z', '29', '30', '31'] or site.is_interfered or site.is_occupied or getattr(site, 'is_reserved', False):
+            if site.code in ['Z', '29', '30', '31'] or site.is_interfered or site.is_occupied:
                 global_site_valid.append(False)
             else:
                 global_site_valid.append(True)
@@ -318,21 +318,37 @@ class AircraftScheduleEnv(gym.Env):
             data['device'].x = torch.empty((0, 5), dtype=torch.float32)
 
         # ==========================================
-        # 3. 构建工序节点 (Operation) & 形状绝对安全的 Mask
+        # 3. 构建工序节点 (Operation) & 机位掩码 (Site Mask)
         # ==========================================
-        # 预分配 Numpy 数组，确保形状铁打不动
         op_features = np.zeros((n_agents * n_ops, 6), dtype=np.float32)
         agent_op_mask = np.zeros((n_agents, n_agents * n_ops), dtype=bool) 
-        ptr_site_mask_matrix = np.zeros((n_agents * n_ops, n_sites), dtype=bool)
+        
+        # 维度缩减为 (n_agents, n_sites)
+        ptr_site_mask_matrix = np.zeros((n_agents, n_sites), dtype=bool)
         
         for global_pid in range(n_agents):
             plane = active_planes.get(global_pid, None)
             
             if plane is not None:
-                # 飞机在场上，正常提取状态
+                # ---------------------------------------------------
+                # A. 计算该飞机对所有机位的合法性 (不再依赖具体的 job)
+                # ---------------------------------------------------
+                for s_idx, site in enumerate(site_list):
+                    if global_site_valid[s_idx]:
+                        # 1. 全局合法（无人占用且无干涉），此机位可用
+                        ptr_site_mask_matrix[global_pid, s_idx] = True
+                    else:
+                        # 2. 全局不合法，但如果占用它的正是当前这架飞机本身，且无干涉，则可用（允许飞机原地干活）
+                        if site.code != 'Z' and site == plane.site and not site.is_interfered:
+                            ptr_site_mask_matrix[global_pid, s_idx] = True
+                        else:
+                            ptr_site_mask_matrix[global_pid, s_idx] = False
+
+                # ---------------------------------------------------
+                # B. 计算工序特征与掩码
+                # ---------------------------------------------------
                 current_avail_jobs = plane.get_avail_jobs(site=None)
                 for j_idx, job_code in enumerate(self.job_code_list):
-                    # u_idx 是这个作业在全局图中的唯一节点索引
                     u_idx = global_pid * n_ops + j_idx 
                     job_obj = self.jobs[job_code]
                     
@@ -355,25 +371,17 @@ class AircraftScheduleEnv(gym.Env):
                     
                     op_features[u_idx] = [status, proc_time, rem_ops, req_res, wait_time, float(global_pid)]
                     
-                    # 站点掩码计算
-                    for s_idx, site in enumerate(site_list):
-                        if not global_site_valid[s_idx]:
-                            if site.code != 'Z' and site == plane.site and not site.is_interfered:
-                                ptr_site_mask_matrix[u_idx, s_idx] = True
-                            continue
-                            
-                        job_idx_in_onehot = self.job_code_list.index(job_code)
-                        ptr_site_mask_matrix[u_idx, s_idx] = (site.avail_job_onehot[job_idx_in_onehot] == 1)
             else:
-                # 飞机不在场上（未降落或已起飞）：填入幽灵节点 (Dummy Nodes)
+                # 飞机不在场上：幽灵节点
                 for j_idx in range(n_ops):
                     u_idx = global_pid * n_ops + j_idx
                     op_features[u_idx] = [3.0, 0.0, 0.0, 0.0, 0.0, float(global_pid)]
-                    # 【修改 3】：不在场的飞机 op_mask 必须为 True，防止 Ptr-Net 出现 NaN
                     agent_op_mask[global_pid, u_idx] = True 
-                    ptr_site_mask_matrix[u_idx, :] = True
+                
+                # 不在场的飞机，机位掩码全为 True 防止计算 NaN
+                ptr_site_mask_matrix[global_pid, :] = True
 
-            # 【修改 4】：安全保险 - 如果一架在场的飞机当前没任何活能干，强制把它自己的节点置为 True 占位
+            # 安全保险 - 如果一架在场的飞机当前没任何活能干，强制把它自己的节点置为 True 占位
             if not agent_op_mask[global_pid].any():
                 agent_op_mask[global_pid, global_pid * n_ops : (global_pid + 1) * n_ops] = True
                 
@@ -404,7 +412,7 @@ class AircraftScheduleEnv(gym.Env):
                         
                 # --- B. O-S Edge ---
                 # 注意：图网络建边只需要看 ptr_site_mask_matrix 就行了
-                for s_idx, is_valid in enumerate(ptr_site_mask_matrix[u_idx]):
+                for s_idx, is_valid in enumerate(ptr_site_mask_matrix[global_pid]):
                     if is_valid:
                         site = site_list[s_idx]
                         edge_os[0].append(u_idx)
@@ -450,34 +458,39 @@ class AircraftScheduleEnv(gym.Env):
             
         # 直接挂载 Numpy 生成的绝对固定形状的 Tensor
         data.op_mask = torch.tensor(agent_op_mask, dtype=torch.bool)             # Shape: [n_agents, n_ops]
-        data.site_mask_matrix = torch.tensor(ptr_site_mask_matrix, dtype=torch.bool) # Shape: [n_agents*n_ops, n_sites]
+        data.site_mask_matrix = torch.tensor(ptr_site_mask_matrix, dtype=torch.bool) # Shape: [n_agents, n_sites]
             
         return data
 
     def _get_reward(self):
         """
         计算每个智能体的即时奖励。
-        使用 Total Flow Time 差值，提供极度密集的梯度信号。
+        【终极优化方案：流间积分法】
+        Total Flow Time 的最小化，等价于对系统中每一架未完成的飞机施加 -dt 的持续惩罚。
         """
-        # 1. 提取执行动作并经过 dt 时间跃迁后的【新】预估完工时间总和
-        new_total_sum = self._estimate_system_total_time()
+        # 1. 提取本次物理状态推演流逝的时间 dt
+        dt = self.step_time 
         
-        if not hasattr(self, 'last_total_sum'):
-            self.last_total_sum = new_total_sum
-            
-        # 2. 核心数学转换：差值即为全局奖励
-        # 只要任意一架飞机的进度提前，全局奖励就为正
-        # 只要有飞机处于空闲/等待导致时间虚耗，全局奖励必为负
-        global_reward = self.last_total_sum - new_total_sum
-        
-        self.last_total_sum = new_total_sum
-        
-        # 3. 分发奖励
+        # 如果没有时间流逝（例如连续两次下发动作的中间态），则没有惩罚
+        if dt <= 0:
+            return np.zeros((self.n_agents, 1), dtype=np.float32)
+
+        # 2. 计算当前场上【尚未完成全部任务】的飞机数量
+        # (刚降落的、在等车的、在运输的、在作业的都算；做完所有任务的算离开，不扣分)
+        active_plane_count = 0
+        for plane in self.planes.values():
+            if not plane.is_completed_all_jobs():
+                active_plane_count += 1
+                
+        # 3. 核心：全局惩罚 = - (未完成飞机数 * 流逝时间)
+        # 归一化：除以 100.0，把几千秒的惩罚压到 [-1, 0] 的合理量级，拯救 Critic
+        global_reward = - (active_plane_count * dt) / 100.0
+
+        # 4. 分发奖励
         rewards = np.zeros((self.n_agents, 1), dtype=np.float32)
-        
         for plane in self.planes.values():
             pid = int(plane.code.split('_')[-1])
-            # 只有当步积极参与决策、或是被堵塞的活跃飞机，才分配该奖励（或惩罚）
+            # 只有当前批次的活跃决策者才能瓜分这个奖励
             if self.current_active_agents[pid]:
                 rewards[pid, 0] = global_reward
             else:
@@ -600,6 +613,7 @@ class AircraftScheduleEnv(gym.Env):
         # =====================================================================
         # 核心重构：内部事件推演循环 (Fast-Forward Loop)
         # =====================================================================
+        time_prev = self.total_time
         while True:
             internal_step_time = np.inf
             
@@ -647,26 +661,33 @@ class AircraftScheduleEnv(gym.Env):
             
             dt = min(internal_step_time, next_landing_dt)
             if dt == np.inf:
-                print("[Warning] No upcoming events detected! Force break loop.")
+                # print("[Warning] No upcoming events detected! Force break loop.")
                 break
                 
-            self.total_time += dt
-            self.step_time = dt 
+            self.total_time += dt 
 
             # -----------------------------------------------------------
             # Phase 3: 物理状态推演 (时间流逝)
             # -----------------------------------------------------------
             if dt >= 0:
+                # 第一段：只结算干涉、正在运输（会到达目的地）和正在作业（会结束作业）的实体
+                for site in self.sites.values():
+                    if site.is_interfered: site.update(dt)
+                        
+                for plane in list(self.planes.values()):
+                    if plane.is_busy or plane.is_transporting:
+                        plane.update(dt)
+
                 for devices in self.mobile_devices.values():
                     for device in devices:
                         if not device.is_idle():
                             device.update(dt)
-                for plane in self.planes.values():
-                    if not plane.is_idle():
+
+                # 第二段：结算所有“处于等待状态”的飞机
+                # 此时，所有该腾空位置的飞机都已经完成了离开动作，绝不会发生旧飞机挡住新飞机的情况
+                for plane in list(self.planes.values()):
+                    if plane.is_waiting:
                         plane.update(dt)
-                for site in self.sites.values():
-                    if site.is_interfered:
-                        site.update(dt)
 
             # -----------------------------------------------------------
             # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落)
@@ -700,6 +721,7 @@ class AircraftScheduleEnv(gym.Env):
             if has_active:
                 break # 有飞机空闲了需要下发动作，跳出循环
 
+        self.step_time = self.total_time - time_prev
         # 最终返回观测和奖励
         return self._get_obs(), self._get_reward(), self._get_done(), self._get_info()
 

@@ -169,7 +169,7 @@ def get_config():
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
                         default=1, help="Number of torch threads for training")
-    parser.add_argument("--n_rollout_threads", type=int, default=10,
+    parser.add_argument("--n_rollout_threads", type=int, default=100,
                         help="Number of parallel envs for training rollouts")
     parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
                         help="Number of parallel envs for evaluating rollouts")
@@ -177,7 +177,7 @@ def get_config():
                         help="Number of parallel envs for rendering rollouts")
     parser.add_argument("--num_env_steps", type=int, default=10e6,
                         help='Number of environment steps to train (default: 10e6)')
-    parser.add_argument("--num_episodes", type=int, default=40,
+    parser.add_argument("--num_episodes", type=int, default=500,
                         help='Number of episodes to train (default: 40)')
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
@@ -225,9 +225,9 @@ def get_config():
                         help="Time length of chunks used to train a recurrent_policy")
 
     # optimizer parameters
-    parser.add_argument("--lr", type=float, default=0.0001,
+    parser.add_argument("--lr", type=float, default=0.0005,
                         help='learning rate (default: 5e-4)')
-    parser.add_argument("--critic_lr", type=float, default=0.0001,
+    parser.add_argument("--critic_lr", type=float, default=0.0005,
                         help='critic learning rate (default: 5e-4)')
     parser.add_argument("--opti_eps", type=float, default=1e-5,
                         help='RMSprop optimizer epsilon (default: 1e-5)')
