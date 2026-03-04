@@ -107,10 +107,10 @@ class HKBZ_Runner(Runner):
               desc="Training",    
               unit="episode",     
               total=episodes,       
-              ncols=120)
+              ncols=160)
         for episode in pbar:
-            profiler = cProfile.Profile()
-            profiler.enable()
+            # profiler = cProfile.Profile()
+            # profiler.enable()
             # self.envs.shuffer_data()
             training_rewards = []
             self.episode = episode
@@ -154,7 +154,7 @@ class HKBZ_Runner(Runner):
             
             self.total_num_steps += self.n_rollout_threads
             self.log_train(train_infos, self.total_num_steps)
-            training_rewards.append(train_infos["rewards"] / (self.reward_coef[self.obj]))
+            training_rewards.append(train_infos["rewards"])
             pbar.set_description(f"[Episode {episode+1}]")
             pbar.set_postfix(
                 average_episode_rewards=np.mean(training_rewards),
@@ -165,9 +165,9 @@ class HKBZ_Runner(Runner):
             if (episode % self.save_interval == 0 or episode == episodes - 1):
                 self.save(episode)
 
-            profiler.disable()
-            stats = pstats.Stats(profiler).sort_stats('cumtime')
-            stats.print_stats(30) # 打印耗时前20的函数
+            # profiler.disable()
+            # stats = pstats.Stats(profiler).sort_stats('cumtime')
+            # stats.print_stats(30) # 打印耗时前20的函数
 
             # log information
             # if episode % self.log_interval == 0:

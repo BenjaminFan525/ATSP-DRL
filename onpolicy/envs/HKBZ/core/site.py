@@ -37,10 +37,10 @@ class Site:
         示例:
             site.add_plane(plane_instance)  # 飞机停靠到站点
         '''
-        assert self.is_occupied is False or self.plane == plane, f"Site {self.code} is already occupied!"
+        assert self.is_occupied is False or self.plane == plane, f"Site {self.code} is already occupied with plane {self.plane.code} cannot add plane {plane.code}!"
         self.plane = plane
         self.is_occupied = True
-        # print(f"Plane {plane.code} has landed at Site {self.code}.")
+        # print(f"Plane {plane.code} has reached Site {self.code}.")
 
     def remove_plane(self):
         '''将飞机从当前站点移除

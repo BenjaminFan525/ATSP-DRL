@@ -260,6 +260,7 @@ class Plane:
                     self.finish_waiting()
                     self.transporter = self.site.get_avail_transporter()
                     ret = self.start_transport(self.destination, self.transporter)
+                    self.destination = None
             # 检查是否可以结束等待（有选择的作业且可用）
             elif self.choosed_job and self.choosed_job in self.get_avail_jobs(self.site):
                 self.finish_waiting()
@@ -282,7 +283,8 @@ class Plane:
                         ret = self.choose_job('ZY02')
                     else:
                         self.start_waiting()
-            ret = self.left_trans_time
+            else:
+                ret = self.left_trans_time
 
         # 作业状态更新
         elif self.is_busy:
