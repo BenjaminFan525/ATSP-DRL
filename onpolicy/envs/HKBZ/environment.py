@@ -2,6 +2,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+from typing import List, Dict, Tuple
 from onpolicy.envs.HKBZ.core import Plane, Device, Job, Resource, Site
 from onpolicy.envs.HKBZ.utils import arrange_devices
 import json
@@ -57,7 +58,7 @@ class AircraftScheduleEnv(gym.Env):
                 item["设备编号"],
                 item["类型"],
                 [str(idx) for idx in range(int(item["支持停机位"].split("-")[0]), int(item["支持停机位"].split("-")[1]) + 1)],
-                max_service=5
+                max_service=3
             ) for item in data
         }
         
@@ -138,6 +139,10 @@ class AircraftScheduleEnv(gym.Env):
                 'jobs': self.jobs.values()
             }
             self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
+
+        self.trajectory_log = []
+        self.pending_actions = {}
+        self.use_domain_rand = True
         
     def seed(self, seed=None):
         '''设置随机种子'''
@@ -176,7 +181,7 @@ class AircraftScheduleEnv(gym.Env):
         '''
         ret = []
         for res_type in res_types:
-            ret += [device for device in self.mobile_devices[res_type] if device.is_idle()]
+            ret += [device for device in self.mobile_devices[res_type] if device.is_idle() and device.resource.is_available()]
         return ret
 
     def get_avail_sites(self, plane=None):
@@ -210,47 +215,6 @@ class AircraftScheduleEnv(gym.Env):
             runways = env.get_avail_takeoff_sites()
         '''
         return [site.code for site in self.sites.values() if not site.is_occupied and site.code in ['29', '30', '31']]
-
-    def _estimate_system_total_time(self):
-        """
-        计算当前状态下，系统中所有飞机的预估完工时间之和（Total Flow Time）。
-        取代单纯的 C_max，为每个智能体提供密集且公平的奖励信号。
-        """
-        total_sum = 0
-        
-        # 1. 预估当前在场的飞机
-        for plane in self.planes.values():
-            # 基础时间为当前环境绝对时间
-            t = self.total_time 
-            
-            # 加上正在进行的动作剩余时间
-            if plane.is_transporting:
-                t += plane.left_trans_time
-            elif plane.is_busy:
-                t += plane.site.left_job_time
-                
-            # 加上剩余未做作业的预估时间
-            for job_code in plane.left_jobs:
-                job_obj = self.jobs[job_code]
-                t += job_obj.time if job_obj.time else 0
-                t += 120  # 预估平均转运时间
-                
-            total_sum += t
-            
-        # 2. 预估未来尚未降落的飞机
-        for land_time in self.landing_list:
-            if land_time >= self.total_time:
-                t = land_time
-                for job in self.jobs.values():
-                    if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']:
-                        t += job.time if job.time else 0
-                        t += 120
-                total_sum += t
-                
-        # 注：已经完成并飞走的飞机，其完工时间已变成常量。
-        # 常量在计算前后的差值(old_sum - new_sum)时会被自然抵消，因此无需纳入求和！
-        
-        return total_sum
 
     def _get_obs(self):
         """
@@ -465,37 +429,61 @@ class AircraftScheduleEnv(gym.Env):
     def _get_reward(self):
         """
         计算每个智能体的即时奖励。
-        【终极优化方案：流间积分法】
-        Total Flow Time 的最小化，等价于对系统中每一架未完成的飞机施加 -dt 的持续惩罚。
+        【重构核心】：
+        1. 引入 Reward Shaping（阶段性奖励与离场奖励），打破稀疏惩罚，引导 Actor 走出随机探索的深渊。
+        2. 修复 SMDP 奖励分配漏洞：每一步流逝的 dt 产生的奖惩，必须分发给所有在场飞机。
         """
-        # 1. 提取本次物理状态推演流逝的时间 dt
         dt = self.step_time 
         
-        # 如果没有时间流逝（例如连续两次下发动作的中间态），则没有惩罚
+        # 如果没有时间流逝，直接返回 0
         if dt <= 0:
             return np.zeros((self.n_agents, 1), dtype=np.float32)
 
-        # 2. 计算当前场上【尚未完成全部任务】的飞机数量
-        # (刚降落的、在等车的、在运输的、在作业的都算；做完所有任务的算离开，不扣分)
-        active_plane_count = 0
-        for plane in self.planes.values():
-            if not plane.is_completed_all_jobs():
-                active_plane_count += 1
-                
-        # 3. 核心：全局惩罚 = - (未完成飞机数 * 流逝时间)
-        # 归一化：除以 100.0，把几千秒的惩罚压到 [-1, 0] 的合理量级，拯救 Critic
-        global_reward = - (active_plane_count * dt) / 100.0
+        # 1. 计算全局时间惩罚 (Global Penalty)
+        # 仍在场上的飞机越多，每秒扣分越狠，倒逼模型学会并行调度以缩短 Total Flow Time
+        # active_plane_count = sum(1 for p in self.planes.values() if not p.is_completed_all_jobs())
+        global_time_penalty = - dt / 100.0
 
-        # 4. 分发奖励
         rewards = np.zeros((self.n_agents, 1), dtype=np.float32)
-        for plane in self.planes.values():
-            pid = int(plane.code.split('_')[-1])
-            # 只有当前批次的活跃决策者才能瓜分这个奖励
-            if self.current_active_agents[pid]:
-                rewards[pid, 0] = global_reward
-            else:
-                rewards[pid, 0] = 0.0
-                
+
+        for plane_id, plane in self.planes.items():
+            pid = int(plane_id.split('_')[-1])
+            
+            # --- 动态初始化追踪属性 (无需去 Plane 类里改底座代码) ---
+            if not hasattr(plane, '_last_rewarded_job_count'):
+                plane._last_rewarded_job_count = len(plane.finished_jobs)
+            if not hasattr(plane, '_has_received_completion_bonus'):
+                plane._has_received_completion_bonus = False
+            
+            # 基础奖励：无论是否在做决策，所有在场飞机都要承担时间流逝的惩罚
+            agent_reward = global_time_penalty
+
+            # --- A. 进度激励 (Dense Reward) ---
+            # 检查在刚才流逝的 dt 时间内，该飞机是否完成了新的保障工序
+            current_finished_count = len(plane.finished_jobs)
+            newly_finished = current_finished_count - plane._last_rewarded_job_count
+            
+            if newly_finished > 0:
+                # 每完成一个保障工序，给予正向反馈，引导模型 "多干活"
+                agent_reward += newly_finished * 5.0
+                plane._last_rewarded_job_count = current_finished_count
+
+            # --- B. 终局奖励 (Terminal Reward) ---
+            # 如果刚刚完成了所有任务（准备起飞或已经起飞离场）
+            if plane.is_completed_all_jobs() and not plane._has_received_completion_bonus:
+                # 给予巨大的通关奖励，这是策略网络后期收敛的核心动力
+                agent_reward += 50.0
+                plane._has_received_completion_bonus = True
+            
+            # --- C. 非法动作瞬时惩罚 (Invalid Action Penalty) ---
+            # 用于配合后续的强行拦截逻辑。如果下发了必定失败或不合法的动作，狠狠扣分。
+            if hasattr(plane, 'invalid_action_flag') and plane.invalid_action_flag:
+                agent_reward -= 10.0
+                plane.invalid_action_flag = False  # 重置标志
+
+            # 赋值：不再用 current_active_agents 屏蔽，保障休眠期的连续奖励传递
+            rewards[pid, 0] = agent_reward
+            
         return rewards
     
     def _get_done(self):
@@ -558,7 +546,6 @@ class AircraftScheduleEnv(gym.Env):
     
     def step(self, action):
         '''执行一步纯事件驱动动作，并在内部自动快进时间直到出现可决策状态'''
-        self.steps += 1
 
         # =====================================================================
         # Phase 1A: 动作分配 (Agents' Turn) —— 每次 step 只执行一次
@@ -582,6 +569,17 @@ class AircraftScheduleEnv(gym.Env):
                     target_job = self.jobs[target_job_code]
                     plane.last_site_idx = job_idx
                     plane.last_job_idx = site_idx
+
+                    self.pending_actions[plane_id] = {
+                        'step_idx': self.steps,
+                        'agent_id': pid,
+                        'action': [int(action[pid][0]), int(action[pid][1])], # 确保是原生int
+                        'start_time': self.total_time,
+                        'plane_id': plane_id,
+                        'site_id': target_site_code,
+                        'device_ids': [] # 初始化为空，如果用到设备会在后续追加
+                    }
+
                 else:
                     target_site_code = plane.site.code
                     target_job = None
@@ -599,16 +597,21 @@ class AircraftScheduleEnv(gym.Env):
                             plane.destination.add_plane(plane)
                             plane.choosed_job = target_job_code
                     else:
-                        plane.start_transport(self.sites[target_site_code], plane.site.get_avail_transporter())
+                        transporter = plane.site.get_avail_transporter()
+                        plane.start_transport(self.sites[target_site_code], transporter)
                         plane.choosed_job = target_job_code
+                        if transporter and plane_id in self.pending_actions:
+                            self.pending_actions[plane_id]['device_ids'].append(transporter.code)
                 else:
                     if target_job and target_job.code not in plane.get_avail_jobs(plane.site):
                         if not plane.is_completed_all_jobs():
                             plane.start_waiting()
                             self.waiting_sites[target_job.code].append(plane.site.code)
                             plane.choosed_job = target_job_code
+                            plane.trans_time = 0
                     elif target_job:
                         plane.choose_job(target_job.code)
+                        plane.trans_time = 0
 
         # =====================================================================
         # 核心重构：内部事件推演循环 (Fast-Forward Loop)
@@ -633,6 +636,11 @@ class AircraftScheduleEnv(gym.Env):
                         device.start_transport(target_site)
                         if target_site.code in waiting_sites_list:
                             waiting_sites_list.remove(target_site.code)
+                        for wp in waiting_planes:
+                            if wp.site.code == target_site.code:
+                                if wp.code in self.pending_actions:
+                                    self.pending_actions[wp.code]['device_ids'].append(device.code)
+                                break
 
             # -----------------------------------------------------------
             # Phase 1C: 统计所有忙碌实体的剩余预期时间
@@ -656,7 +664,7 @@ class AircraftScheduleEnv(gym.Env):
             # -----------------------------------------------------------
             # Phase 2: 时间跃迁 dt 计算
             # -----------------------------------------------------------
-            future_landings = [t for t in self.landing_list if t > self.total_time]
+            future_landings = [item[0] for item in self.landing_list if item[0] > self.total_time]
             next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
             
             dt = min(internal_step_time, next_landing_dt)
@@ -692,18 +700,41 @@ class AircraftScheduleEnv(gym.Env):
             # -----------------------------------------------------------
             # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落)
             # -----------------------------------------------------------
-            while self.landing_list and self.total_time >= self.landing_list[0]:
-                land_time = self.landing_list.pop(0)
-                bidx = land_time // 3600
-                pidx = (land_time % 3600) // 120
+            while self.landing_list and self.total_time >= self.landing_list[0][0]:
+                # 直接解包获取完美无误的编号
+                land_time, bidx, pidx = self.landing_list.pop(0) 
+                
                 plane_cfg = {
                     'velocity': 5,
                     'site': self.sites['Z'],
-                    'fuel': self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30),
+                    'fuel': (self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30)) if getattr(self, 'use_domain_rand', True) else 30,
                     'jobs': [job for job in self.jobs.values() if job.code in self.job_code_list]
                 }
                 self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
 
+            for plane_id, plane in list(self.planes.items()):
+                if plane_id in self.pending_actions:
+                    # 动作完成的条件：飞机再次需要下发指令，或者已经彻底结束所有流程准备离场
+                    if plane.is_idle() or plane.is_completed_all_jobs():
+                        record = self.pending_actions.pop(plane_id)
+                        record['trans_time'] = plane.trans_time
+                        record['job_time'] = plane.job_time
+                        record['total_job_time'] = plane.total_job_time
+                        record['waiting_time'] = self.total_time - record['start_time'] - record['trans_time'] - record['job_time']
+                        record['end_time'] = self.total_time
+                        self.trajectory_log.append(record)
+                        
+            # 【新增】：极端容错 - 拦截并结算可能被从环境中移除 (remove_planes) 的飞机日志
+            for p_id in list(self.pending_actions.keys()):
+                if p_id not in self.planes:
+                    record = self.pending_actions.pop(p_id)
+                    record['trans_time'] = plane.trans_time
+                    record['job_time'] = plane.job_time
+                    record['total_job_time'] = plane.total_job_time
+                    record['waiting_time'] = self.total_time - record['start_time'] - record['trans_time'] - record['job_time']
+                    record['end_time'] = self.total_time
+                    self.trajectory_log.append(record)
+            
             # -----------------------------------------------------------
             # Phase 5: 检查是否可以退出快进循环
             # -----------------------------------------------------------
@@ -720,71 +751,116 @@ class AircraftScheduleEnv(gym.Env):
                     
             if has_active:
                 break # 有飞机空闲了需要下发动作，跳出循环
-
+        
         self.step_time = self.total_time - time_prev
+        self.steps += 1
         # 最终返回观测和奖励
         return self._get_obs(), self._get_reward(), self._get_done(), self._get_info()
 
-    def reset(self, seed=None, options=None):
-        '''重置环境
+    def reset(self):
+        super().reset(seed=None)
         
-        输入:
-            seed: int或None - 随机种子
-            options: dict或None - 额外选项
-        返回:
-            tuple - (初始观测obs, 是否结束done, 额外信息info)
-        作用:
-            通过调用各个组件的内部 reset 方法，实现毫秒级的状态复原，
-            彻底避免重复读取 JSON 文件带来的极高 I/O 延迟和内存开销。
-        '''
-        super().reset(seed=seed)
-        
-        # 1. 基础时间与计数器复位
+        # 解析域随机化开关 (优先级：options传入 > config配置 > 默认开启)
         self.steps = 0
         self.total_time = 0
         self.step_time = 0
         self.done = False
+        self.trajectory_log = []
+        self.pending_actions = {}
         
-        # 2. 清空动态生成的对象和事件队列
         self.planes.clear()
         self.num_planes = 0
         self.force_transfer_planes.clear()
         for key in self.waiting_sites.keys():
             self.waiting_sites[key] = []
             
+        # ==========================================================
+        # DR 1: 进场时间扰动 (Arrival Jitter)
+        # ==========================================================
         self.landing_list = []
-        for bidx in range(self.batch_num):
-            self.landing_list += [item + bidx * 3600 for item in list(range(0, 120 * self.plane_num_per_batch, 120))]
-        self.landing_list.sort()
         
-        # 3. 极其关键的复位顺序：先重置站点，再重置设备！
-        # 原因：Site.reset() 会清空机位上的设备列表 (self.devices = [])
-        # 随后 Device.reset() 会将设备强制挪回初始机位，并重新挂载到机位的 devices 列表中。
-        # 如果顺序反了，设备会丢失拓扑绑定。
+        # 仅在开启随机化时生成预置飞机
+        if self.use_domain_rand:
+            num_pre_planes = self.np_random.integers(0, 3) if hasattr(self, 'np_random') else np.random.randint(0, 3)
+        else:
+            num_pre_planes = 0
+            
+        for bidx in range(self.batch_num):
+            actual_arrivals = self.plane_num_per_batch - num_pre_planes if bidx == 0 else self.plane_num_per_batch
+            for i in range(actual_arrivals):
+                base_time = i * 120 + bidx * 3600
+                jitter = (self.np_random.integers(-30, 31) if hasattr(self, 'np_random') else np.random.randint(-30, 31)) if self.use_domain_rand else 0
+                land_time = max(0, base_time + jitter)
+                
+                # 【修复 2】：不再只存时间，直接存元组 (land_time, bidx, pidx)
+                self.landing_list.append((land_time, bidx, i))
+                
+        # 按时间进行排序
+        self.landing_list.sort(key=lambda x: x[0])
+        
+        # ==========================================================
+        # DR 3: 移动设备初始位置打乱 
+        # (这部分代码保持你上一版的原样，不需要动)
+        # ==========================================================
         for site in self.sites.values():
             site.reset()
-            
+        gate_codes = [str(i) for i in range(1, 29)] 
         for devices in self.mobile_devices.values():
             for device in devices:
-                device.reset()
+                device.reset() 
+                if self.use_domain_rand and device.resource.type != 'R014': 
+                    random_site_code = self.np_random.choice(gate_codes) if hasattr(self, 'np_random') else np.random.choice(gate_codes)
+                    device.start_transport(self.sites[random_site_code])
+                    device.finish_transport()
+
+        # ==========================================================
+        # DR 2 & 4: 初始化进场与在场飞机
+        # ==========================================================
+        optional_jobs = ['ZY05', 'ZY06', 'ZY09']
         
-        while self.landing_list and self.total_time >= self.landing_list[0]:
-            land_time = self.landing_list.pop(0)
-            bidx = land_time // 3600
-            pidx = (land_time % 3600) // 120
+        # 处理即将从 Z 跑道降落的飞机 
+        # 【修复 2配套】：这里提取元组的第0号元素做时间判断
+        while self.landing_list and self.total_time >= self.landing_list[0][0]:
+            land_time, bidx, pidx = self.landing_list.pop(0) # 直接解包拿到准确编号
+            
+            actual_jobs = []
+            for job in self.jobs.values():
+                if job.code in self.job_code_list:
+                    if self.use_domain_rand and job.code in optional_jobs:
+                        if (self.np_random.random() if hasattr(self, 'np_random') else np.random.random()) < 0.2:
+                            continue
+                    actual_jobs.append(job)
+            
             plane_cfg = {
                 'velocity': 5,
                 'site': self.sites['Z'],
-                'fuel': self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30),
-                'jobs': self.jobs.values()
+                'fuel': (self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30)) if self.use_domain_rand else 30,
+                'jobs': actual_jobs
             }
             self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
 
-        self.last_total_sum = self._estimate_system_total_time()
-        
-        # 4. 返回 RL Runner 期望的三个初始状态值
+        # --- 新增：随机生成开局就已经停在机位上的飞机 ---
+        if num_pre_planes > 0:
+            chosen_gates = self.np_random.choice(gate_codes, num_pre_planes, replace=False) if hasattr(self, 'np_random') else np.random.choice(gate_codes, num_pre_planes, replace=False)
+            for i, gate_code in enumerate(chosen_gates):
+                # 【修复 1】：使用合法的正数编号。接在第 0 批次的末尾
+                pidx = self.plane_num_per_batch - num_pre_planes + i
+                pre_cfg = {
+                    'velocity': 5,
+                    'site': self.sites[gate_code],
+                    'fuel': 100, 
+                    'jobs': [job for job in self.jobs.values() if job.code in self.job_code_list]
+                }
+                # 依然当做 batch 0 注册，这样 global_pid 计算出来是完全合法的
+                self.add_planes([{'batch': 0, 'idx': pidx, **pre_cfg}])
+                plane_obj = self.planes[f'Plane_0_{pidx}']
+                plane_obj.finished_jobs.extend(['ZY_Z', 'ZY_M', 'ZY01'])
+                
         return self._get_obs(), self._get_done(), self._get_info()
     
+    def _get_episode_rewards(self):
+        return self.total_time
+
     def render(self):
         """渲染环境可视化（模仿 path_test_3 画风，并自动截屏）
 
@@ -1076,3 +1152,23 @@ class AircraftScheduleEnv(gym.Env):
         if self.fig is not None:
             plt.close(self.fig)
             self.fig, self.ax = None, None
+
+    def calculate_hindsight_rewards(self) -> Dict[Tuple[int, int], dict]:
+        """
+        通过前向包络计算每个决策对全局最大完成时间 (Makespan) 的增量。
+        如果一个动作的结束时间突破了“当前已知的最大结束时间”，则突破量即为该动作的耗时惩罚。
+        
+        参数:
+            trajectory_log: Episode 中记录的所有动作事件流水
+            makespan: 当前 Episode 的总耗时 (env.total_time) - 此处仅作为参考，实际以日志推演为准
+        """
+        
+        # 1. 初始化所有决策步的奖励为 0
+        step_rewards = {}
+        for record in self.trajectory_log:
+            step_rewards[(record['step_idx'], record['agent_id'])] = {
+                'action': record['action'],
+                'makespan_contribution': 0.0,
+                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 1.0*record['waiting_time'] - 1.0*record['trans_time']
+            }
+        return step_rewards

@@ -35,8 +35,8 @@ def random_policy(env, info):
         pid = int(plane.code.split('_')[2]) 
         
         # 【分支 1】：如果不活跃（比如还没降落、正在作业或运输中），直接发占位动作
-        if active_agents[pid]:
-            actions[pid] = [0, 0]
+        if not active_agents[pid]:
+            actions[pid] = [-1, -1]
             continue
             
         target_job_code = None
@@ -46,7 +46,7 @@ def random_policy(env, info):
         current_site_jobs = plane.get_avail_jobs(plane.site)
         
         # 【分支 2】：当前机位有能干的活，直接原地开干
-        if len(current_site_jobs) > 0:
+        if plane.site.code != 'Z' and len(current_site_jobs) > 0:
             target_job_code = random.choice(current_site_jobs)
             
         # 【分支 3】：当前机位干不了活（缺特定固定资源），需要转运
@@ -66,7 +66,7 @@ def random_policy(env, info):
         site_idx = 0
         
         if target_job_code and target_job_code in env.job_code_list:
-            job_idx = env.job_code_list.index(target_job_code)
+            job_idx = env.job_code_list.index(target_job_code) +  + pid * len(env.job_code_list) 
             
         if target_site_code and target_site_code in env.site_code_list:
             site_idx = env.site_code_list.index(target_site_code)
@@ -113,6 +113,7 @@ def test_aircraft_schedule():
     print(">>> 开始执行随机探索测试...")
     start_real_time = time.time()
     
+    env.use_domain_rand = False
     obs, done, info = env.reset()
     
     step_count = 0
@@ -123,11 +124,11 @@ def test_aircraft_schedule():
         actions = random_policy(env, info)
 
         # 2. 打印当前步的决策日志
-        active_pids = [pid for pid, is_active in enumerate(info['active_agents']) if not is_active]
+        active_pids = [pid for pid, is_active in enumerate(info['active_agents']) if is_active]
         if active_pids:
             print(f"[Step {step_count} | Env Time {env.total_time}s] 需要决策的飞机: {active_pids}")
             for pid in active_pids:
-                j_code = env.job_code_list[actions[pid][0]]
+                j_code = env.job_code_list[actions[pid][0] - pid * len(env.job_code_list)]
                 s_code = env.site_code_list[actions[pid][1]]
                 print(f"  -> 飞机 {pid} 决策: 目标机位={s_code}, 意图作业={j_code}")
 

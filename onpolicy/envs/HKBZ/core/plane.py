@@ -11,11 +11,14 @@ class Plane:
         self.choosed_job = None  # 飞机选择的下一个作业（未执行）
         self.current_jobs = []  # 当前正在执行的作业列表
         self.finished_jobs = []  # 已完成的作业列表
+        self.job_time = 0
+        self.total_job_time = 0
         self.is_busy = False  # 飞机是否处于作业状态
         self.destination = None  # 飞机移动目的地
         self.transporter = None  # 协助运输的转运车设备
         self.is_transporting = False  # 飞机是否处于运输状态
         self.left_trans_time = 0  # 当前运输剩余时间（秒）
+        self.trans_time = 0
         self.is_waiting = False  # 飞机是否处于等待状态
         self.waiting_time = 0  # 已等待时间
         self.last_site_idx = -1  # 记录刚才选的机位
@@ -108,6 +111,8 @@ class Plane:
         self.is_busy = True
         self.site.start_jobs([self.jobs[job] for job in self.current_jobs])
         # print(f"Plane {self.code} starts job {job_code} at site {self.site.code}.")
+        self.total_job_time = sum([self.jobs[job].time for job in self.current_jobs])
+        self.job_time = self.jobs[job_code].time
         return self.jobs[job_code].time
 
     def start_transport(self, destination, transporter):
@@ -158,8 +163,10 @@ class Plane:
         # print(f"Plane {self.code} starts transporting to {destination.code} with transporter {transporter.code if transporter else 'None'}.")
 
         if transporter is not None:
+            self.trans_time = transporter.left_trans_time
             return transporter.left_trans_time
         else:
+            self.trans_time = time
             return time
     
     def finish_transport(self):
@@ -338,6 +345,9 @@ class Plane:
         self.left_trans_time = 0
         self.is_waiting = False
         self.waiting_time = 0
+        self.job_time = 0
+        self.trans_time = 0
+        self.total_job_time = 0
         
         # 5. 强化学习 (RL) 动作记忆锚点复位 (极其重要，用于处理冷启动)
         self.last_site_idx = -1

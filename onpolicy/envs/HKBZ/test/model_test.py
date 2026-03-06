@@ -24,6 +24,27 @@ def parse_args(args, parser):
 def _t2n(x):
     return x.detach().cpu().numpy()
 
+def check_env_randomness(env, num_episodes=5):
+    print("=== 开始环境随机性诊断 ===")
+    for ep in range(num_episodes):
+        env.reset()
+        
+        # 1. 提取降落时间表 (截取前5架飞机)
+        landings = env.landing_list[:5]
+        
+        # 2. 提取第一批降落飞机的燃油和任务数量
+        first_plane_id = list(env.planes.keys())[0] if env.planes else None
+        if first_plane_id:
+            fuel = env.planes[first_plane_id].config['fuel']
+            job_count = len(env.planes[first_plane_id].left_jobs)
+        else:
+            fuel, job_count = "N/A", "N/A"
+            
+        print(f"Episode {ep+1}:")
+        print(f"  前5架飞机降落时间: {landings}")
+        print(f"  首架飞机 ({first_plane_id}) -> 燃油: {fuel}, 待办任务数: {job_count}")
+        print("-" * 30)
+
 def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
@@ -31,7 +52,7 @@ def main(args):
     # ======== 1. 设备与种子初始化 ========
     if all_args.cuda and torch.cuda.is_available():
         print("Using GPU...")
-        device = torch.device('cuda:0')
+        device = torch.device('cuda:1')
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
     else:
@@ -74,6 +95,8 @@ def main(args):
     
     env = AircraftScheduleEnv(env_config)
 
+    check_env_randomness(env)
+
     # ======== 4. 策略网络加载 ========
     from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
@@ -82,11 +105,12 @@ def main(args):
                     device=device)
 
     # 如果有预训练模型，可以在这里 Load
-    # checkpoint_dir = getattr(all_args, 'model_dir', None)
-    # if checkpoint_dir and os.path.exists(checkpoint_dir):
-    #     print(f"Loading weights from {checkpoint_dir}")
-    #     checkpoint = torch.load(checkpoint_dir, map_location=device)
-    #     policy.ac.load_state_dict(checkpoint['model'])  
+    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/check/run105/models/checkpoint_Epoch50.pt'
+    # checkpoint_dir = None  # 替换为实际路径，如果有的话
+    if checkpoint_dir and os.path.exists(checkpoint_dir):
+        print(f"Loading weights from {checkpoint_dir}")
+        checkpoint = torch.load(checkpoint_dir, map_location=device)
+        policy.ac.load_state_dict(checkpoint['model'])  
         
     policy.ac.eval()
 
@@ -134,19 +158,22 @@ def main(args):
         obs, rewards, done, info = env.step(action)
         
         # 3. 统计
-        total_rewards += rewards.flatten() * active
+        total_rewards += rewards.flatten()
         step_count += 1
         
         if step_count > 2000:
             print("\n【警告】达到最大测试步数，强制终止。")
             break
 
+    hindsight_rewards_dict = env.calculate_hindsight_rewards()
+    
     # ======== 6. 结果结算 ========
     print("\n" + "="*50)
     print(">>> 仿真测试结束！")
     print(f"实际运算耗时: {time.time() - start_real_time:.4f} 秒")
     print(f"决策步数: {step_count}")
     print(f"环境推演总耗时 (C_max): {env.total_time} 秒")
+    print(f"总奖励: {total_rewards.sum():.2f}")
     
     print("\n各架飞机的累积奖励:")
     for i, r in enumerate(total_rewards):

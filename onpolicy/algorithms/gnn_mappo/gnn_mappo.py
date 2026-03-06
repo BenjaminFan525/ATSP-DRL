@@ -63,27 +63,9 @@ class MAPPO_Trainer():
 
         :return value_loss: (torch.Tensor) value function loss.
         """
-        value_pred_clipped = value_preds_batch + (values - value_preds_batch).clamp(-self.clip_param,
-                                                                                        self.clip_param)
-        if self._use_popart or self._use_valuenorm:
-            self.value_normalizer.update(return_batch)
-            error_clipped = self.value_normalizer.normalize(return_batch) - value_pred_clipped
-            error_original = self.value_normalizer.normalize(return_batch) - values
-        else:
-            error_clipped = return_batch - value_pred_clipped
-            error_original = return_batch - values
-
-        if self._use_huber_loss:
-            value_loss_clipped = huber_loss(error_clipped, self.huber_delta)
-            value_loss_original = huber_loss(error_original, self.huber_delta)
-        else:
-            value_loss_clipped = mse_loss(error_clipped)
-            value_loss_original = mse_loss(error_original)
-
-        if self._use_clipped_value_loss:
-            value_loss = torch.max(value_loss_original, value_loss_clipped)
-        else:
-            value_loss = value_loss_original
+        error_original = return_batch - values
+        value_loss_original = mse_loss(error_original)
+        value_loss = value_loss_original
 
         if self._use_value_active_masks:
             value_loss = (value_loss * active_masks_batch).sum() / active_masks_batch.sum()
@@ -109,7 +91,7 @@ class MAPPO_Trainer():
         adv_targ = check(adv_targ).to(**self.tpdv)
         active_masks_batch = check(active_masks_batch).to(**self.tpdv)
         rewards_batch = check(rewards_batch).to(**self.tpdv)
-        rewards = (rewards_batch*active_masks_batch).sum()
+        rewards = (rewards_batch*active_masks_batch).sum() / active_masks_batch.sum()
         # actor update
         imp_weights = torch.exp(action_log_probs.unsqueeze(-1) - old_action_log_probs_batch)
 
@@ -224,15 +206,12 @@ class MAPPO_Trainer():
 
         :return train_info: (dict) contains information regarding training update (e.g. loss, grad norms, etc).
         """
-        if self._use_popart or self._use_valuenorm:
-            advantages = buffer.returns[:-1] - self.value_normalizer.denormalize(buffer.value_preds[:-1])
-        else:
-            advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
-        advantages_copy = advantages.copy()
-        advantages_copy[buffer.active_masks[:-1] == 0.0] = np.nan
-        mean_advantages = np.nanmean(advantages_copy)
-        std_advantages = np.nanstd(advantages_copy)
-        advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
+        advantages = buffer.returns - buffer.value_preds[:-1]
+        # advantages_copy = advantages.copy()
+        # advantages_copy[buffer.active_masks[:-1] == 0.0] = np.nan
+        # mean_advantages = np.nanmean(advantages_copy)
+        # std_advantages = np.nanstd(advantages_copy)
+        # advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
     
         train_info = defaultdict(float)
     
