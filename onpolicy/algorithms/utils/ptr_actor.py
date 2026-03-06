@@ -72,7 +72,7 @@ class CascadePtrActor(Module):
         self.op_ptr_net = MaPtrNet(query_dim=embed_dim, embed_dim=self.embed_dim, **self.factory_kwargs)
 
         # 级联过渡层：融合 Query 和 第一级选中的工序 Embedding
-        self.site_query_ff = Embedding_layer(query_dim + self.embed_dim, self.embed_dim, 2, activation=self.activation, **self.factory_kwargs)
+        self.site_query_ff = Embedding_layer(query_dim, self.embed_dim, 2, activation=self.activation, **self.factory_kwargs)
         self.site_query_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
         self.site_query_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
 
@@ -89,80 +89,86 @@ class CascadePtrActor(Module):
     def forward(self, query, op_nodes, site_nodes, op_valid_mask, site_valid_mask, 
                 deterministic: bool = False, chosen_op=None, chosen_site=None, tau=1.0):
         """
-        两级级联前向传播
+        平行双头架构 (Dual-Head Independent Architecture)
+        工序和机位各自独立进行打分，在最后通过广播机制构建二维联合概率网并展平采样。
         """
         B = query.shape[0]
+        N_ops = op_nodes.shape[1]
+        N_sites = site_nodes.shape[1]
+        batch_indices = torch.arange(B, device=query.device)
 
         # =======================================================
-        # Level 1: 预处理与工序选择 (Operation)
+        # Head 1: 独立评估所有工序 P(Op)
         # =======================================================
-        # PyTorch 的 Padding Mask 习惯：True 代表要被屏蔽(屏蔽掉非法工序)
         op_pad_mask = ~op_valid_mask 
+        op_dead_ends = op_pad_mask.all(dim=-1)
+        if op_dead_ends.any():
+            op_pad_mask[op_dead_ends, 0] = False
+            op_valid_mask[op_dead_ends, 0] = True
 
-        # 1. 第一级 Query 特征抽取与交叉注意力
         op_q = self.op_query_ff(query)
         op_attn_out, _ = self.op_query_attn(op_q, op_nodes, op_nodes, key_padding_mask=op_pad_mask)
         op_q = self.op_query_norm(op_q + op_attn_out)
 
-        # 2. 第一级指针网络打分
+        # 得到工序的 1D 概率分布 [B, N_ops]
         op_prob_v = self.op_ptr_net.dist(op_q, op_nodes, key_padding_mask=op_pad_mask, tau=tau).squeeze(1)
-
-        # 3. 确定工序动作
-        if chosen_op is not None:
-            op_idx = chosen_op
-        else:
-            if deterministic:
-                op_idx = torch.argmax(op_prob_v, dim=-1)
-            else:
-                op_dist = torch.distributions.Categorical(op_prob_v)
-                op_idx = op_dist.sample()
-
-        # 提取选中工序的概率
-        batch_indices = torch.arange(B, device=query.device)
-        op_prob = op_prob_v[batch_indices, op_idx]
+        op_log_prob = torch.log(op_prob_v + 1e-10)
 
         # =======================================================
-        # Level 2: 预处理与机位选择 (Site)
+        # Head 2: 独立评估所有机位 P(Site) 
+        # (完全去掉了对 op_nodes 的依赖，直接用 query 盲切)
         # =======================================================
-        # 1. 提取选中工序的高阶特征，并与原始 Query 拼接
-        chosen_op_emb = op_nodes[batch_indices, op_idx, :].unsqueeze(1) # [B, 1, embed_dim]
-        # 注意：这里的拼接维度是 query_dim + embed_dim
-        site_q_input = torch.cat([query, chosen_op_emb], dim=-1) 
-
-        # 2. 初始机位查询向量生成
-        site_q = self.site_query_ff(site_q_input)
-
-        # 3. 提取“特定于该工序”的机位合法掩码
         site_pad_mask = ~site_valid_mask
+        site_dead_ends = site_pad_mask.all(dim=-1)
+        if site_dead_ends.any():
+            site_pad_mask[site_dead_ends, 0] = False
+            site_valid_mask[site_dead_ends, 0] = True
 
-        # 4. 新增的亮点：机位意图交叉注意力 (Site Cross-Attention)
-        # 让 site_q 提前关注那些合法机位的状态（拥挤度、距离等）
+        # 直接把全局 query 喂给机位专属的 FF
+        site_q = self.site_query_ff(query) 
+        
         site_attn_out, _ = self.site_query_attn(site_q, site_nodes, site_nodes, key_padding_mask=site_pad_mask)
         site_q = self.site_query_norm(site_q + site_attn_out)
 
-        # 5. 第二级指针网络打分
+        # 得到机位的 1D 概率分布 [B, N_sites]
         site_prob_v = self.site_ptr_net.dist(site_q, site_nodes, key_padding_mask=site_pad_mask, tau=tau).squeeze(1)
-
-        # 6. 确定机位动作
-        if chosen_site is not None:
-            site_idx = chosen_site
-        else:
-            if deterministic:
-                site_idx = torch.argmax(site_prob_v, dim=-1)
-            else:
-                site_dist = torch.distributions.Categorical(site_prob_v)
-                site_idx = site_dist.sample()
-
-        # 提取选中机位的概率
-        site_prob = site_prob_v[batch_indices, site_idx]
+        site_log_prob = torch.log(site_prob_v + 1e-10)
 
         # =======================================================
-        # 联合输出 (Joint Output)
+        # 联合网格构建与展平采样 (Joint Grid & Sampling)
         # =======================================================
-        # 联合概率 P = P(工序) * P(机位 | 工序)
-        joint_prob = op_prob * site_prob 
+        # 利用 PyTorch 的广播机制 (Broadcasting) 直接生成正交矩阵
+        # op_log_prob:  [B, N_ops]   -> 变形成 [B, N_ops, 1]
+        # site_log_prob: [B, N_sites] -> 变形成 [B, 1, N_sites]
+        # 相加后自动扩展成 [B, N_ops, N_sites] 的完整联合分布！
+        joint_log_prob = op_log_prob.unsqueeze(-1) + site_log_prob.unsqueeze(1)
         
-        # 将两个分布打包返回，便于 PPO 算 Entropy 和 Loss
-        joint_dist = (op_prob_v, site_prob_v)
+        # 将二维联合空间拍平
+        joint_log_prob_flat = joint_log_prob.view(B, -1) # Shape: [B, N_ops * N_sites]
 
-        return op_idx, site_idx, joint_prob, joint_dist
+        if chosen_op is not None and chosen_site is not None:
+            # RL 算 Loss 阶段：直接查表
+            op_idx = chosen_op
+            site_idx = chosen_site
+            flat_idx = op_idx * N_sites + site_idx
+        else:
+            # RL 采样阶段
+            if deterministic:
+                flat_idx = torch.argmax(joint_log_prob_flat, dim=-1)
+            else:
+                # 依然保持 Categorical(logits) 的最高安全性
+                joint_dist_obj = torch.distributions.Categorical(logits=joint_log_prob_flat)
+                flat_idx = joint_dist_obj.sample()
+            
+            # 从 1D 索引中解码出工序和机位
+            op_idx = flat_idx // N_sites
+            site_idx = flat_idx % N_sites
+
+        # 提取选中组合的概率
+        joint_log_prob_selected = joint_log_prob_flat[batch_indices, flat_idx]
+        joint_prob_selected = torch.exp(joint_log_prob_selected)
+
+        # 打包返回展平后的联合对数几率，供外部算 PPO Entropy
+        joint_logits = joint_log_prob_flat
+
+        return op_idx, site_idx, joint_prob_selected, joint_logits

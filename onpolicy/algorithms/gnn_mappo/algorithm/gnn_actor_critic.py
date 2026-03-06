@@ -187,12 +187,11 @@ class GNN_Actor_Critic(nn.Module):
 
             # 累加信息熵 (评估阶段专用)
             if eval_action or dist_only:
-                op_prob_v, site_prob_v = cur_dist
-                # PPO 算法需要真实的分布对象来算 loss 或者熵
-                dist_op = torch.distributions.Categorical(op_prob_v)
-                dist_site = torch.distributions.Categorical(site_prob_v)
-                total_entropy += dist_op.entropy().sum() + dist_site.entropy().sum()
-                entropy_counts += active_mask_i.sum().item() * 2
+                joint_logits = cur_dist # 这是刚从 Actor 返回的 [B, N_ops * N_sites]
+                # 直接使用 logits 构建分布，计算联合熵 H(X,Y)
+                dist_joint = torch.distributions.Categorical(logits=joint_logits)
+                total_entropy += dist_joint.entropy().sum()
+                entropy_counts += active_mask_i.sum().item()
 
             # ---------------------------------------------------------
             # F. Critic 价值评估

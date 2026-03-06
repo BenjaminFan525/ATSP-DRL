@@ -171,6 +171,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.send((env.observation_space, env.share_observation_space, env.action_space))
         elif cmd == 'get_nums_fields':
             remote.send(env.num_fields)
+        elif cmd == 'get_rewards':
+            remote.send(env.calculate_hindsight_rewards())
         elif cmd == 'get_episode_rewards':
             remote.send(env._get_episode_rewards())
         elif cmd == 'shuffer_data':
@@ -285,11 +287,17 @@ class GraphSubprocVecEnv(ShareVecEnv):
         for remote in self.remotes:
             remote.send(('shuffer_data', None))
 
+    def get_rewards(self):
+        for remote in self.remotes:
+            remote.send(('get_rewards', None))
+        results = [remote.recv() for remote in self.remotes]
+        return results
+
     def get_episode_rewards(self):
         for remote in self.remotes:
             remote.send(('get_episode_rewards', None))
         results = [remote.recv() for remote in self.remotes]
-        return self.stack_infos(results)
+        return np.stack(results)
     
     def stack_infos(self, infos):
         stacked_infos = {}

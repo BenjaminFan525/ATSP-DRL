@@ -164,20 +164,20 @@ def get_config():
     parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=16874536, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
-    parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
+    parser.add_argument("--device", type=str, default='cuda:1', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
     parser.add_argument("--cuda_deterministic",
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
                         default=1, help="Number of torch threads for training")
-    parser.add_argument("--n_rollout_threads", type=int, default=100,
+    parser.add_argument("--n_rollout_threads", type=int, default=500,
                         help="Number of parallel envs for training rollouts")
-    parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
+    parser.add_argument("--n_eval_rollout_threads", type=int, default=10,
                         help="Number of parallel envs for evaluating rollouts")
     parser.add_argument("--n_render_rollout_threads", type=int, default=1,
                         help="Number of parallel envs for rendering rollouts")
     parser.add_argument("--num_env_steps", type=int, default=10e6,
                         help='Number of environment steps to train (default: 10e6)')
-    parser.add_argument("--num_episodes", type=int, default=500,
+    parser.add_argument("--num_episodes", type=int, default=100,
                         help='Number of episodes to train (default: 40)')
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
@@ -225,9 +225,9 @@ def get_config():
                         help="Time length of chunks used to train a recurrent_policy")
 
     # optimizer parameters
-    parser.add_argument("--lr", type=float, default=0.0005,
+    parser.add_argument("--lr", type=float, default=0.0001,
                         help='learning rate (default: 5e-4)')
-    parser.add_argument("--critic_lr", type=float, default=0.0005,
+    parser.add_argument("--critic_lr", type=float, default=0.0001,
                         help='critic learning rate (default: 5e-4)')
     parser.add_argument("--opti_eps", type=float, default=1e-5,
                         help='RMSprop optimizer epsilon (default: 1e-5)')
@@ -291,8 +291,8 @@ def get_config():
     parser.add_argument("--log_interval", type=int, default=1, help="time duration between contiunous twice log printing.")
 
     # eval parameters
-    parser.add_argument("--use_eval", action='store_false', default=False, help="by default, do not start evaluation. If set`, start evaluation alongside with training.")
-    parser.add_argument("--eval_interval", type=int, default=3000, help="time duration between contiunous twice evaluation progress.")
+    parser.add_argument("--use_eval", action='store_false', default=True, help="by default, do not start evaluation. If set`, start evaluation alongside with training.")
+    parser.add_argument("--eval_interval", type=int, default=50, help="time duration between contiunous twice evaluation progress.")
     parser.add_argument("--eval_episodes", type=int, default=32, help="number of episodes of a single evaluation.")
 
     # render parameters
@@ -307,7 +307,7 @@ def get_config():
 
     # specific for IA environment
     parser.add_argument("--obj", type=str, default='s', help="the object to train, default t(time)")
-    parser.add_argument('--reward_coef_s', type=float, default=0.01, help="distance coefficient")
+    parser.add_argument('--reward_coef', type=float, default=0.01, help="distance coefficient")
     parser.add_argument('--reward_coef_t', type=float, default=0.01, help="time coefficient")
     parser.add_argument('--reward_coef_c', type=float, default=1.0, help="fuel coefficient")
     parser.add_argument("--fuse_s", action='store_false', default=True, help="whether to fuse s(distance) into reward")

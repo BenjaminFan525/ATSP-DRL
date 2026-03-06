@@ -43,7 +43,8 @@ def make_eval_env(all_args):
                 with open(all_args.env_config, 'r') as f:
                     env_config = yaml.safe_load(f)
             env = AircraftScheduleEnv(env_config)
-            env.seed(all_args.seed + rank * 1000)
+            env.seed(all_args.seed * 50000 + rank * 10000)
+            env.use_domain_rand = False
             return env
         return init_env        
 

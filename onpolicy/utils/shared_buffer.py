@@ -114,7 +114,7 @@ class SharedReplayBuffer(object):
         
         self.action_log_probs[self.step] = action_log_probs.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.value_preds[self.step] = value_preds.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
-        self.rewards[self.step] = rewards.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
+        # self.rewards[self.step] = rewards.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         
         self.masks[self.step + 1] = masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.active_masks[self.step + 1] = active_masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
@@ -133,64 +133,85 @@ class SharedReplayBuffer(object):
         if self.available_actions is not None:
             self.available_actions[0] = self.available_actions[-1].copy()
 
-    def compute_returns(self, next_value, value_normalizer=None):
+    def compute_returns(self, next_value):
         """
-        向量化版本 SMDP GAE (Vectorized Sequential GAE without Done Masks).
-        支持 PopArt / ValueNorm。
+        极简版顺序 GAE (Sequential GAE without Done Masks).
+        逻辑：
+        - active_mask == False (0): 决策点。计算 TD Error，更新 GAE，截断 next_value。
+        - active_mask == True (1):  传递点。GAE 保持不变传给上一步，next_value 保持不变。
         """
         # T: Episode Length, N: Threads, M: Agents
         T, N, M, _ = self.rewards.shape
         
-        use_v_norm = (getattr(self, '_use_popart', False) or getattr(self, '_use_valuenorm', False)) and (value_normalizer is not None)
-        
         if self._use_gae:
-            # --- 1. 一次性反归一化 (保留原维度 T, N, M, 1) ---
-            if use_v_norm:
-                denorm_values = value_normalizer.denormalize(self.value_preds[:-1])
-                denorm_next_value = value_normalizer.denormalize(next_value)
-            else:
-                denorm_values = self.value_preds[:-1]
-                denorm_next_value = next_value
-                
-            # 【修复点 1】：绝对不能用 self.returns = xxx 覆盖原数组！
-            # 必须把真实尺度的 next_value 存在第 T+1 步 ([-1] 哨兵位)
-            self.returns[-1] = denorm_next_value
+            # ------------------------------------------------------------------
+            # Step A: 维度重排与展平 (Permute & Flatten)
+            # ------------------------------------------------------------------
+            # 目标顺序: (Time 0, Agent 0), (Time 0, Agent 1)... (Time 1, Agent 0)...
+            # 变换: (T, N, M, 1) -> (T, M, N, 1) -> (T*M, N, 1)
             
-            # gae 现在的形状是 (N, M, 1)，每个环境的每架飞机都有独立计算的优势
-            gae = np.zeros((N, M, 1), dtype=np.float32)
+            # 展平 Values, Rewards, Active Masks
+            flat_values = self.value_preds[:-1].transpose(0, 2, 1, 3).reshape(-1, N, 1)
+            flat_rewards = self.rewards.transpose(0, 2, 1, 3).reshape(-1, N, 1)
+            flat_active_masks = self.active_masks[:-1].transpose(0, 2, 1, 3).reshape(-1, N, 1)
             
-            # next_active_value 的形状也是 (N, M, 1)
-            next_active_value = denorm_next_value
+            # 初始化返回容器
+            flat_returns = np.zeros_like(flat_values)
+            
+            # ------------------------------------------------------------------
+            # Step B: 初始化
+            # ------------------------------------------------------------------
+            gae = 0
+            # next_active_value 初始指向整个 Episode 结束后的预测值
+            next_active_value = next_value[:, 0, :]
 
-            # --- 2. 仅在时间维度 T 上反向迭代 ---
-            for step in reversed(range(T)):
-                is_decision_step = 1.0 - self.active_masks[step]
+            # ------------------------------------------------------------------
+            # Step C: 反向链式迭代 (Back-propagation through Sequence)
+            # ------------------------------------------------------------------
+            # 遍历所有时间步和所有智能体构成的长链条
+            for i in reversed(range(T * M)):
+                # 定义当前步骤的性质
+                # 根据你的定义：False(0) = 需要行动 (Decision Node)
+                #               True(1)  = 不需要行动 (Pass-through Node)
+                is_decision_step = flat_active_masks[i] 
                 
-                # --- A. 计算 Delta ---
-                delta = self.rewards[step] + self.gamma * next_active_value - denorm_values[step]
+                # --- 1. 计算 Delta (TD Error) ---
+                # 只在 Decision Step 有意义。
+                # 注意：这里我们移除了 use_mask (self.masks)，假设序列是连续的
+                delta = flat_rewards[i] + self.gamma * next_active_value - flat_values[i]
                 
-                # --- B. 更新 GAE ---
+                # --- 2. 更新 GAE (Advantage) ---
+                # 逻辑分支：
+                # If Decision Step: 标准 GAE 更新 (引入 Delta, 进行衰减)
+                # If Pass-through:  保持 GAE 不变 (纯传递，无衰减，无 Delta)
+                
+                # 计算如果当前是 Decision Step 的 GAE
                 gae_update = delta + self.gamma * self.gae_lambda * gae
-                gae = is_decision_step * gae_update + (1.0 - is_decision_step) * gae
                 
-                # --- C. 计算 Returns ---
-                # 【修复点 2】：安全地原地赋值给已有的 returns 数组
-                self.returns[step] = gae + denorm_values[step]
+                # 组合：如果是 Decision Step 就用更新值，否则沿用旧值(即未来的GAE)
+                gae = is_decision_step * gae_update + (1 - is_decision_step) * gae
                 
-                # --- D. 更新 Bootstrap 指针 ---
-                next_active_value = is_decision_step * denorm_values[step] + (1.0 - is_decision_step) * next_active_value
+                # --- 3. 计算 Returns ---
+                # Returns = Advantage + Value
+                flat_returns[i] = gae + flat_values[i]
+                
+                # --- 4. 更新 Bootstrap 指针 (next_active_value) ---
+                # If Decision Step: 当前 Value 变成上一步的 Target
+                # If Pass-through:  Target 穿透过去，保持不变
+                next_active_value = is_decision_step * flat_values[i] + (1 - is_decision_step) * next_active_value
 
-            # 哨兵位更新保持归一化原值
+            # ------------------------------------------------------------------
+            # Step D: 还原形状 (Reshape back)
+            # ------------------------------------------------------------------
+            # (T*M, N, 1) -> (T, M, N, 1) -> (T, N, M, 1)
+            self.returns = flat_returns.reshape(T, M, N, 1).transpose(0, 2, 1, 3)
+            
+            # 哨兵位更新
             self.value_preds[-1] = next_value
 
         else:
-            # 不使用 GAE 的情况 (也做了向量化对齐)
-            if use_v_norm:
-                self.returns[-1] = value_normalizer.denormalize(next_value)
-            else:
-                self.returns[-1] = next_value
-                
-            for step in reversed(range(T)):
+            self.returns[-1] = next_value
+            for step in reversed(range(self.rewards.shape[0])):
                 self.returns[step] = self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]
 
     def graph_recurrent_generator(self, advantages, mini_batch_size):
@@ -227,7 +248,7 @@ class SharedReplayBuffer(object):
             last_site_batch = _graph_cast(last_actions[..., 1])
 
             value_preds_batch = _graph_cast(self.value_preds[:-1, ind])
-            return_batch = _graph_cast(self.returns[:-1, ind])
+            return_batch = _graph_cast(self.returns[:, ind])
             rewards_batch = _graph_cast(self.rewards[:, ind])
             active_masks_batch = _graph_cast(self.active_masks[:-1, ind])
             old_action_log_probs_batch = _graph_cast(self.action_log_probs[:, ind])

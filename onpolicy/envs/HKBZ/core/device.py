@@ -36,6 +36,7 @@ class Device:
         assert self.resource.is_available(), f"Resource must be idle to start transporting!"
         # 从当前站点移除资源
         self.site.remove_resource(self.resource)
+        self.site.devices.remove(self)
         # 计算曼哈顿距离和运输时间
         distance = abs(self.site.pos[0]-destination.pos[0]) + abs(self.site.pos[1]-destination.pos[1])
         time = math.ceil(distance / self.velocity)
@@ -54,6 +55,7 @@ class Device:
         '''
         # assert self.is_transporting is True and self.destination is not None, "Device must be transporting to finish transport."
         self.is_transporting = False
+        self.left_trans_time = 0
         # 更新资源可服务站点列表
         self.resource.sites = [self.site.code]
         self.site.add_resource(self.resource)
@@ -68,7 +70,7 @@ class Device:
             if device.is_idle():  # 检查设备是否可用
                 device.start_transport(target_site)
         '''
-        return not self.is_busy and not self.is_transporting and not self.is_disable
+        return not self.is_transporting and not self.is_disable
     
     def start_disable(self, time):
         self.is_disable = True
@@ -107,7 +109,7 @@ class Device:
                 self.finish_transport()
             return self.left_trans_time    
         # 更新忙碌状态（与资源可用性同步）
-        self.is_busy = not self.resource.available
+        self.is_busy = not self.resource.is_available()
         return ret
 
     def reset(self):

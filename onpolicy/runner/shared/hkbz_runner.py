@@ -48,7 +48,7 @@ class HKBZ_Runner(Runner):
         self.use_render = self.all_args.use_render
         self.recurrent_N = self.all_args.recurrent_N
         self.obj = self.all_args.obj
-        self.reward_coef = {"s": self.all_args.reward_coef_s, "t": self.all_args.reward_coef_t, "c": self.all_args.reward_coef_c}
+        self.reward_coef = self.all_args.reward_coef
         self.fuse_s = self.all_args.fuse_s
         self.fuse_epoch = self.all_args.fuse_epoch
         self.start_epoch = self.all_args.start_epoch
@@ -150,11 +150,11 @@ class HKBZ_Runner(Runner):
 
             # eval
             if (self.total_num_steps == 0 or self.total_num_steps % self.eval_interval == 0) and self.use_eval:
-                train_infos['distance'], train_infos['time'], train_infos['fuel consumption'] = self.eval(render=True)
+                train_infos['makespan'] = self.eval(render=True)
             
             self.total_num_steps += self.n_rollout_threads
             self.log_train(train_infos, self.total_num_steps)
-            training_rewards.append(train_infos["rewards"])
+            training_rewards.append(train_infos["rewards"] / self.reward_coef)
             pbar.set_description(f"[Episode {episode+1}]")
             pbar.set_postfix(
                 average_episode_rewards=np.mean(training_rewards),
@@ -187,6 +187,13 @@ class HKBZ_Runner(Runner):
                             self.buffer.actions[ 2, ..., 1],
                             )
         next_values = _t2n(next_values).reshape(self.n_rollout_threads, self.num_agents, 1)
+
+        hindsight_rewards = self.envs.get_rewards()
+        self.buffer.rewards.fill(0.0)
+        for env_idx, env_rewards in enumerate(hindsight_rewards):
+            for (step_idx, agent_id), data in env_rewards.items():
+                self.buffer.rewards[step_idx, env_idx, agent_id, 0] = data['reward'] * self.reward_coef
+
         self.buffer.compute_returns(next_values)
 
     def train(self):
@@ -245,52 +252,34 @@ class HKBZ_Runner(Runner):
 
     @torch.no_grad()
     def eval(self, render=False):
-        s, t, c = [], [], []
-        for idx in range(self.eval_envs.num_fields):
-            eval_obs, eval_dones, eval_infos = self.eval_envs.reset()
+        eval_obs, eval_dones, eval_infos = self.eval_envs.reset()
 
-            eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states.shape[2:]), dtype=np.float32)
-            eval_rnn_states[eval_dones == True] = np.zeros(((eval_dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
+        eval_rnn_states = np.zeros((self.n_eval_rollout_threads, *self.buffer.rnn_states.shape[2:]), dtype=np.float32)
+        eval_rnn_states[eval_dones == True] = np.zeros(((eval_dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
 
-            global_nodes, nodes, node_key_padding_mask = self.trainer.policy.ac.encoder.nodes_encoder(Batch.from_data_list(self.eval_envs.get_graph()).to(self.device))
-            for eval_step in range(self.episode_length):
-                self.trainer.prep_rollout()
+        for eval_step in range(self.episode_length):
+            self.trainer.prep_rollout()
 
-                eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
-                eval_masks[eval_dones == True] = np.zeros(((eval_dones == True).sum(), 1), dtype=np.float32)
+            eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
+            eval_masks[eval_dones == True] = np.zeros(((eval_dones == True).sum(), 1), dtype=np.float32)
 
-                eval_active_masks = np.zeros_like(eval_masks)
-                eval_active_masks[eval_infos['active_agents'] == True] = np.ones(((eval_infos['active_agents'] == True).sum(), 1), dtype=np.float32)
+            eval_active_masks = np.zeros_like(eval_masks)
+            eval_active_masks[eval_infos['active_agents'] == True] = np.ones(((eval_infos['active_agents'] == True).sum(), 1), dtype=np.float32)
 
-                eval_available_actions = np.zeros((self.n_eval_rollout_threads, self.eval_envs.action_space[0].n, 1),dtype=np.float32)
-                eval_available_actions[eval_infos['available_actions'] == True] = np.ones(((eval_infos['available_actions'] == True).sum(), 1), dtype=np.float32)
+            eval_action, eval_rnn_states = self.trainer.policy.act(
+                        Batch.from_data_list(eval_obs),
+                        eval_rnn_states,
+                        eval_active_masks,
+                        eval_actions[..., 0] if eval_step > 0 else -np.ones((self.n_eval_rollout_threads, self.num_agents), dtype=np.float32),
+                        eval_actions[..., 1] if eval_step > 0 else -np.ones((self.n_eval_rollout_threads, self.num_agents), dtype=np.float32),
+                        deterministic=True)
+            eval_actions = _t2n(eval_action)
+            eval_rnn_states = _t2n(eval_rnn_states)
 
-                veh_nums = eval_infos['veh_nums'].copy()[:, None]
-                eval_action, eval_rnn_states = self.trainer.policy.act(
-                                                global_nodes, nodes, node_key_padding_mask,
-                                                eval_obs,
-                                                eval_rnn_states,
-                                                eval_masks,
-                                                eval_active_masks,
-                                                eval_available_actions,
-                                                veh_nums,
-                                                deterministic=True)
-                eval_actions = _t2n(eval_action)
-                eval_rnn_states = _t2n(eval_rnn_states)
+            # Obser reward and next obs
+            eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
 
-                # Obser reward and next obs
-                eval_obs, eval_rewards, eval_dones, eval_infos = self.eval_envs.step(eval_actions)
-            rewards = self.eval_envs.get_episode_rewards()
-            s.append(np.mean(rewards['s']))
-            t.append(np.mean(rewards['t']))
-            c.append(np.mean(rewards['c']))
-
-            if render and idx == 0:
-                render_dir = os.path.join(self.render_dir, f'episode_{self.episode+1}', f'step_{self.total_num_steps}')
-                os.makedirs(render_dir, exist_ok=True)
-                self.eval_envs.render(render_dir)
-
-        return np.mean(s), np.mean(t), np.mean(c)
+        return np.mean(self.eval_envs.get_episode_rewards())
 
     # TODO: add render function for FarmEnv
     @torch.no_grad()
