@@ -23,6 +23,7 @@ class Plane:
         self.waiting_time = 0  # 已等待时间
         self.last_site_idx = -1  # 记录刚才选的机位
         self.last_job_idx = -1    # 记录刚才选的工序 (如果是对象，取其 code)
+        self.pending_job = None
 
         # 初始化飞机作业字典，过滤和配置作业参数
         self.jobs = {}
@@ -191,7 +192,7 @@ class Plane:
                     self.left_jobs.append(job_code)
         self.is_transporting = False
     
-    def start_waiting(self):
+    def start_waiting(self, pending_job=None):
         '''启动飞机等待状态
         
         作用:
@@ -203,6 +204,7 @@ class Plane:
         '''
         assert self.is_busy is False and self.is_transporting is False, "Plane must be idle to start waiting."
         self.is_waiting = True
+        self.pending_job = pending_job
         self.waiting_time = 0
 
     def finish_waiting(self):
@@ -217,6 +219,7 @@ class Plane:
         '''
         assert self.is_waiting is True, "Plane must be waiting to finish waiting."
         self.is_waiting = False
+        self.pending_job = None
         self.waiting_time = 0
 
     def is_completed_all_jobs(self):
@@ -283,13 +286,16 @@ class Plane:
                 self.current_avail_jobs = self.get_avail_jobs(self.site)
                 # 运输完成后，如果有预选的作业则立即启动
                 if self.choosed_job:
-                    if self.choosed_job in self.get_avail_jobs(self.site):
+                    if self.choosed_job in self.current_avail_jobs:
                         ret = self.choose_job(self.choosed_job)
                         self.choosed_job = None
                     elif 'ZY02' in self.left_jobs:
-                        ret = self.choose_job('ZY02')
-                    else:
-                        self.start_waiting()
+                        if 'ZY02' in self.current_avail_jobs:
+                            ret = self.choose_job('ZY02')
+                        else:
+                            self.start_waiting('ZY02')
+                    else:  
+                        self.start_waiting(self.choosed_job)
             else:
                 ret = self.left_trans_time
 
@@ -308,7 +314,7 @@ class Plane:
                         ret = self.choose_job(self.choosed_job)
                         self.choosed_job = None
                     else:
-                        self.start_waiting()
+                        self.start_waiting(self.choosed_job)
         return ret
 
     def reset(self):
