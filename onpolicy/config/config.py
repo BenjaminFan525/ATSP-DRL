@@ -3,7 +3,7 @@ import json
 
 
 def get_config():
-    """
+    """ 
     The configuration parser for common hyperparameters of all environment. 
     Please reach each `scripts/train/<env>_runner.py` file to find private hyperparameters
     only used in <env>.
@@ -161,17 +161,17 @@ def get_config():
     parser.add_argument("--algorithm_name", type=str,
                         default='gnn_mappo', choices=["rmappo", "mappo", "happo", "gnn_mappo", "hatrpo", "mat", "mat_dec"])
 
-    parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
-    parser.add_argument("--seed", type=int, default=16874536, help="Random seed for numpy/torch")
+    parser.add_argument("--experiment_name", type=str, default="train-newdata-ppo3", help="an identifier to distinguish different experiment.")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
-    parser.add_argument("--device", type=str, default='cuda:1', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
+    parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
     parser.add_argument("--cuda_deterministic",
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
                         default=1, help="Number of torch threads for training")
     parser.add_argument("--n_rollout_threads", type=int, default=500,
                         help="Number of parallel envs for training rollouts")
-    parser.add_argument("--n_eval_rollout_threads", type=int, default=10,
+    parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
                         help="Number of parallel envs for evaluating rollouts")
     parser.add_argument("--n_render_rollout_threads", type=int, default=1,
                         help="Number of parallel envs for rendering rollouts")
@@ -260,7 +260,7 @@ def get_config():
                         help='max norm of gradients (default: 0.5)')
     parser.add_argument("--use_gae", action='store_false',
                         default=True, help='use generalized advantage estimation')
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=1.00,
                         help='discount factor for rewards (default: 0.99)')
     parser.add_argument("--gae_lambda", type=float, default=0.95,
                         help='gae lambda parameter (default: 0.95)')

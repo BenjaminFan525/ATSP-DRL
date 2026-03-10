@@ -21,13 +21,37 @@ import yaml
 
 """Train script for MPEs."""
 
+import os
+import glob
+import yaml
+
 def make_train_env(all_args):
     def get_env_fn(rank):
         def init_env():
             env_config = {}
             if os.path.exists(all_args.env_config):
-                with open(all_args.env_config, 'r') as f:
+                with open(all_args.env_config, 'r', encoding='utf-8') as f:
                     env_config = yaml.safe_load(f)
+            
+            # ================= 新增：读取数据集 =================
+            # 优先从配置中读取 dataset_dir，如果没配则默认 'airport_dataset'
+            dataset_dir = env_config.get('dataset_dir', 'airport_dataset')
+            case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
+            
+            if not case_dirs:
+                raise ValueError(f"🚨 错误：在目录 '{dataset_dir}' 中没有找到任何算例文件夹！请先生成数据集。")
+            
+            # 根据线程 rank 为当前环境分配一个算例 (使用取余确保不会越界)
+            case_dir = case_dirs[rank % len(case_dirs)]
+            
+            # 动态覆盖环境配置中的文件路径，指向分配到的算例文件夹
+            env_config['jobs_path'] = os.path.join(case_dir, "job.json")
+            env_config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
+            env_config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
+            env_config['sites_path'] = os.path.join(case_dir, "sites.json")
+            env_config['flights_path'] = os.path.join(case_dir, "flights.json")
+            # ====================================================
+
             env = AircraftScheduleEnv(env_config)
             env.seed(all_args.seed + rank * 1000)
             return env
@@ -35,16 +59,36 @@ def make_train_env(all_args):
 
     return GraphSubprocVecEnv([get_env_fn(rank) for rank in range(all_args.n_rollout_threads)])
 
+
 def make_eval_env(all_args):
     def get_env_fn(rank):
         def init_env():
             env_config = {}
             if os.path.exists(all_args.env_config):
-                with open(all_args.env_config, 'r') as f:
+                with open(all_args.env_config, 'r', encoding='utf-8') as f:
                     env_config = yaml.safe_load(f)
+            
+            # ================= 新增：读取评估数据集 =================
+            # 评估可以使用同一个数据集，也可以在 config 中指定 eval_dataset_dir 进行隔离验证
+            dataset_dir = env_config.get('eval_dataset_dir', env_config.get('dataset_dir', 'airport_dataset'))
+            case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
+            
+            if not case_dirs:
+                raise ValueError(f"🚨 错误：在评估目录 '{dataset_dir}' 中没有找到任何算例文件夹！")
+            
+            # 根据 rank 分配评估算例，确保评估过程覆盖多个测试场景
+            case_dir = case_dirs[rank % len(case_dirs)]
+            
+            env_config['jobs_path'] = os.path.join(case_dir, "job.json")
+            env_config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
+            env_config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
+            env_config['sites_path'] = os.path.join(case_dir, "sites.json")
+            env_config['flights_path'] = os.path.join(case_dir, "flights.json")
+            # ====================================================
+
             env = AircraftScheduleEnv(env_config)
             env.seed(all_args.seed * 50000 + rank * 10000)
-            env.use_domain_rand = False
+            env.use_domain_rand = False  # 评估时严格关闭域随机化
             return env
         return init_env        
 

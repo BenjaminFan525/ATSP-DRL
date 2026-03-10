@@ -70,42 +70,35 @@ def main(args):
     else:
         print(f"[Warning] AC Config not found at {all_args.ac_config}, using empty init.")
 
-    env_config = {}
-    if os.path.exists(all_args.env_config):
-        with open(all_args.env_config, 'r') as f:
-            env_config = yaml.safe_load(f)
-    else:
-        print(f"[Warning] Env Config not found at {all_args.env_config}, using empty init.")
+    case_dir = "/home/fanyx/HKBZ-environment/onpolicy/config"
+    print(f">>> 准备加载测试算例: {case_dir}")
 
-    # ======== 3. 航空环境配置与初始化 ========
-    # 这里填写 HKBZ 的具体配置
-    # env_config = {
-    #     'batch_num': 1,
-    #     'plane_num_per_batch': 12,
-    #     'n_agents': 12,
-    #     'jobs_path': 'onpolicy/envs/HKBZ/utils/config/jobs.json',
-    #     'fixed_res_path': 'onpolicy/envs/HKBZ/utils/config/fixed_resources.json',
-    #     'mobile_res_path': 'onpolicy/envs/HKBZ/utils/config/mobile_resources.json',
-    #     'sites_path': 'onpolicy/envs/HKBZ/utils/config/sites.json',
-    #     'seed': all_args.seed,
-    # }
-    
-    # 为了防止参数不匹配，强制覆盖 args 中的设置
-    all_args.max_agent_num = env_config['n_agents']
+    # 环境配置参数：替换为动态加载的算例路径
+    env_config = {
+        'jobs_path': os.path.join(case_dir, 'job.json'),
+        'fixed_res_path': os.path.join(case_dir, 'fixed_resources.json'),
+        'mobile_res_path': os.path.join(case_dir, 'mobile_resources.json'),
+        'sites_path': os.path.join(case_dir, 'sites.json'),
+        'flights_path': os.path.join(case_dir, 'flights.json'), # 引入新增的航班文件
+        'seed': 42,
+        'interfere': [-1, [], 0],     # 不开启干涉
+        'force_chosen': [-1, '', 0],  # 不开启强制动作
+        'use_domain_rand': False      # 测试阶段严格关闭域随机化
+    }
     
     env = AircraftScheduleEnv(env_config)
 
-    check_env_randomness(env)
+    # check_env_randomness(env)
 
     # ======== 4. 策略网络加载 ========
     from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
-    # 这里的 obs_space 和 act_space 传 None 或者 mock 均可，由于全图网络不依赖固定 dim
     policy = Policy(all_args, ac_config, 
                     device=device)
 
     # 如果有预训练模型，可以在这里 Load
-    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/check/run105/models/checkpoint_Epoch50.pt'
+    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-ppo3/run1/models/checkpoint_Epoch8.pt'
+    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-newdata-ppo3/run6/models/checkpoint_Epoch100.pt'
     # checkpoint_dir = None  # 替换为实际路径，如果有的话
     if checkpoint_dir and os.path.exists(checkpoint_dir):
         print(f"Loading weights from {checkpoint_dir}")

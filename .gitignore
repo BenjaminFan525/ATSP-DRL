@@ -1,5 +1,6 @@
 .vscode/
 result/
+onpolicy/envs/HKBZ/dataset
 onpolicy/scripts/results
 *.pkl
 __pycache__/

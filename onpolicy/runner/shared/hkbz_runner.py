@@ -115,10 +115,6 @@ class HKBZ_Runner(Runner):
             training_rewards = []
             self.episode = episode
 
-            if self.use_eval:
-                render_dir = os.path.join(self.render_dir, f'episode_{episode+1}')
-                os.makedirs(render_dir, exist_ok=True)
-
             self.warmup()
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)

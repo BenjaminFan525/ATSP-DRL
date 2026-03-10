@@ -37,8 +37,8 @@ class AircraftScheduleEnv(gym.Env):
         self.ax = None  # Matplotlib坐标轴对象
         
         # 加载作业数据
-        with open(config['jobs_path'], 'r') as f:
-                data = json.load(f)
+        with open(config['jobs_path'], 'r', encoding='utf-8') as f:
+            data = json.load(f)
         self.jobs = {item["作业编号"] : Job(code=item["作业编号"], 
                     time=item["作业时间"], 
                     group=item["分组"], 
@@ -51,7 +51,7 @@ class AircraftScheduleEnv(gym.Env):
         self.waiting_sites = {job_type: [] for job_type in self.jobs.keys()}
         
         # 加载固定资源
-        with open(config['fixed_res_path'], 'r') as f:
+        with open(config['fixed_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
         self.fixed_resources = {
             item["设备编号"]: Resource(
@@ -63,7 +63,7 @@ class AircraftScheduleEnv(gym.Env):
         }
         
         # 加载移动资源
-        with open(config['mobile_res_path'], 'r') as f:
+        with open(config['mobile_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
         self.mobile_resources = {
             item["设备编号"]: Resource(
@@ -75,7 +75,7 @@ class AircraftScheduleEnv(gym.Env):
         }
         
         # 加载站点
-        with open(config['sites_path'], 'r') as f:
+        with open(config['sites_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
         self.sites = {
             code: Site(code, {
@@ -101,15 +101,18 @@ class AircraftScheduleEnv(gym.Env):
         
         # 飞机字典
         self.planes = {}
-        self.num_planes = 0
-        self.n_agents = config.get('n_agents', 0)  # 智能体数量（默认为0，实际根据飞机数量动态调整）
+        
+        # [修改点 1]：读取航班配置文件
+        with open(config['flights_path'], 'r', encoding='utf-8') as f:
+            self.flights_data = json.load(f)
+            
+        self.num_planes = len(self.flights_data)
+        self.n_agents = config.get('n_agents', self.num_planes)  # 根据配置或实际飞机数量动态调整
         
         # 强制转运飞机列表：因干涉需要强制移动
         self.force_transfer_planes = []
         
         # 构建MARL动作空间
-        # 动作维度1：目标站点 (28个停机位 + 3跑道 + 1等待 = 32)
-        # 动作维度2：选择的作业 (18个作业 + 1等待 = 19)
         self.action_space = spaces.MultiDiscrete([len(self.sites) + 1, len(self.jobs) + 1])
         
         # 状态相关
@@ -118,31 +121,31 @@ class AircraftScheduleEnv(gym.Env):
 
         self.site_code_list = list(self.sites.keys())
         self.job_code_list = [job.code for job in self.jobs.values() if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']]
+        self.runway_code_list = [self.site_code_list[0]] + self.site_code_list[-3:]
         
-        # 根据配置，一次性生成未来所有的飞机降落事件时间表
-        self.batch_num = config.get('batch_num', 1)
-        self.plane_num_per_batch = config.get('plane_num_per_batch', 12)
-        self.landing_list = []
-        for bidx in range(self.batch_num):
-            self.landing_list += [item + bidx * 3600 for item in list(range(0, 120 * self.plane_num_per_batch, 120))]
-        self.landing_list.sort() # 确保时间轴是从小到大排列的
+        # [修改点 2]：一次性生成环境的基础（Base）飞机降落时间表（不包含随机扰动）
+        self.base_landing_list = []
+        for idx, item in enumerate(self.flights_data):
+            # 将 "34%" 转换为整数 34
+            fuel_percentage = int(item["初始燃油状态"].replace('%', ''))
+            self.base_landing_list.append({
+                'land_time': item["到达时间"],
+                'fuel': fuel_percentage,
+                'bidx': 0,        # 简化为全属批次0
+                'pidx': idx,      # 原始索引
+                'plane_id': item["飞机编号"]
+            })
+        # 确保时间轴排序
+        self.base_landing_list.sort(key=lambda x: x['land_time'])
+        
+        # 环境设置
         self.seed(config.get('seed', None))
-        
-        while self.landing_list and self.total_time >= self.landing_list[0]:
-            land_time = self.landing_list.pop(0)
-            bidx = land_time // 3600
-            pidx = (land_time % 3600) // 120
-            plane_cfg = {
-                'velocity': 5,
-                'site': self.sites['Z'],
-                'fuel': self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30),
-                'jobs': self.jobs.values()
-            }
-            self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
-
         self.trajectory_log = []
         self.pending_actions = {}
-        self.use_domain_rand = True
+        self.use_domain_rand = config.get('use_domain_rand', True)
+        
+        # 初始加载时调用一次复位（替代原有硬编码的加载循环）
+        # self.reset() 通常由外部调用，此处无需重复
         
     def seed(self, seed=None):
         '''设置随机种子'''
@@ -197,9 +200,9 @@ class AircraftScheduleEnv(gym.Env):
         示例:
             sites = env.get_avail_sites(plane_instance)
         '''
-        ret = [site.code for site in self.sites.values() if not site.is_occupied and not site.is_interfered and site.code not in ['Z', '29', '30', '31']]
+        ret = [site.code for site in self.sites.values() if not site.is_occupied and not site.is_interfered and site.code not in self.runway_code_list]
         if plane:
-            if plane.site.code not in ['Z', '29', '30', '31']:
+            if plane.site.code not in self.runway_code_list:
                 ret.append(plane.site.code)  # 包括当前所在位置
             # if not plane.is_idle():
             #     # 如果飞机正在忙碌，排除当前站位
@@ -261,7 +264,7 @@ class AircraftScheduleEnv(gym.Env):
             site_features.append([occ, interf, rem_time] + job_onehot)
             
             # 物理限制
-            if site.code in ['Z', '29', '30', '31'] or site.is_interfered or site.is_occupied:
+            if site.code in self.runway_code_list or site.is_interfered or site.is_occupied:
                 global_site_valid.append(False)
             else:
                 global_site_valid.append(True)
@@ -330,7 +333,7 @@ class AircraftScheduleEnv(gym.Env):
                     
                     proc_time = float(job_obj.time) if job_obj.time else 0.0
                     rem_ops = float(len(plane.left_jobs))
-                    req_res = 1.0 if len(job_obj.resources.intersection(set(dev_types))) > 0 else 0.0
+                    req_res = 1.0 if len(set(job_obj.resources).intersection(set(dev_types))) > 0 else 0.0
                     wait_time = float(plane.waiting_time) if status == 1.0 else 0.0
                     
                     op_features[u_idx] = [status, proc_time, rem_ops, req_res, wait_time, float(global_pid)]
@@ -385,7 +388,7 @@ class AircraftScheduleEnv(gym.Env):
                         attr_os.append([dist / plane.velocity])
                 
                 # --- C. O-R Edge ---
-                needed_dev_types = job_obj.resources.intersection(set(dev_types))
+                needed_dev_types = set(job_obj.resources).intersection(set(dev_types))
                 if j_code not in self.job_code_list and getattr(plane, 'destination', None) is not None:
                     needed_dev_types = {'R014'}
                     
@@ -591,8 +594,8 @@ class AircraftScheduleEnv(gym.Env):
                             plane.start_transport(self.sites[target_site_code], None)
                             plane.choosed_job = target_job_code
                         else:
-                            plane.start_waiting()
-                            self.waiting_sites['ZY-T'].append(plane.site.code)
+                            plane.start_waiting('ZY-T')
+                            # self.waiting_sites['ZY-T'].append(plane.site.code)
                             plane.destination = self.sites[target_site_code]
                             plane.destination.add_plane(plane)
                             plane.choosed_job = target_job_code
@@ -605,13 +608,16 @@ class AircraftScheduleEnv(gym.Env):
                 else:
                     if target_job and target_job.code not in plane.get_avail_jobs(plane.site):
                         if not plane.is_completed_all_jobs():
-                            plane.start_waiting()
-                            self.waiting_sites[target_job.code].append(plane.site.code)
+                            plane.start_waiting(target_job.code)
+                            # self.waiting_sites[target_job.code].append(plane.site.code)
                             plane.choosed_job = target_job_code
                             plane.trans_time = 0
                     elif target_job:
                         plane.choose_job(target_job.code)
                         plane.trans_time = 0
+
+            if plane.is_waiting:
+                self.waiting_sites[plane.pending_job].append(plane.site.code)
 
         # =====================================================================
         # 核心重构：内部事件推演循环 (Fast-Forward Loop)
@@ -702,7 +708,7 @@ class AircraftScheduleEnv(gym.Env):
             # -----------------------------------------------------------
             while self.landing_list and self.total_time >= self.landing_list[0][0]:
                 # 直接解包获取完美无误的编号
-                land_time, bidx, pidx = self.landing_list.pop(0) 
+                land_time, bidx, pidx, _ = self.landing_list.pop(0) 
                 
                 plane_cfg = {
                     'velocity': 5,
@@ -778,6 +784,7 @@ class AircraftScheduleEnv(gym.Env):
         # DR 1: 进场时间扰动 (Arrival Jitter)
         # ==========================================================
         self.landing_list = []
+        self.plane_num_per_batch = len(self.flights_data)
         
         # 仅在开启随机化时生成预置飞机
         if self.use_domain_rand:
@@ -785,15 +792,22 @@ class AircraftScheduleEnv(gym.Env):
         else:
             num_pre_planes = 0
             
-        for bidx in range(self.batch_num):
-            actual_arrivals = self.plane_num_per_batch - num_pre_planes if bidx == 0 else self.plane_num_per_batch
-            for i in range(actual_arrivals):
-                base_time = i * 120 + bidx * 3600
-                jitter = (self.np_random.integers(-30, 31) if hasattr(self, 'np_random') else np.random.randint(-30, 31)) if self.use_domain_rand else 0
-                land_time = max(0, base_time + jitter)
+        # [修改点 3]：基于 base_landing_list 恢复环境并加入随机扰动
+        for idx, base_flight in enumerate(self.base_landing_list):
+            if idx >= len(self.flights_data) - num_pre_planes:
+                continue
                 
-                # 【修复 2】：不再只存时间，直接存元组 (land_time, bidx, pidx)
-                self.landing_list.append((land_time, bidx, i))
+            base_time = base_flight['land_time']
+            
+            # ====== 【核心修改：强制第一架飞机在 t=0 降落】 ======
+            if base_time == 0:
+                land_time = 0
+            else:
+                jitter = (self.np_random.integers(-5, 6) if hasattr(self, 'np_random') else np.random.randint(-5, 6)) if self.use_domain_rand else 0
+                land_time = max(0, base_time + jitter)
+            # ====================================================
+
+            self.landing_list.append((land_time, base_flight['bidx'], base_flight['pidx'], base_flight['fuel']))
                 
         # 按时间进行排序
         self.landing_list.sort(key=lambda x: x[0])
@@ -804,7 +818,7 @@ class AircraftScheduleEnv(gym.Env):
         # ==========================================================
         for site in self.sites.values():
             site.reset()
-        gate_codes = [str(i) for i in range(1, 29)] 
+        gate_codes = [str(i) for i in range(1, len(self.site_code_list) - len(self.runway_code_list))] 
         for devices in self.mobile_devices.values():
             for device in devices:
                 device.reset() 
@@ -818,23 +832,29 @@ class AircraftScheduleEnv(gym.Env):
         # ==========================================================
         optional_jobs = ['ZY05', 'ZY06', 'ZY09']
         
-        # 处理即将从 Z 跑道降落的飞机 
-        # 【修复 2配套】：这里提取元组的第0号元素做时间判断
+        # [修改点 4]：处理 0 时刻即到达着陆跑道的飞机
         while self.landing_list and self.total_time >= self.landing_list[0][0]:
-            land_time, bidx, pidx = self.landing_list.pop(0) # 直接解包拿到准确编号
+            land_time, bidx, pidx, fuel = self.landing_list.pop(0) 
             
             actual_jobs = []
             for job in self.jobs.values():
                 if job.code in self.job_code_list:
+                    # 随机丢弃非必要作业
                     if self.use_domain_rand and job.code in optional_jobs:
                         if (self.np_random.random() if hasattr(self, 'np_random') else np.random.random()) < 0.2:
                             continue
                     actual_jobs.append(job)
             
+            # 油量也加入微小扰动以增加样本多样性
+            final_fuel = fuel
+            if self.use_domain_rand:
+                fuel_jitter = self.np_random.integers(-5, 6) if hasattr(self, 'np_random') else np.random.randint(-5, 6)
+                final_fuel = max(0, min(100, fuel + fuel_jitter))
+                
             plane_cfg = {
                 'velocity': 5,
                 'site': self.sites['Z'],
-                'fuel': (self.np_random.integers(0, 30) if hasattr(self, 'np_random') else np.random.randint(0, 30)) if self.use_domain_rand else 30,
+                'fuel': final_fuel,
                 'jobs': actual_jobs
             }
             self.add_planes([{'batch': bidx, 'idx': pidx, **plane_cfg}])
@@ -1169,6 +1189,6 @@ class AircraftScheduleEnv(gym.Env):
             step_rewards[(record['step_idx'], record['agent_id'])] = {
                 'action': record['action'],
                 'makespan_contribution': 0.0,
-                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 1.0*record['waiting_time'] - 1.0*record['trans_time']
+                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 2.0*record['waiting_time'] - 1.0*record['trans_time']
             }
         return step_rewards
