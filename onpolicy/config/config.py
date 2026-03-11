@@ -161,10 +161,10 @@ def get_config():
     parser.add_argument("--algorithm_name", type=str,
                         default='gnn_mappo', choices=["rmappo", "mappo", "happo", "gnn_mappo", "hatrpo", "mat", "mat_dec"])
 
-    parser.add_argument("--experiment_name", type=str, default="train-newdata-ppo3", help="an identifier to distinguish different experiment.")
+    parser.add_argument("--experiment_name", type=str, default="train-newgae-ppo3", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
-    parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
+    parser.add_argument("--device", type=str, default='cuda:1', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
     parser.add_argument("--cuda_deterministic",
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
@@ -177,7 +177,7 @@ def get_config():
                         help="Number of parallel envs for rendering rollouts")
     parser.add_argument("--num_env_steps", type=int, default=10e6,
                         help='Number of environment steps to train (default: 10e6)')
-    parser.add_argument("--num_episodes", type=int, default=100,
+    parser.add_argument("--num_episodes", type=int, default=200,
                         help='Number of episodes to train (default: 40)')
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
@@ -207,7 +207,7 @@ def get_config():
     parser.add_argument("--use_ReLU", action='store_false',
                         default=True, help="Whether to use ReLU")
     parser.add_argument("--use_popart", action='store_true', default=False, help="by default False, use PopArt to normalize rewards.")
-    parser.add_argument("--use_valuenorm", action='store_false', default=True, help="by default True, use running mean and std to normalize rewards.")
+    parser.add_argument("--use_valuenorm", action='store_false', default=False, help="by default True, use running mean and std to normalize rewards.")
     parser.add_argument("--use_feature_normalization", action='store_false',
                         default=True, help="Whether to apply layernorm to the inputs")
     parser.add_argument("--use_orthogonal", action='store_false', default=True,
