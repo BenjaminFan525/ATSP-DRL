@@ -16,10 +16,23 @@ from torch_geometric.data import HeteroData
 class AircraftScheduleEnv(gym.Env):
     environment_name = "Plane Schedule"
     
-    def __init__(self, config, render_mode: str = None):
+    def __init__(self, config_list, render_mode: str = None):
         super().__init__()
-        self.config = config  # 环境配置字典
-        self.render_mode = render_mode  # 渲染模式
+        
+        # --- [修改点 1]：支持传入配置文件列表 ---
+        # 兼容处理：如果传入的是单个字典，转为列表
+        if isinstance(config_list, dict):
+            self.data_list = [config_list]
+        elif isinstance(config_list, list) and len(config_list) > 0:
+            self.data_list = config_list
+        else:
+            raise ValueError("config_list 必须是配置字典或配置字典的列表")
+            
+        self.data_idx = 0
+        self.render_mode = render_mode
+        
+        # 初始化基础配置为列表的第一项，以防其他未剥离的逻辑需要调用 self.config
+        self.config = self.data_list[0] 
         
         # MARL核心属性
         self.n_agents = 0
@@ -27,33 +40,50 @@ class AircraftScheduleEnv(gym.Env):
         self.obs_shape = 0  # 观测空间维度
         self.state_shape = 0  # 全局状态维度
         
-        # 训练监控
-        self.steps = 0  # 当前步数
-        self.step_time = 0  # 单步耗时
-        self.total_time = 0  # 总耗时
+        # 训练监控与可视化
+        self.steps = 0
+        self.step_time = 0
+        self.total_time = 0
+        self.fig = None
+        self.ax = None
         
-        # 可视化
-        self.fig = None  # Matplotlib图形对象
-        self.ax = None  # Matplotlib坐标轴对象
+        # 基础状态容器
+        self.planes = {}
+        self.force_transfer_planes = []
+        self.trajectory_log = []
+        self.pending_actions = {}
+        
+        # 环境设置
+        self.seed(self.config.get('seed', None))
+        self.use_domain_rand = self.config.get('use_domain_rand', True)
+        
+        # --- [修改点 2]：首次初始化，建立 Action/Obs 空间 ---
+        # 在 __init__ 中加载一次数据，是为了让 gym.Env 能够正确初始化 action_space 等静态属性
+        initial_data = self._load_data_from_disk(self.config)
+        self._apply_data(initial_data, clone=False)
+
+    def _load_data_from_disk(self, config_dict):
+        """
+        根据传入的配置字典，从硬盘加载所有 JSON 数据并实例化基础对象。
+        返回一个包含所有环境必须数据的字典。
+        """
+        data_bundle = {}
         
         # 加载作业数据
-        with open(config['jobs_path'], 'r', encoding='utf-8') as f:
+        with open(config_dict['jobs_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.jobs = {item["作业编号"] : Job(code=item["作业编号"], 
+        data_bundle['jobs'] = {item["作业编号"] : Job(code=item["作业编号"], 
                     time=item["作业时间"], 
                     group=item["分组"], 
                     resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
                     predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
                     exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
                 for item in data}
-        
-        # 等待队列：按作业类型分类存储等待站点
-        self.waiting_sites = {job_type: [] for job_type in self.jobs.keys()}
-        
+                
         # 加载固定资源
-        with open(config['fixed_res_path'], 'r', encoding='utf-8') as f:
+        with open(config_dict['fixed_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.fixed_resources = {
+        data_bundle['fixed_resources'] = {
             item["设备编号"]: Resource(
                 item["设备编号"],
                 item["类型"],
@@ -63,9 +93,9 @@ class AircraftScheduleEnv(gym.Env):
         }
         
         # 加载移动资源
-        with open(config['mobile_res_path'], 'r', encoding='utf-8') as f:
+        with open(config_dict['mobile_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.mobile_resources = {
+        data_bundle['mobile_resources'] = {
             item["设备编号"]: Resource(
                 item["设备编号"],
                 item["类型"],
@@ -75,77 +105,80 @@ class AircraftScheduleEnv(gym.Env):
         }
         
         # 加载站点
-        with open(config['sites_path'], 'r', encoding='utf-8') as f:
+        with open(config_dict['sites_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
-        self.sites = {
+        data_bundle['sites'] = {
             code: Site(code, {
                 'position': pos,
-                'jobs': self.jobs,
-                'fixed_resources': [res for res in self.fixed_resources.values() if code in res.sites],
-                'mobile_resources': [res for res in self.mobile_resources.values() if code in res.sites]
+                'jobs': data_bundle['jobs'],
+                'fixed_resources': [res for res in data_bundle['fixed_resources'].values() if code in res.sites],
+                'mobile_resources': [res for res in data_bundle['mobile_resources'].values() if code in res.sites]
             }) for code, pos in zip(data['sites_codes'], data['sites_positions'])
         }
         
         # 初始化移动设备
-        self.mobile_devices = {}
-        for res in self.mobile_resources.values():
+        mobile_devices = {}
+        for res in data_bundle['mobile_resources'].values():
             device_cfg = {
                 'resource': res,
-                'velocity': 5 if res.code == 'R014' else 3,# 转运车速度和飞机速度一致
-                'site': self.sites[res.sites[0]]
+                'velocity': 5 if res.code == 'R014' else 3,
+                'site': data_bundle['sites'][res.sites[0]]
             }
-            if res.type not in self.mobile_devices:
-                self.mobile_devices[res.type] = [Device(res.code, device_cfg)]
+            if res.type not in mobile_devices:
+                mobile_devices[res.type] = [Device(res.code, device_cfg)]
             else:
-                self.mobile_devices[res.type].append(Device(res.code, device_cfg))
+                mobile_devices[res.type].append(Device(res.code, device_cfg))
+        data_bundle['mobile_devices'] = mobile_devices
         
-        # 飞机字典
-        self.planes = {}
+        # 加载航班数据
+        with open(config_dict['flights_path'], 'r', encoding='utf-8') as f:
+            flights_data = json.load(f)
+        data_bundle['flights_data'] = flights_data
         
-        # [修改点 1]：读取航班配置文件
-        with open(config['flights_path'], 'r', encoding='utf-8') as f:
-            self.flights_data = json.load(f)
-            
-        self.num_planes = len(self.flights_data)
-        self.n_agents = config.get('n_agents', self.num_planes)  # 根据配置或实际飞机数量动态调整
+        # 生成 Base Landing List
+        base_landing_list = []
+        for idx, item in enumerate(flights_data):
+            fuel_percentage = int(item["初始燃油状态"].replace('%', ''))
+            base_landing_list.append({
+                'land_time': item["到达时间"],
+                'fuel': fuel_percentage,
+                'bidx': 0,
+                'pidx': idx,
+                'plane_id': item["飞机编号"]
+            })
+        base_landing_list.sort(key=lambda x: x['land_time'])
+        data_bundle['base_landing_list'] = base_landing_list
         
-        # 强制转运飞机列表：因干涉需要强制移动
-        self.force_transfer_planes = []
-        
-        # 构建MARL动作空间
-        self.action_space = spaces.MultiDiscrete([len(self.sites) + 1, len(self.jobs) + 1])
-        
-        # 状态相关
-        self.sites_state_global = [-1] * len(self.sites)  # 站位全局状态
-        self.state_left_time = np.zeros(len(self.sites))  # 站位剩余时间
+        return data_bundle
 
+    def _apply_data(self, new_data, clone=False):
+        """
+        将加载好的数据绑定到环境自身属性上，并更新依赖项。
+        """
+        self.jobs = new_data['jobs']
+        self.fixed_resources = new_data['fixed_resources']
+        self.mobile_resources = new_data['mobile_resources']
+        self.sites = new_data['sites']
+        self.mobile_devices = new_data['mobile_devices']
+        self.flights_data = new_data['flights_data']
+        self.base_landing_list = new_data['base_landing_list']
+        
+        self.num_planes = len(self.flights_data)
+        self.n_agents = self.config.get('n_agents', self.num_planes)
+        
+        self.waiting_sites = {job_type: [] for job_type in self.jobs.keys()}
+        
+        # 预计算一些常用的列表
         self.site_code_list = list(self.sites.keys())
         self.job_code_list = [job.code for job in self.jobs.values() if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']]
         self.runway_code_list = [self.site_code_list[0]] + self.site_code_list[-3:]
         
-        # [修改点 2]：一次性生成环境的基础（Base）飞机降落时间表（不包含随机扰动）
-        self.base_landing_list = []
-        for idx, item in enumerate(self.flights_data):
-            # 将 "34%" 转换为整数 34
-            fuel_percentage = int(item["初始燃油状态"].replace('%', ''))
-            self.base_landing_list.append({
-                'land_time': item["到达时间"],
-                'fuel': fuel_percentage,
-                'bidx': 0,        # 简化为全属批次0
-                'pidx': idx,      # 原始索引
-                'plane_id': item["飞机编号"]
-            })
-        # 确保时间轴排序
-        self.base_landing_list.sort(key=lambda x: x['land_time'])
+        # 更新状态追踪数组
+        self.sites_state_global = [-1] * len(self.sites)
+        self.state_left_time = np.zeros(len(self.sites))
         
-        # 环境设置
-        self.seed(config.get('seed', None))
-        self.trajectory_log = []
-        self.pending_actions = {}
-        self.use_domain_rand = config.get('use_domain_rand', True)
-        
-        # 初始加载时调用一次复位（替代原有硬编码的加载循环）
-        # self.reset() 通常由外部调用，此处无需重复
+        # 重新定义 Action Space (⚠️ 注意：如果不同配置文件的站点/作业数量不同，这会导致 action_space 大小变化)
+        self.action_space = spaces.MultiDiscrete([len(self.sites) + 1, len(self.jobs) + 1])
         
     def seed(self, seed=None):
         '''设置随机种子'''
@@ -763,8 +796,23 @@ class AircraftScheduleEnv(gym.Env):
         # 最终返回观测和奖励
         return self._get_obs(), self._get_reward(), self._get_done(), self._get_info()
 
-    def reset(self):
-        super().reset(seed=None)
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        
+        # ==========================================================
+        # 动态切换配置与加载数据
+        # ==========================================================
+        current_config = self.data_list[self.data_idx]
+        self.config = current_config  # 更新 self.config 引用
+        
+        # 实时 I/O 读取
+        new_data = self._load_data_from_disk(current_config)
+        
+        # 应用数据 (无需 clone)
+        self._apply_data(new_data, clone=False)
+        
+        # 循环索引，为下一次 reset 准备
+        self.data_idx = (self.data_idx + 1) % len(self.data_list)
         
         # 解析域随机化开关 (优先级：options传入 > config配置 > 默认开启)
         self.steps = 0

@@ -43,6 +43,7 @@ class MAPPO_Trainer():
         self._use_valuenorm = args.use_valuenorm
         self._use_value_active_masks = args.use_value_active_masks
         self._use_policy_active_masks = args.use_policy_active_masks
+        self.grad_accumulation_steps = args.grad_accumulation_steps
         
         
         if self._use_popart:
@@ -74,7 +75,7 @@ class MAPPO_Trainer():
 
         return value_loss
 
-    def update_policy_net(self, sample, update_actor=True):
+    def update_policy_net(self, sample, update_actor=True, perform_step=True):
         graph_batch, rnn_states_batch, actions_batch, \
         value_preds_batch, return_batch, active_masks_batch, old_action_log_probs_batch, \
         adv_targ, last_op_batch, last_site_batch, rewards_batch = sample
@@ -92,6 +93,7 @@ class MAPPO_Trainer():
         active_masks_batch = check(active_masks_batch).to(**self.tpdv)
         rewards_batch = check(rewards_batch).to(**self.tpdv)
         rewards = (rewards_batch*active_masks_batch).sum() / active_masks_batch.sum()
+        
         # actor update
         imp_weights = torch.exp(action_log_probs.unsqueeze(-1) - old_action_log_probs_batch)
 
@@ -99,7 +101,6 @@ class MAPPO_Trainer():
         surr2 = torch.clamp(imp_weights, 1.0 - self.clip_param, 1.0 + self.clip_param) * adv_targ
         
         if self._use_policy_active_masks:
-            # maximaize the minimum of the surrogate losses
             policy_action_loss = (-torch.sum(torch.min(surr1, surr2),
                                              dim=-1,
                                              keepdim=True) * active_masks_batch).sum() / active_masks_batch.sum()
@@ -108,26 +109,35 @@ class MAPPO_Trainer():
 
         policy_loss = policy_action_loss
 
-        self.policy.actor_optimizer.zero_grad()
+        # 🚨 移除此处的无脑 zero_grad
+        # self.policy.actor_optimizer.zero_grad()
 
         if update_actor:
-            (policy_loss - dist_entropy * self.entropy_coef).backward()
+            # 引入梯度累加：对 Loss 进行缩放
+            loss = (policy_loss - dist_entropy * self.entropy_coef) / self.grad_accumulation_steps
+            loss.backward()
 
-        if self._use_max_grad_norm:
-            actor_grad_norm = nn.utils.clip_grad_norm_(self.policy.ac.actor_param.parameters(), self.max_grad_norm)
-        else:
-            actor_grad_norm = get_gard_norm(self.policy.ac.actor_param.parameters())
+        actor_grad_norm = torch.tensor(0.0)
+        
+        # 🚨 当满足累加步数条件时，才真正更新网络和清空梯度
+        if perform_step and update_actor:
+            if self._use_max_grad_norm:
+                actor_grad_norm = nn.utils.clip_grad_norm_(self.policy.ac.actor_param.parameters(), self.max_grad_norm)
+            else:
+                actor_grad_norm = get_gard_norm(self.policy.ac.actor_param.parameters())
 
-        self.policy.actor_optimizer.step()
+            self.policy.actor_optimizer.step()
+            self.policy.actor_optimizer.zero_grad()
+
         return {
             "policy_loss": policy_loss.item(),
-            "actor_grad_norm": actor_grad_norm.item(),
+            "actor_grad_norm": actor_grad_norm.item() if isinstance(actor_grad_norm, torch.Tensor) else actor_grad_norm,
             "dist_entropy": dist_entropy.item(),
             "advantages": adv_targ.mean().item(),
             "rewards": rewards.item()
         }
 
-    def update_value_net(self, sample):
+    def update_value_net(self, sample, perform_step=True):
         graph_batch, rnn_states_batch, actions_batch, \
         value_preds_batch, return_batch, active_masks_batch, old_action_log_probs_batch, \
         adv_targ, last_op_batch, last_site_batch, rewards_batch = sample
@@ -136,7 +146,6 @@ class MAPPO_Trainer():
         return_batch = check(return_batch).to(**self.tpdv)
         active_masks_batch = check(active_masks_batch).to(**self.tpdv)
 
-        # Reshape to do in a single forward pass for all steps
         values = self.policy.evaluate_values(graph_batch,
                                              rnn_states_batch,
                                              active_masks_batch,
@@ -151,24 +160,32 @@ class MAPPO_Trainer():
             active_masks_batch.view(-1, 1)
         )
 
-        self.policy.critic_optimizer.zero_grad()
+        # 🚨 移除此处的无脑 zero_grad
+        # self.policy.critic_optimizer.zero_grad()
 
-        (value_loss * self.value_loss_coef).backward()
+        # 引入梯度累加：对 Loss 进行缩放
+        loss = (value_loss * self.value_loss_coef) / self.grad_accumulation_steps
+        loss.backward()
 
-        if self._use_max_grad_norm:
-            critic_grad_norm = nn.utils.clip_grad_norm_(self.policy.ac.critic_param.parameters(), self.max_grad_norm)
-        else:
-            critic_grad_norm = get_gard_norm(self.policy.ac.critic_param.parameters())
+        critic_grad_norm = torch.tensor(0.0)
+        
+        # 🚨 当满足累加步数条件时，才真正更新网络和清空梯度
+        if perform_step:
+            if self._use_max_grad_norm:
+                critic_grad_norm = nn.utils.clip_grad_norm_(self.policy.ac.critic_param.parameters(), self.max_grad_norm)
+            else:
+                critic_grad_norm = get_gard_norm(self.policy.ac.critic_param.parameters())
 
-        self.policy.critic_optimizer.step()
+            self.policy.critic_optimizer.step()
+            self.policy.critic_optimizer.zero_grad()
 
         return {
             "value_loss": value_loss.item(),
-            "critic_grad_norm": critic_grad_norm.item(),
+            "critic_grad_norm": critic_grad_norm.item() if isinstance(critic_grad_norm, torch.Tensor) else critic_grad_norm,
             "value_mean": values.mean().item()
         }
 
-    def ppo_update(self, sample, update_actor=True):
+    def ppo_update(self, sample, update_actor=True, perform_step=True):
         """
         Update actor and critic networks.
         :param sample: (Tuple) contains data batch with which to update networks.
@@ -186,48 +203,51 @@ class MAPPO_Trainer():
             self.policy.ac.eval()
             self.policy.ac.sel_enc.train()
             for _ in range(self.ppo_epoch):
-                policy_results = self.update_policy_net(sample, update_actor)
+                policy_results = self.update_policy_net(sample, update_actor, perform_step)
                 for k, v in policy_results.items():
                     train_info[k].append(v)
             self.policy.ac.train()
 
         for _ in range(self.ppo_epoch):
-            value_results = self.update_value_net(sample)
+            value_results = self.update_value_net(sample, perform_step)
             for k, v in value_results.items():
                 train_info[k].append(v)
         
         return {k: np.mean(v) if v else 0.0 for k, v in train_info.items()}
 
     def train(self, buffer, update_actor=True):
-        """
-        Perform a training update using minibatch GD.
-        :param buffer: (SharedReplayBuffer) buffer containing training data.
-        :param update_actor: (bool) whether to update actor network.
-
-        :return train_info: (dict) contains information regarding training update (e.g. loss, grad norms, etc).
-        """
         advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
-        # advantages_copy = advantages.copy()
-        # advantages_copy[buffer.active_masks[:-1] == 0.0] = np.nan
-        # mean_advantages = np.nanmean(advantages_copy)
-        # std_advantages = np.nanstd(advantages_copy)
-        # advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
     
         train_info = defaultdict(float)
+        
+        # 🚨 训练开始前，确保梯度干净
+        self.policy.actor_optimizer.zero_grad()
+        self.policy.critic_optimizer.zero_grad()
     
         data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
-        for sample in data_generator:
+        
+        # 将 generator 转换为列表，这样我们可以获取总步数（处理最后一步余数时必须）
+        data_samples = list(data_generator)
+        total_steps = len(data_samples)
+
+        for step, sample in enumerate(data_samples):
+            # 判断：如果达到了累加步数，或者是整个循环的最后一步，则执行一次梯度更新
+            perform_step = ((step + 1) % self.grad_accumulation_steps == 0) or (step + 1 == total_steps)
+            
             update_results = self.ppo_update(
                 sample, 
-                update_actor
+                update_actor,
+                perform_step=perform_step
             )
             
             for k, v in update_results.items():
                 train_info[k] += v
 
+        # 计算并均摊 train_info
         num_mini_batch = math.ceil(self.n_rollout_threads / self.mini_batch_size)
-        for k in train_info.keys():
-            train_info[k] /= num_mini_batch
+        if num_mini_batch > 0:
+            for k in train_info.keys():
+                train_info[k] /= num_mini_batch
  
         return train_info
     

@@ -164,12 +164,12 @@ def get_config():
     parser.add_argument("--experiment_name", type=str, default="train-newgae-ppo3", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
-    parser.add_argument("--device", type=str, default='cuda:1', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
+    parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
     parser.add_argument("--cuda_deterministic",
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
                         default=1, help="Number of torch threads for training")
-    parser.add_argument("--n_rollout_threads", type=int, default=500,
+    parser.add_argument("--n_rollout_threads", type=int, default=100,
                         help="Number of parallel envs for training rollouts")
     parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
                         help="Number of parallel envs for evaluating rollouts")
@@ -189,7 +189,7 @@ def get_config():
 
     # replay buffer parameters
     parser.add_argument("--episode_length", type=int,
-                        default=160, help="Max length for any episode")
+                        default=150, help="Max length for any episode")
 
     # network parameters
     parser.add_argument("--share_policy", action='store_false',
@@ -315,4 +315,5 @@ def get_config():
     parser.add_argument('--start_epoch', type=int, default=60, help="the epoch to start fusing reward, default 10")
     parser.add_argument('--fuse_epoch', type=int, default=20, help="the epoch to start fusing reward, default 10")
     parser.add_argument('--max_agent_num', type=int, default=12, help="the max number of agents, default 6")    
+    parser.add_argument('--grad_accumulation_steps', type=int, default=1, help="the number of gradient accumulation steps, default 5")    
     return parser

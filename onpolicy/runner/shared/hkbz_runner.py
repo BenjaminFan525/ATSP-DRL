@@ -26,6 +26,7 @@ class HKBZ_Runner(Runner):
         self.device = config['device']
         self.num_agents = config['num_agents']
         self.ac_config = config['ac_config']
+        self.num_envs = config['num_envs']
         if config.__contains__("render_envs"):
             self.render_envs = config['render_envs']       
 
@@ -112,50 +113,46 @@ class HKBZ_Runner(Runner):
             # profiler = cProfile.Profile()
             # profiler.enable()
             # self.envs.shuffer_data()
-            training_rewards = []
             self.episode = episode
 
-            self.warmup()
             if self.use_linear_lr_decay:
                 self.trainer.policy.lr_decay(episode, episodes)
 
             if self.use_anneal:
                 self.trainer.policy.hyperparams_anneal(episode, episodes)
 
-            for step in range(self.episode_length):
-                # Sample actions
-                values, actions, action_log_probs, rnn_states = self.collect(step)
-                    
-                # Obser reward and next obs
-                obs, rewards, dones, infos = self.envs.step(actions)
+            for _ in range(self.num_envs):
+                self.warmup()
+                training_rewards = []
+                for step in range(self.episode_length):
+                    # Sample actions
+                    values, actions, action_log_probs, rnn_states = self.collect(step)
+                        
+                    # Obser reward and next obs
+                    obs, rewards, dones, infos = self.envs.step(actions)
 
-                data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states
+                    data = obs, rewards, dones, infos, values, actions, action_log_probs, rnn_states
 
-                # insert data into buffer
-                self.insert(data)
+                    # insert data into buffer
+                    self.insert(data)
 
-            # compute return and update network
-            self.compute()
+                # compute return and update network
+                self.compute()
 
-            train_infos = self.train()
-        
-            # post process
-            # train_infos['distance'] = np.mean(rewards['s'])
-            # train_infos['time'] = np.mean(rewards['t'])
-            # train_infos['fuel consumption'] = np.mean(rewards['c'])
+                train_infos = self.train()
 
-            # eval
-            if (self.total_num_steps == 0 or self.total_num_steps % self.eval_interval == 0) and self.use_eval:
-                train_infos['makespan'] = self.eval(render=True)
-            
-            self.total_num_steps += self.n_rollout_threads
-            self.log_train(train_infos, self.total_num_steps)
-            training_rewards.append(train_infos["rewards"] / self.reward_coef)
-            pbar.set_description(f"[Episode {episode+1}]")
-            pbar.set_postfix(
-                average_episode_rewards=np.mean(training_rewards),
-                total_num_steps=self.total_num_steps,
-                fps=int(self.total_num_steps / (time.time() - start)))
+                # eval
+                if (self.total_num_steps == 0 or self.total_num_steps % self.eval_interval == 0) and self.use_eval:
+                    train_infos['makespan'] = self.eval(render=True)
+                
+                self.total_num_steps += self.n_rollout_threads
+                self.log_train(train_infos, self.total_num_steps)
+                training_rewards.append(train_infos["rewards"] / self.reward_coef)
+                pbar.set_description(f"[Episode {episode+1}]")
+                pbar.set_postfix(
+                    average_episode_rewards=np.mean(training_rewards),
+                    total_num_steps=self.total_num_steps,
+                    fps=int(self.total_num_steps / (time.time() - start)))
 
             # save model
             if (episode % self.save_interval == 0 or episode == episodes - 1):
@@ -190,7 +187,7 @@ class HKBZ_Runner(Runner):
             for (step_idx, agent_id), data in env_rewards.items():
                 self.buffer.rewards[step_idx, env_idx, agent_id, 0] = data['reward'] * self.reward_coef
 
-        self.buffer.compute_returns(next_values)
+        self.buffer.compute_returns(next_values, self.trainer.value_normalizer)
 
     def train(self):
         """Train policies with data in buffer. """
