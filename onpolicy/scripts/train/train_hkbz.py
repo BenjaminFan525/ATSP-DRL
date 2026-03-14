@@ -18,75 +18,93 @@ from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
 from onpolicy.envs.env_wrappers import GraphSubprocVecEnv, DummyVecEnv
 from onpolicy.utils.util import shuffle_dataset
 import yaml
+import glob
 
 """Train script for MPEs."""
 
-import os
-import glob
-import yaml
-
 def make_train_env(all_args):
+    # ================= 提前读取基础配置并打乱、切分数据集 =================
+    env_config_base = {}
+    if os.path.exists(all_args.env_config):
+        with open(all_args.env_config, 'r', encoding='utf-8') as f:
+            env_config_base = yaml.safe_load(f)
+            
+    dataset_dir = env_config_base.get('dataset_dir', 'airport_dataset')
+    case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
+    
+    if not case_dirs:
+        raise ValueError(f"🚨 错误：在目录 '{dataset_dir}' 中没有找到任何算例文件夹！请先生成数据集。")
+        
+    # 设置随机种子并打乱所有的 case_dirs
+    rng = np.random.default_rng(all_args.seed)
+    rng.shuffle(case_dirs)
+    
+    # 将整个数据集等分为 n_rollout_threads 份
+    split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_rollout_threads)]
+    # ====================================================================
+
     def get_env_fn(rank):
         def init_env():
-            env_config = {}
-            if os.path.exists(all_args.env_config):
-                with open(all_args.env_config, 'r', encoding='utf-8') as f:
-                    env_config = yaml.safe_load(f)
+            # 获取分配给当前 rank 的算例路径列表
+            rank_case_dirs = split_case_dirs[rank]
             
-            # ================= 新增：读取数据集 =================
-            # 优先从配置中读取 dataset_dir，如果没配则默认 'airport_dataset'
-            dataset_dir = env_config.get('dataset_dir', 'airport_dataset')
-            case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
-            
-            if not case_dirs:
-                raise ValueError(f"🚨 错误：在目录 '{dataset_dir}' 中没有找到任何算例文件夹！请先生成数据集。")
-            
-            # 根据线程 rank 为当前环境分配一个算例 (使用取余确保不会越界)
-            case_dir = case_dirs[rank % len(case_dirs)]
-            
-            # 动态覆盖环境配置中的文件路径，指向分配到的算例文件夹
-            env_config['jobs_path'] = os.path.join(case_dir, "job.json")
-            env_config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
-            env_config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
-            env_config['sites_path'] = os.path.join(case_dir, "sites.json")
-            env_config['flights_path'] = os.path.join(case_dir, "flights.json")
-            # ====================================================
+            # 为当前环境构建配置列表
+            config_list = []
+            for case_dir in rank_case_dirs:
+                # 使用 deepcopy 防止多个环境或多个算例配置之间发生引用污染
+                config = copy.deepcopy(env_config_base)
+                config['jobs_path'] = os.path.join(case_dir, "job.json")
+                config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
+                config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
+                config['sites_path'] = os.path.join(case_dir, "sites.json")
+                config['flights_path'] = os.path.join(case_dir, "flights.json")
+                config_list.append(config)
 
-            env = AircraftScheduleEnv(env_config)
+            # 传入配置列表
+            env = AircraftScheduleEnv(config_list)
             env.seed(all_args.seed + rank * 1000)
             return env
         return init_env
 
-    return GraphSubprocVecEnv([get_env_fn(rank) for rank in range(all_args.n_rollout_threads)])
+    return GraphSubprocVecEnv([get_env_fn(rank) for rank in range(all_args.n_rollout_threads)]), len(split_case_dirs[0])
 
 
 def make_eval_env(all_args):
+    # ================= 评估环境：读取、打乱并切分数据集 =================
+    env_config_base = {}
+    if os.path.exists(all_args.env_config):
+        with open(all_args.env_config, 'r', encoding='utf-8') as f:
+            env_config_base = yaml.safe_load(f)
+            
+    dataset_dir = env_config_base.get('eval_dataset_dir', env_config_base.get('dataset_dir', 'airport_dataset'))
+    case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
+    
+    if not case_dirs:
+        raise ValueError(f"🚨 错误：在评估目录 '{dataset_dir}' 中没有找到任何算例文件夹！")
+        
+    # 打乱评估集 (可以保持和训练集不同的打乱方式，或者使用固定的评估顺序)
+    rng = np.random.default_rng(all_args.seed * 2) 
+    rng.shuffle(case_dirs)
+    
+    # 将评估数据集等分为 n_eval_rollout_threads 份
+    split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_eval_rollout_threads)]
+    # ====================================================================
+
     def get_env_fn(rank):
         def init_env():
-            env_config = {}
-            if os.path.exists(all_args.env_config):
-                with open(all_args.env_config, 'r', encoding='utf-8') as f:
-                    env_config = yaml.safe_load(f)
+            rank_case_dirs = split_case_dirs[rank]
             
-            # ================= 新增：读取评估数据集 =================
-            # 评估可以使用同一个数据集，也可以在 config 中指定 eval_dataset_dir 进行隔离验证
-            dataset_dir = env_config.get('eval_dataset_dir', env_config.get('dataset_dir', 'airport_dataset'))
-            case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
-            
-            if not case_dirs:
-                raise ValueError(f"🚨 错误：在评估目录 '{dataset_dir}' 中没有找到任何算例文件夹！")
-            
-            # 根据 rank 分配评估算例，确保评估过程覆盖多个测试场景
-            case_dir = case_dirs[rank % len(case_dirs)]
-            
-            env_config['jobs_path'] = os.path.join(case_dir, "job.json")
-            env_config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
-            env_config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
-            env_config['sites_path'] = os.path.join(case_dir, "sites.json")
-            env_config['flights_path'] = os.path.join(case_dir, "flights.json")
-            # ====================================================
+            config_list = []
+            for case_dir in rank_case_dirs:
+                config = copy.deepcopy(env_config_base)
+                config['jobs_path'] = os.path.join(case_dir, "job.json")
+                config['fixed_res_path'] = os.path.join(case_dir, "fixed_resources.json")
+                config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
+                config['sites_path'] = os.path.join(case_dir, "sites.json")
+                config['flights_path'] = os.path.join(case_dir, "flights.json")
+                config_list.append(config)
 
-            env = AircraftScheduleEnv(env_config)
+            env = AircraftScheduleEnv(config_list)
             env.seed(all_args.seed * 50000 + rank * 10000)
             env.use_domain_rand = False  # 评估时严格关闭域随机化
             return env
@@ -166,7 +184,7 @@ def main(args):
     np.random.seed(all_args.seed)
 
     # env init
-    envs = make_train_env(all_args)
+    envs, n_envs = make_train_env(all_args)
     eval_envs = make_eval_env(all_args) if all_args.use_eval else None
 
     # config
@@ -183,6 +201,7 @@ def main(args):
         "run_dir": run_dir,
         "ac_config": ac_config,
         "num_agents": all_args.max_agent_num,
+        "num_envs": n_envs
     }
 
     # run experiments
