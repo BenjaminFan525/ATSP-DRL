@@ -87,7 +87,7 @@ class SharedReplayBuffer(object):
         self.step = 0
 
     def graph_insert(self, obs, rnn_states, actions, action_log_probs,
-               value_preds, rewards, masks, active_masks):
+                   value_preds, rewards, masks, active_masks):
         """
         Insert data into the buffer. This insert function is used specifically for PyG graph data observations.
         :param obs: (list of HeteroData) local agent observations, length equals n_rollout_threads.
@@ -118,7 +118,11 @@ class SharedReplayBuffer(object):
         
         self.masks[self.step + 1] = masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
         self.active_masks[self.step + 1] = active_masks.reshape(self.n_rollout_threads, self.num_agents, 1).copy()
-        # 游标步进
+
+        invalid_indices = (actions[:, :, 1] == 0)
+        if invalid_indices.any():
+            self.active_masks[self.step][invalid_indices] = 0.0
+            
         self.step = (self.step + 1) % self.episode_length
 
     def graph_after_update(self):

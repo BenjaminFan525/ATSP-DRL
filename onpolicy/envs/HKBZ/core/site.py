@@ -12,7 +12,6 @@ class Site:
         # 当前正在进行的作业字典，key为作业代码，value为[剩余时间, 资源代码]
         self.onging_jobs = {}
         self.left_job_time = 0  # 当前所有作业的剩余时间（取最大值）
-
         # 初始化站点可用资源字典
         self.resources = {}
         # 遍历固定和移动资源，将支持本站的资源加入资源列表

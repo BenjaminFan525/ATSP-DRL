@@ -7,7 +7,7 @@ import setproctitle
 import numpy as np
 from pathlib import Path
 import torch
-
+import copy
 curr_path = os.path.dirname(os.path.abspath(__file__)) 
 parent_path = os.path.dirname(os.path.dirname(os.path.dirname(curr_path))) 
 

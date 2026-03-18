@@ -297,7 +297,7 @@ class AircraftScheduleEnv(gym.Env):
             site_features.append([occ, interf, rem_time] + job_onehot)
             
             # 物理限制
-            if site.code in self.runway_code_list or site.is_interfered or site.is_occupied:
+            if site.code in self.runway_code_list or site.is_interfered or site.is_occupied or site.code == "Z":
                 global_site_valid.append(False)
             else:
                 global_site_valid.append(True)
@@ -338,8 +338,10 @@ class AircraftScheduleEnv(gym.Env):
                         # 1. 全局合法（无人占用且无干涉），此机位可用
                         ptr_site_mask_matrix[global_pid, s_idx] = True
                     else:
+                        if site.code == 'Z':
+                            ptr_site_mask_matrix[global_pid, s_idx] = False
                         # 2. 全局不合法，但如果占用它的正是当前这架飞机本身，且无干涉，则可用（允许飞机原地干活）
-                        if site.code != 'Z' and site == plane.site and not site.is_interfered:
+                        elif site == plane.site and not site.is_interfered:
                             ptr_site_mask_matrix[global_pid, s_idx] = True
                         else:
                             ptr_site_mask_matrix[global_pid, s_idx] = False
@@ -459,6 +461,8 @@ class AircraftScheduleEnv(gym.Env):
         # 直接挂载 Numpy 生成的绝对固定形状的 Tensor
         data.op_mask = torch.tensor(agent_op_mask, dtype=torch.bool)             # Shape: [n_agents, n_ops]
         data.site_mask_matrix = torch.tensor(ptr_site_mask_matrix, dtype=torch.bool) # Shape: [n_agents, n_sites]
+        self.ptr_site_mask_matrix = ptr_site_mask_matrix
+        self.agent_op_mask = agent_op_mask
             
         return data
 
@@ -600,11 +604,16 @@ class AircraftScheduleEnv(gym.Env):
                 if self.current_active_agents[pid]:
                     job_idx = action[pid][0] - pid * len(self.job_code_list)  
                     site_idx = action[pid][1] 
-                    target_job_code = self.job_code_list[job_idx]
-                    target_site_code = self.site_code_list[site_idx]
-                    target_job = self.jobs[target_job_code]
-                    plane.last_site_idx = job_idx
-                    plane.last_job_idx = site_idx
+                    if site_idx == 0:
+                        target_site_code = plane.site.code
+                        target_job = None
+                    else:
+                        target_job_code = self.job_code_list[job_idx]
+                        target_site_code = self.site_code_list[site_idx]
+                        target_job = self.jobs[target_job_code]
+                    
+                    plane.last_site_idx = site_idx
+                    plane.last_job_idx = job_idx
 
                     self.pending_actions[plane_id] = {
                         'step_idx': self.steps,
@@ -701,17 +710,26 @@ class AircraftScheduleEnv(gym.Env):
                     internal_step_time = min(internal_step_time, site.left_rec_time)
 
             # -----------------------------------------------------------
-            # Phase 2: 时间跃迁 dt 计算
+            # Phase 2: 时间跃迁 dt 计算 【已修改】
             # -----------------------------------------------------------
-            future_landings = [item[0] for item in self.landing_list if item[0] > self.total_time]
-            next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
+            # 检查 site 'Z' 是否被占用 (场上是否有飞机的当前位置是 'Z')
+            z_occupied = any(p.site.code == 'Z' for p in self.planes.values())
+            
+            # 判断是否有已到期/超期且等待降落的飞机
+            if self.landing_list and self.landing_list[0][0] <= self.total_time and not z_occupied:
+                # 如果跑道空闲，且有飞机该降落了(甚至已经晚点了)，立刻将下一个跃迁时间设为0，去执行降落
+                next_landing_dt = 0.0
+            else:
+                # 否则(跑道被占，或者当前没有急需降落的飞机)，只关注严格在未来的降落计划
+                future_landings = [item[0] for item in self.landing_list if item[0] > self.total_time]
+                next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
             
             dt = min(internal_step_time, next_landing_dt)
             if dt == np.inf:
                 # print("[Warning] No upcoming events detected! Force break loop.")
                 break
                 
-            self.total_time += dt 
+            self.total_time += dt
 
             # -----------------------------------------------------------
             # Phase 3: 物理状态推演 (时间流逝)
@@ -736,11 +754,14 @@ class AircraftScheduleEnv(gym.Env):
                     if plane.is_waiting:
                         plane.update(dt)
 
-            # -----------------------------------------------------------
-            # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落)
+           # -----------------------------------------------------------
+            # Phase 4: 触发外部事件 (处理到达预定时间的飞机降落) 【已修改】
             # -----------------------------------------------------------
             while self.landing_list and self.total_time >= self.landing_list[0][0]:
-                # 直接解包获取完美无误的编号
+                if self.sites['Z'].is_occupied:
+                    break 
+                    
+                # 执行降落
                 land_time, bidx, pidx, _ = self.landing_list.pop(0) 
                 
                 plane_cfg = {
@@ -783,12 +804,18 @@ class AircraftScheduleEnv(gym.Env):
                 
             # 检查场上是否出现了活跃的（可以做决策的）飞机
             has_active = False
+            has_idle_site = False
             for plane in self.planes.values():
                 if plane.is_idle() and not plane.is_completed_all_jobs():
                     has_active = True
                     break
+            for site in self.sites.values():
+                if site.code not in self.runway_code_list and site.code != "Z":
+                    if not site.is_interfered and not site.is_occupied:
+                        has_idle_site = True
+                        break
                     
-            if has_active:
+            if has_active and has_idle_site:
                 break # 有飞机空闲了需要下发动作，跳出循环
         
         self.step_time = self.total_time - time_prev
@@ -1237,6 +1264,6 @@ class AircraftScheduleEnv(gym.Env):
             step_rewards[(record['step_idx'], record['agent_id'])] = {
                 'action': record['action'],
                 'makespan_contribution': 0.0,
-                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 2.0*record['waiting_time'] - 1.0*record['trans_time']
+                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 1.5*record['waiting_time'] - 1.0*record['trans_time']
             }
         return step_rewards
