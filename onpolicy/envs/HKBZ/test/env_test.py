@@ -66,7 +66,7 @@ def random_policy(env, info):
 # ================= 3. 仿真主循环 =================
 def test_aircraft_schedule():
     # ================= 新增：动态加载数据集算例 =================
-    case_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test/case_07"
+    case_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large/case_05"
     print(f">>> 准备加载测试算例: {case_dir}")
 
     # 环境配置参数：替换为动态加载的算例路径

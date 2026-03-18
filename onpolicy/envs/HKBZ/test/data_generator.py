@@ -202,12 +202,21 @@ JOB_DATA = [
 ]
 
 class AirportScenarioGenerator:
-    # 【修改 1】：去除范围随机，强制固定传参
-    def __init__(self, num_stands=20):
+    def __init__(self, num_stands=20, num_planes=12):
         self.num_stands = num_stands
         self.num_takeoff = 3
-        self.map_size = 1000 
-        self.min_dist = 80   
+        
+        # 【核心修改 1】：根据停机位数量动态缩放物理空间大小
+        # 逻辑：以 20 个机位对应 1000x1000 为基准，保持平均密度恒定（面积与数量成正比）
+        scale_factor = math.sqrt(num_stands / 20.0)
+        
+        # 限制最小场地尺寸为 600，防止小算例边界溢出
+        self.map_size = max(600, int(1000 * scale_factor)) 
+        self.min_dist = 80   # 物理安全间距（飞机大小固定，所以这个绝对距离不缩放）
+        
+        # 动态调整生成场地的边缘留白
+        self.margin_x = max(80, int(150 * scale_factor))
+        self.margin_y = max(60, int(100 * scale_factor))
         
         self.sites_codes = []
         self.sites_positions = []
@@ -219,7 +228,7 @@ class AirportScenarioGenerator:
         
         self.fr_count = 1
         self.mr_count = 1
-        self.num_planes = 0
+        self.num_planes = num_planes
 
     def _dist(self, p1, p2):
         return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
@@ -227,8 +236,9 @@ class AirportScenarioGenerator:
     def generate_sites(self):
         attempts = 0
         while len(self.stand_positions) < self.num_stands and attempts < 10000:
-            x = random.randint(150, self.map_size - 150)
-            y = random.randint(100, self.map_size - 100)
+            # 【核心修改 2】：使用动态的 margin 来限制 x 和 y 的范围
+            x = random.randint(self.margin_x, self.map_size - self.margin_x)
+            y = random.randint(self.margin_y, self.map_size - self.margin_y)
             
             conflict = False
             for pos in self.stand_positions:
@@ -241,7 +251,7 @@ class AirportScenarioGenerator:
             attempts += 1
             
         if len(self.stand_positions) < self.num_stands:
-            raise Exception(f"场地空间不足：尝试了10000次仅生成了 {len(self.stand_positions)} 个停机位（目标 {self.num_stands}）。")
+            raise Exception(f"场地空间不足：在 {self.map_size}x{self.map_size} 区域内尝试了10000次仅生成了 {len(self.stand_positions)} 个停机位（目标 {self.num_stands}）。建议减小 min_dist 或检查缩放系数。")
 
     def cluster_and_assign_fixed_resources(self, k=4):
         centroids = random.sample(self.stand_positions, k)
@@ -281,7 +291,6 @@ class AirportScenarioGenerator:
             y_pos = (self.map_size // (self.num_takeoff + 1)) * (i - start_takeoff + 1)
             self.sites_positions.append([self.map_size - 50, y_pos])
 
-        # 【修改 2】：放弃固定资源的随机数量，确保每类资源固定分配1台给每个区
         fixed_types = ['R001', 'R002', 'R003', 'R005', 'R006', 'R007', 'R008']
         
         for c_range in cluster_ranges:
@@ -296,12 +305,16 @@ class AirportScenarioGenerator:
     def generate_mobile_resources(self):
         mobile_types = ['R002', 'R003', 'R005', 'R007', 'R008', 'R011', 'R012', 'R013', 'R014']
         
+        # 【核心修改 3】：根据飞机数量动态计算移动资源数量的缩放比例 (基准为 12 架飞机)
+        res_scale = self.num_planes / 12.0
+        
         for m_type in mobile_types:
-            # 【修改 3】：完全固定移动设备数量，杜绝 randint
             if m_type == 'R014':
-                num_items = 6
+                # 基准数量为 6，按比例四舍五入缩放，但至少保证有 1 台
+                num_items = max(1, round(6 * res_scale))
             else:
-                num_items = 2
+                # 基准数量为 2，按比例四舍五入缩放，但至少保证有 1 台
+                num_items = max(1, round(2 * res_scale))
                 
             for _ in range(num_items):
                 init_pos = "Z" if random.random() < 0.2 else str(random.randint(1, self.num_stands))
@@ -350,7 +363,6 @@ class AirportScenarioGenerator:
                     global_mobile_types.add(missing_type)
 
     def generate_flights(self):
-        self.num_planes = 12
         current_time = 0
         
         for i in range(1, self.num_planes + 1):
@@ -412,7 +424,11 @@ class AirportScenarioGenerator:
 
     def generate(self):
         self.generate_sites()
-        self.cluster_and_assign_fixed_resources(k=4) 
+        
+        target_k = max(1, round(4 * (self.num_planes / 12.0)))
+        k = min(self.num_stands, target_k)
+        
+        self.cluster_and_assign_fixed_resources(k=k) 
         self.generate_mobile_resources()
         self.check_feasibility()
         self.generate_flights() 
@@ -429,7 +445,7 @@ class AirportScenarioGenerator:
         }
 
 # ================= 数据集生成封装 =================
-def build_dataset(num_cases=5, base_dir="airport_dataset"):
+def build_dataset(num_cases=5, num_stands=20, num_planes=12, base_dir="airport_dataset"):
     os.makedirs(base_dir, exist_ok=True)
     print(f"🚀 开始生成航空枢纽调度数据集，总计 {num_cases} 个算例...\n")
     
@@ -443,7 +459,7 @@ def build_dataset(num_cases=5, base_dir="airport_dataset"):
         
         try:
             # 【修改 4】：彻底取消随机大小输入，保证所有图结构绝对一致
-            generator = AirportScenarioGenerator(num_stands=20)
+            generator = AirportScenarioGenerator(num_stands=num_stands, num_planes=num_planes)
             data = generator.generate()
             
             os.makedirs(case_dir, exist_ok=True)
@@ -474,4 +490,4 @@ def build_dataset(num_cases=5, base_dir="airport_dataset"):
 # ================= 执行入口 =================
 if __name__ == "__main__":
     # 在这里调整你想要生成的算例数量，比如设为 500
-    build_dataset(num_cases=500, base_dir="/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/train")
+    build_dataset(num_cases=100, num_stands=40, num_planes=24, base_dir="/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/train_large_2")
