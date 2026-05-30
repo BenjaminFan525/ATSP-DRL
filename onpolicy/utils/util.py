@@ -22,7 +22,7 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
         param_group['lr'] = lr
 
 def update_linear_anneal(model, anneal_original, anneal_final, epoch, total_num_epochs):
-    model.tau = anneal_final + (1 - anneal_final) * (1 - epoch / total_num_epochs)
+    model.tau = anneal_final + (anneal_original - anneal_final) * (1 - epoch / total_num_epochs)
 
 def huber_loss(e, d):
     a = (abs(e) <= d).float()

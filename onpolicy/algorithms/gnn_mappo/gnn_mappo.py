@@ -56,18 +56,28 @@ class MAPPO_Trainer():
 
     def cal_value_loss(self, values, value_preds_batch, return_batch, active_masks_batch):
         """
-        Calculate value function loss.
+        Calculate value function loss (with Value Normalization, without Clip/Huber).
         :param values: (torch.Tensor) value function predictions.
-        :param value_preds_batch: (torch.Tensor) "old" value  predictions from data batch (used for value clip loss)
+        :param value_preds_batch: (torch.Tensor) "old" value predictions from data batch.
         :param return_batch: (torch.Tensor) reward to go returns.
         :param active_masks_batch: (torch.Tensor) denotes if agent is active or dead at a given timesep.
 
         :return value_loss: (torch.Tensor) value function loss.
         """
-        error_original = return_batch - values
-        value_loss_original = mse_loss(error_original)
-        value_loss = value_loss_original
+        # 1. 价值归一化 (Value Normalization / PopArt)
+        if self._use_popart or self._use_valuenorm:
+            # 更新归一化器的均值和方差
+            self.value_normalizer.update(return_batch)
+            # 将真实回报归一化，使其与 Critic 网络的输出尺度对齐
+            norm_return_batch = self.value_normalizer.normalize(return_batch)
+            error_original = norm_return_batch - values
+        else:
+            error_original = return_batch - values
 
+        # 2. 计算纯粹的均方误差 (MSE Loss)
+        value_loss = mse_loss(error_original)
+
+        # 3. 应用有效动作掩膜 (Active Masks)
         if self._use_value_active_masks:
             value_loss = (value_loss * active_masks_batch).sum() / active_masks_batch.sum()
         else:
@@ -185,70 +195,82 @@ class MAPPO_Trainer():
             "value_mean": values.mean().item()
         }
 
-    def ppo_update(self, sample, update_actor=True, perform_step=True):
-        """
-        Update actor and critic networks.
-        :param sample: (Tuple) contains data batch with which to update networks.
-        :update_actor: (bool) whether to update actor network.
-
-        :return value_loss: (torch.Tensor) value function loss.
-        :return critic_grad_norm: (torch.Tensor) gradient norm from critic up9date.
-        ;return policy_loss: (torch.Tensor) actor(policy) loss value.
-        :return dist_entropy: (torch.Tensor) action entropies.
-        :return actor_grad_norm: (torch.Tensor) gradient norm from actor update.
-        :return imp_weights: (torch.Tensor) importance sampling weights.
-        """
-        train_info = defaultdict(list)
-        if update_actor:
-            self.policy.ac.eval()
-            self.policy.ac.sel_enc.train()
-            for _ in range(self.ppo_epoch):
-                policy_results = self.update_policy_net(sample, update_actor, perform_step)
-                for k, v in policy_results.items():
-                    train_info[k].append(v)
-            self.policy.ac.train()
-
-        for _ in range(self.ppo_epoch):
-            value_results = self.update_value_net(sample, perform_step)
-            for k, v in value_results.items():
-                train_info[k].append(v)
-        
-        return {k: np.mean(v) if v else 0.0 for k, v in train_info.items()}
-
     def train(self, buffer, update_actor=True):
+        # 🚨 在所有更新开始前，计算出固定的 Advantages。
+        # 注意：整个 ppo_epoch 期间，Advantages 必须保持绝对固定！
         advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
-    
+        
         train_info = defaultdict(float)
         
-        # 🚨 训练开始前，确保梯度干净
-        self.policy.actor_optimizer.zero_grad()
-        self.policy.critic_optimizer.zero_grad()
-    
-        data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
-        
-        # 将 generator 转换为列表，这样我们可以获取总步数（处理最后一步余数时必须）
-        data_samples = list(data_generator)
-        total_steps = len(data_samples)
-
-        for step, sample in enumerate(data_samples):
-            # 判断：如果达到了累加步数，或者是整个循环的最后一步，则执行一次梯度更新
-            perform_step = ((step + 1) % self.grad_accumulation_steps == 0) or (step + 1 == total_steps)
-            
-            update_results = self.ppo_update(
-                sample, 
-                update_actor,
-                perform_step=perform_step
-            )
-            
-            for k, v in update_results.items():
-                train_info[k] += v
-
-        # 计算并均摊 train_info
         num_mini_batch = math.ceil(self.n_rollout_threads / self.mini_batch_size)
-        if num_mini_batch > 0:
-            for k in train_info.keys():
-                train_info[k] /= num_mini_batch
- 
+        total_actor_updates = self.ppo_epoch * num_mini_batch if update_actor else 0
+        total_critic_updates = self.ppo_epoch * num_mini_batch
+
+        # ==========================================
+        # Phase 1: 集中更新 Actor (策略网络)
+        # ==========================================
+        if update_actor:
+            # 开启 Actor 特定的网络模式
+            self.policy.ac.eval()
+            self.policy.ac.sel_enc.train()
+            self.policy.actor_optimizer.zero_grad() # 确保起跑前梯度干净
+
+            for epoch in range(self.ppo_epoch):
+                # 每次 epoch 重新打乱数据
+                data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
+                data_samples = list(data_generator)
+                total_steps = len(data_samples)
+
+                for step, sample in enumerate(data_samples):
+                    # 梯度累加逻辑
+                    perform_step = ((step + 1) % self.grad_accumulation_steps == 0) or (step + 1 == total_steps)
+                    
+                    policy_results = self.update_policy_net(sample, update_actor=True, perform_step=perform_step)
+                    
+                    # 累加 Actor 的各项指标
+                    for k, v in policy_results.items():
+                        train_info[k] += v
+
+        # ==========================================
+        # Phase 2: 集中更新 Critic (价值网络)
+        # ==========================================
+        # 恢复正常的训练模式
+        self.policy.ac.train()
+        self.policy.critic_optimizer.zero_grad() # 确保起跑前梯度干净
+
+        for epoch in range(self.ppo_epoch):
+            # 同样每次 epoch 重新打乱数据（用相同的 generator 保证切分维度合法）
+            data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
+            data_samples = list(data_generator)
+            total_steps = len(data_samples)
+
+            for step, sample in enumerate(data_samples):
+                # 梯度累加逻辑
+                perform_step = ((step + 1) % self.grad_accumulation_steps == 0) or (step + 1 == total_steps)
+
+                value_results = self.update_value_net(sample, perform_step=perform_step)
+                
+                # 累加 Critic 的各项指标
+                for k, v in value_results.items():
+                    train_info[k] += v
+
+        # ==========================================
+        # 均摊统计指标
+        # ==========================================
+        # 定义哪些指标属于谁，分别除以对应的总更新次数
+        actor_keys = ["policy_loss", "actor_grad_norm", "dist_entropy", "advantages", "rewards"]
+        critic_keys = ["value_loss", "critic_grad_norm", "value_mean"]
+
+        if total_actor_updates > 0:
+            for k in actor_keys:
+                if k in train_info:
+                    train_info[k] /= total_actor_updates
+
+        if total_critic_updates > 0:
+            for k in critic_keys:
+                if k in train_info:
+                    train_info[k] /= total_critic_updates
+
         return train_info
     
     def prep_training(self):

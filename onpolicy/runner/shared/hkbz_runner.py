@@ -176,8 +176,8 @@ class HKBZ_Runner(Runner):
                             Batch.from_data_list(self.buffer.graph_obs[-1]),
                             self.buffer.rnn_states[-1],
                             self.buffer.active_masks[-1],
-                            self.buffer.actions[- 2, ..., 0],
-                            self.buffer.actions[ 2, ..., 1],
+                            self.buffer.actions[-2, ..., 0],
+                            self.buffer.actions[-2, ..., 1],
                             )
         next_values = _t2n(next_values).reshape(self.n_rollout_threads, self.num_agents, 1)
 
@@ -360,6 +360,7 @@ class HKBZ_Runner(Runner):
         checkpoint = torch.load(checkpoint, map_location=self.device)
         self.policy.ac.load_state_dict(checkpoint['model'])  
         self.policy.ac.tau = checkpoint['tau']
+        self.all_args.anneal_original = checkpoint['tau']
         self.policy.actor_optimizer.load_state_dict(checkpoint['actor_optim'])
         self.policy.critic_optimizer.load_state_dict(checkpoint['critic_optim'])
         # self.episode = checkpoint['episodes']

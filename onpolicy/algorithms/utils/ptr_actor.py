@@ -143,6 +143,14 @@ class CascadePtrActor(Module):
         # 相加后自动扩展成 [B, N_ops, N_sites] 的完整联合分布！
         joint_log_prob = op_log_prob.unsqueeze(-1) + site_log_prob.unsqueeze(1)
         
+        # ++++++++++ 【核心修复区：彻底抹杀幽灵概率】 ++++++++++
+        # 构建二维联合掩码：只要 op 或 site 任意一个是非法的，联合动作即为非法 (True 代表非法)
+        joint_pad_mask = op_pad_mask.unsqueeze(-1) | site_pad_mask.unsqueeze(1) # Shape: [B, N_ops, N_sites]
+        
+        # 强制将所有非法联合动作的 Logit 设为绝对的负无穷
+        joint_log_prob = joint_log_prob.masked_fill(joint_pad_mask, float('-inf'))
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
         # 将二维联合空间拍平
         joint_log_prob_flat = joint_log_prob.view(B, -1) # Shape: [B, N_ops * N_sites]
 
