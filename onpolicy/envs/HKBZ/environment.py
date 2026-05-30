@@ -1264,6 +1264,6 @@ class AircraftScheduleEnv(gym.Env):
             step_rewards[(record['step_idx'], record['agent_id'])] = {
                 'action': record['action'],
                 'makespan_contribution': 0.0,
-                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 1.5*record['waiting_time'] - 1.0*record['trans_time']
+                'reward': 1.0*(record['total_job_time'] - record['job_time']) - 2.0*record['waiting_time'] - 1.0*record['trans_time']
             }
         return step_rewards

@@ -70,7 +70,7 @@ def main(args):
     else:
         print(f"[Warning] AC Config not found at {all_args.ac_config}, using empty init.")
 
-    case_dir = "/home/fanyx/HKBZ-environment/onpolicy/config"
+    case_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test/case_05"
     print(f">>> 准备加载测试算例: {case_dir}")
 
     # 环境配置参数：替换为动态加载的算例路径
@@ -97,13 +97,15 @@ def main(args):
                     device=device)
 
     # 如果有预训练模型，可以在这里 Load
-    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-ppo3/run1/models/checkpoint_Epoch8.pt'
+    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-newgae-ppo3/run18/models/checkpoint_Epoch185.pt'
     # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-newdata-ppo3/run6/models/checkpoint_Epoch100.pt'
     # checkpoint_dir = None  # 替换为实际路径，如果有的话
     if checkpoint_dir and os.path.exists(checkpoint_dir):
         print(f"Loading weights from {checkpoint_dir}")
         checkpoint = torch.load(checkpoint_dir, map_location=device)
         policy.ac.load_state_dict(checkpoint['model'])  
+        policy.ac.tau = checkpoint['tau']
+        
         
     policy.ac.eval()
 
@@ -136,7 +138,7 @@ def main(args):
             active_agents=active_mask,
             last_op_indices=last_op,
             last_site_indices=last_site,
-            deterministic=True
+            deterministic=False
         )
         
         action = _t2n(action)[0]

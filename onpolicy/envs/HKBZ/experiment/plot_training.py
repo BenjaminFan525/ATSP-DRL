@@ -9,7 +9,7 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] # 删掉后面的 fallback
 plt.rcParams['mathtext.fontset'] = 'stix'        # 让坐标轴里的负号和公式也变成 Times 风格
 plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['axes.linewidth'] = 0.4
+plt.rcParams['axes.linewidth'] = 0.5
 
 # ================= 2. 最早的平滑逻辑 =================
 def smooth_curve(scalars, weight=0.85):
@@ -36,7 +36,7 @@ def generate_single_styled_pdf(csv_path, save_path, ylabel, color, origin_curve=
     smoothed_values = smooth_curve(values, weight=0.85) # 可微调 weight 改变平滑度
     
     # 创建适合作为单张小图的画布 (尺寸适当放大保证清晰度)
-    fig, ax = plt.subplots(figsize=(5, 4), dpi=600)
+    fig, ax = plt.subplots(figsize=(5, 5), dpi=600)
     
     # 绘制曲线 (蓝底橙线)
     if origin_curve:
@@ -46,17 +46,17 @@ def generate_single_styled_pdf(csv_path, save_path, ylabel, color, origin_curve=
         ax.plot(episodes, smoothed_values, color=color, alpha=0.9, linewidth=2.0)
     
     # 坐标轴标签 (去除 fontweight='bold')
-    ax.set_xlabel('Episodes', fontsize=14)
-    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_xlabel('Episodes', fontsize=16)
+    ax.set_ylabel(ylabel, fontsize=16)
     
     # 强制使用科学计数法 (MathText格式，形如 1 x 10^5)
     ax.ticklabel_format(style='sci', axis='both', scilimits=(0, 0), useMathText=True)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=14)
     
     # 全封闭边框与实线网格
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
-    ax.grid(True, linestyle='-', color='#d3d3d3', linewidth=0.4)
+    ax.grid(True, linestyle='-', color='#d3d3d3', linewidth=0.5)
     
     # 图例设置
     # ax.legend(loc='upper right', frameon=True, fontsize=11)
@@ -81,9 +81,9 @@ if __name__ == "__main__":
         ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/rewards_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/reward_medium.pdf', 'Reward', c_reward, False),
         ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/rewards_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/reward_large.pdf', 'Reward', c_reward, False),
         
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_small.pdf', 'Makespan', c_makespan, True),
+        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_small.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_small.pdf', 'Makespan', c_makespan, True),
         ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_medium.pdf', 'Makespan', c_makespan, True),
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_large.pdf', 'Makespan', c_makespan, True)
+        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_large.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_large.pdf', 'Makespan', c_makespan, True)
     ]
     
     print("🚀 开始批量生成独立学术图表...")

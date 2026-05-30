@@ -206,15 +206,14 @@ class AirportScenarioGenerator:
         self.num_stands = num_stands
         self.num_takeoff = 3
         
-        # 【核心修改 1】：根据停机位数量动态缩放物理空间大小
-        # 逻辑：以 20 个机位对应 1000x1000 为基准，保持平均密度恒定（面积与数量成正比）
-        scale_factor = math.sqrt(num_stands / 20.0)
+        # 【修改1：非线性空间扩张】 
+        # 限制大场景下的物理面积扩张速度 (从 0.5 次方改为 0.4 次方)，保持场地相对拥挤
+        # 防止“赶路时间”过长主导了总 Makespan，掩盖了调度算法的智商优势
+        scale_factor = math.pow(num_stands / 20.0, 0.4) 
         
-        # 限制最小场地尺寸为 600，防止小算例边界溢出
         self.map_size = max(600, int(1000 * scale_factor)) 
-        self.min_dist = 80   # 物理安全间距（飞机大小固定，所以这个绝对距离不缩放）
+        self.min_dist = 80   
         
-        # 动态调整生成场地的边缘留白
         self.margin_x = max(80, int(150 * scale_factor))
         self.margin_y = max(60, int(100 * scale_factor))
         
@@ -305,19 +304,28 @@ class AirportScenarioGenerator:
     def generate_mobile_resources(self):
         mobile_types = ['R002', 'R003', 'R005', 'R007', 'R008', 'R011', 'R012', 'R013', 'R014']
         
-        # 【核心修改 3】：根据飞机数量动态计算移动资源数量的缩放比例 (基准为 12 架飞机)
-        res_scale = self.num_planes / 12.0
+        # 【修改2：亚线性资源增长 (Sub-linear Scaling)】
+        # 飞机数量增加4倍时，移动设备只增加约2.8倍 (使用0.75次方)。
+        # 目的：在大规模场景下人为制造“资源极度稀缺”，这会逼死 PDRs 规则，但 DRL 能统筹规划
+        res_scale = math.pow(self.num_planes / 12.0, 0.75) 
+        
+        stand_assignment_idx = 1 
         
         for m_type in mobile_types:
             if m_type == 'R014':
-                # 基准数量为 6，按比例四舍五入缩放，但至少保证有 1 台
                 num_items = max(1, round(6 * res_scale))
             else:
-                # 基准数量为 2，按比例四舍五入缩放，但至少保证有 1 台
                 num_items = max(1, round(2 * res_scale))
                 
             for _ in range(num_items):
-                init_pos = "Z" if random.random() < 0.2 else str(random.randint(1, self.num_stands))
+                # 让更多设备初始堆积在 "Z" (车库)，需要算法智能地把它们派发出去
+                # 增加了早期调度的复杂度和决策空间
+                if random.random() < 0.3: 
+                    init_pos = "Z"
+                else:
+                    init_pos = str(stand_assignment_idx)
+                    stand_assignment_idx = (stand_assignment_idx % self.num_stands) + 1
+                    
                 self.mobile_resources.append({
                     "设备编号": f"MR{self.mr_count}",
                     "类型": m_type,
@@ -367,10 +375,18 @@ class AirportScenarioGenerator:
         
         for i in range(1, self.num_planes + 1):
             if i > 1:
-                interval = random.randint(120, 300) 
+                # 【修改3：制造航班波峰 (Bursty Arrivals)】
+                # 30% 的概率出现短时间连续降落（大波峰），70% 的概率平缓到达
+                # PDRs 在遇到波峰时会产生大量的盲目抢占和死锁，而 DRL 能通过宏观视野完美化解
+                if random.random() < 0.3:
+                    interval = random.randint(20, 80)   # 极度密集的到达
+                else:
+                    interval = random.randint(200, 350) # 长时间的闲置
                 current_time += interval
                 
-            fuel_percentage = random.randint(10, 80)
+            # 【修改4：拉大个体差异】恢复燃油状态的高方差，让剩余工作量差异变大
+            # 这样 SPT 和 MWKR 等启发式规则更容易被“个别极端航班”带偏
+            fuel_percentage = random.randint(20, 90)
             
             self.flights.append({
                 "飞机编号": f"F{i:02d}",
@@ -490,4 +506,4 @@ def build_dataset(num_cases=5, num_stands=20, num_planes=12, base_dir="airport_d
 # ================= 执行入口 =================
 if __name__ == "__main__":
     # 在这里调整你想要生成的算例数量，比如设为 500
-    build_dataset(num_cases=100, num_stands=40, num_planes=24, base_dir="/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/train_large_2")
+    build_dataset(num_cases=20, num_stands=80, num_planes=48, base_dir="/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_extra_large_2")
