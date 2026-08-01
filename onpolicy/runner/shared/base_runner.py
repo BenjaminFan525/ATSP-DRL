@@ -9,6 +9,19 @@ def _t2n(x):
     """Convert torch tensor to a numpy array."""
     return x.detach().cpu().numpy()
 
+def _finite_scalar(value, key):
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().numpy()
+    if isinstance(value, np.ndarray):
+        value = np.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
+        value = float(np.mean(value))
+    else:
+        value = float(value)
+    if not np.isfinite(value):
+        print(f"[Warning] Non-finite train metric {key}={value}; skipping this scalar.")
+        return None
+    return value
+
 class Runner(object):
     """
     Base class for training recurrent policies.
@@ -169,10 +182,13 @@ class Runner(object):
         :param total_num_steps: (int) total number of training env steps.
         """
         for k, v in train_infos.items():
+            v = _finite_scalar(v, k)
+            if v is None:
+                continue
             if self.use_wandb:
                 wandb.log({k: v}, step=total_num_steps)
             else:
-                self.writter.add_scalars(k, {k: v}, total_num_steps)
+                self.writter.add_scalar(k, v, total_num_steps)
 
     def log_env(self, env_infos, total_num_steps):
         """
@@ -185,4 +201,4 @@ class Runner(object):
                 if self.use_wandb:
                     wandb.log({k: np.mean(v)}, step=total_num_steps)
                 else:
-                    self.writter.add_scalars(k, {k: np.mean(v)}, total_num_steps)
+                    self.writter.add_scalar(k, np.mean(v), total_num_steps)

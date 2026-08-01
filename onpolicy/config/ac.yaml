@@ -4,9 +4,11 @@ common_cfg:
 
 encoder_cfg:
   gnn_cfg:
-    op_dim: 6           # 工序节点特征维度 [Status, Proc_time, Rem_ops, Req_res, Wait_time, PID]
-    site_dim: 20        # 机位节点特征维度 [Occ, Interf, Rem_time] + 18维作业 One-hot 掩码
+    op_dim: 11          # normalized operation state + explicit real/ghost presence bit
+    site_dim: 22        # [Occ, Interf, Rem_time, X, Y] + job compatibility mask
     dev_dim: 5          # 设备节点特征维度 [Type, Status, Rem_time, Pos_X, Pos_Y]
+    req_dim: 8          # 请求节点特征维度 [ReqType, Wait, SiteX, SiteY, SiteIdx, JobIdx, PlaneIdx, IsNoop]
+    global_feature_dim: 24  # normalized F1 workload/arrival + F2 resource summaries
     edge_dim: 1         # 边特征维度 (距离或时间预测)
     
     embedding_layer: 2  # Embedding_layer 的 MLP 层数
@@ -23,7 +25,8 @@ sel_encoder_cfg:
 actor_cfg:
   query_dim: 192  
   nhead: 4 
+  pair_feature_dim: 10
 
 critic_cfg:
   query_dim: 192  
-  nhead: 4 
+  nhead: 4

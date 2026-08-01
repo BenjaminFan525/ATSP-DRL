@@ -133,6 +133,7 @@ class Device:
             self.site.devices.append(self)
             
         # 4. 重置绑定资源的站点位置
+        self.resource.reset()
         self.resource.sites = [self.site.code]
         
         # 5. 清除所有的状态标志位和倒计时

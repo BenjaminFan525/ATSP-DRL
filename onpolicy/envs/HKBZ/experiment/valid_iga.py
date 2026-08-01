@@ -105,6 +105,11 @@ class AircraftSchedulingProblem(ElementwiseProblem):
         self.n_agents = temp_env.n_agents
         self.n_jobs = len(temp_env.job_code_list)
         self.n_sites = len(temp_env.site_code_list)
+        # A time limit can stop pymoo in the middle of a generation.  Keep an
+        # explicit anytime incumbent so extending the budget cannot forget a
+        # feasible solution already evaluated in the same run.
+        self.best_feasible_makespan = np.inf
+        self.best_feasible_chromosome = None
         
         n_var = self.n_agents * self.n_jobs + self.n_agents * self.n_sites
         super().__init__(n_var=n_var, n_obj=1, n_ieq_constr=0,
@@ -144,6 +149,15 @@ class AircraftSchedulingProblem(ElementwiseProblem):
             f1_makespan += 100000 
             
         out["F"] = [f1_makespan]
+        if (
+            np.isfinite(f1_makespan)
+            and f1_makespan < 100000.0
+            and f1_makespan < self.best_feasible_makespan
+        ):
+            self.best_feasible_makespan = float(f1_makespan)
+            self.best_feasible_chromosome = np.asarray(
+                x, dtype=np.float64
+            ).reshape(-1).copy()
 
 
 # ================= 新增：超时安全拦截器 =================
@@ -165,72 +179,131 @@ class TimeLimitCallback(Callback):
 
 
 # ================= 4. 封装单次评估逻辑 =================
-def test_iga_on_case(case_path):
+def test_iga_on_case(
+    case_path,
+    max_time_seconds=1800,
+    pop_size=20,
+    n_gen=20,
+    seed=1,
+    return_solution=False,
+):
+    """Run IGA with an explicit anytime budget and optionally return genes."""
     flights_path = os.path.join(case_path, 'flights.json')
-    n_agents = 12 
+    n_agents = 12
     if os.path.exists(flights_path):
         try:
             with open(flights_path, 'r', encoding='utf-8') as f:
-                n_agents = len(json.load(f)) 
+                n_agents = len(json.load(f))
         except Exception:
             pass
-
     config = {
-        'batch_num': 1,               
-        'plane_num_per_batch': n_agents,    
-        'n_agents': n_agents,               
+        'batch_num': 1,
+        'plane_num_per_batch': n_agents,
+        'n_agents': n_agents,
         'jobs_path': os.path.join(case_path, 'job.json'),
         'fixed_res_path': os.path.join(case_path, 'fixed_resources.json'),
         'mobile_res_path': os.path.join(case_path, 'mobile_resources.json'),
         'sites_path': os.path.join(case_path, 'sites.json'),
         'flights_path': flights_path,
         'seed': 42,
-        'interfere': [-1, [], 0],     
-        'force_chosen': [-1, '', 0]   
+        'interfere': [-1, [], 0],
+        'force_chosen': [-1, '', 0],
     }
-    
-    # ⏰ 全局统一计时起点 (使用挂钟时间监控，使用 CPU 时间出报告)
+    max_time_seconds = float(max_time_seconds)
+    if max_time_seconds <= 0.0:
+        raise ValueError('max_time_seconds must be positive.')
+    pop_size = int(pop_size)
+    n_gen = int(n_gen)
+    seed = int(seed)
+    if pop_size <= 1 or n_gen <= 0:
+        raise ValueError('IGA pop_size must exceed one and n_gen must be positive.')
+
     global_start_time = time.time()
     start_cpu = time.process_time()
-    
     try:
-        # 把时间戳传进物理推演环境里
-        problem = AircraftSchedulingProblem(config, global_start_time, max_time_seconds=1800)
-    except Exception as e:
-        print(f"环境初始化失败 (Case: {os.path.basename(case_path)}): {e}")
+        problem = AircraftSchedulingProblem(
+            config,
+            global_start_time,
+            max_time_seconds=max_time_seconds,
+        )
+    except Exception as error:
+        print(
+            f"环境初始化失败 (Case: {os.path.basename(case_path)}): {error}"
+        )
+        if return_solution:
+            return {
+                'makespan': None,
+                'cpu_seconds': None,
+                'wall_seconds': time.time() - global_start_time,
+                'chromosome': None,
+                'error': f'{type(error).__name__}: {error}',
+            }
         return None, None
-        
+
     algorithm = GA(
-        pop_size=20, 
+        pop_size=pop_size,
         eliminate_duplicates=True,
         sampling=FloatRandomSampling(),
         crossover=SBX(prob=0.9, eta=15),
-        mutation=PM(eta=20)
+        mutation=PM(eta=20),
     )
-
-    # 🛡️ 注册宏观的代数回调时间锁
-    time_limit_cb = TimeLimitCallback(global_start_time, max_time_seconds=1800)
-    
+    time_limit_cb = TimeLimitCallback(
+        global_start_time,
+        max_time_seconds=max_time_seconds,
+    )
     res = minimize(
-        problem, 
-        algorithm, 
-        ('n_gen', 20), 
-        callback=time_limit_cb, 
-        seed=1, 
-        verbose=False
+        problem,
+        algorithm,
+        ('n_gen', n_gen),
+        callback=time_limit_cb,
+        seed=seed,
+        verbose=False,
     )
-    
-    end_cpu = time.process_time()
-    cpu_time = end_cpu - start_cpu
-    
-    best_cmax = res.F[0] if res.F is not None else None
-    
-    return best_cmax, cpu_time
+    cpu_time = time.process_time() - start_cpu
+    wall_time = time.time() - global_start_time
+    best_cmax = (
+        float(np.asarray(res.F).reshape(-1)[0])
+        if res.F is not None else None
+    )
+    chromosome = (
+        np.asarray(res.X, dtype=np.float64).reshape(-1)
+        if res.X is not None else None
+    )
+    incumbent_preserved = False
+    if (
+        problem.best_feasible_chromosome is not None
+        and (
+            best_cmax is None
+            or not np.isfinite(best_cmax)
+            or problem.best_feasible_makespan < best_cmax
+        )
+    ):
+        best_cmax = float(problem.best_feasible_makespan)
+        chromosome = problem.best_feasible_chromosome.copy()
+        incumbent_preserved = True
+    if not return_solution:
+        return best_cmax, cpu_time
+    return {
+        'makespan': best_cmax,
+        'cpu_seconds': float(cpu_time),
+        'wall_seconds': float(wall_time),
+        'chromosome': (
+            chromosome.tolist() if chromosome is not None else None
+        ),
+        'n_agents': int(problem.n_agents),
+        'n_jobs': int(problem.n_jobs),
+        'n_sites': int(problem.n_sites),
+        'pop_size': pop_size,
+        'n_gen': n_gen,
+        'seed': seed,
+        'time_budget_seconds': max_time_seconds,
+        'incumbent_preserved': incumbent_preserved,
+    }
 
 
 # ================= 5. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
+    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v2_t480_v60_test60/test"
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")

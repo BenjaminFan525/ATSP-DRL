@@ -150,7 +150,7 @@ def test_aircraft_schedule(case_path, rule="SPT"):
 
 # ================= 4. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
+    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v2_t480_v60_test60/test"
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")

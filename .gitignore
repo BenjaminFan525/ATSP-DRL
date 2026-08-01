@@ -3,4 +3,6 @@ result/
 onpolicy/envs/HKBZ/dataset
 onpolicy/scripts/results
 *.pkl
+*.log
+*.orig
 __pycache__/

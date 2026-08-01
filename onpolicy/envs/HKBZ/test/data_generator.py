@@ -503,7 +503,13 @@ def build_dataset(num_cases=5, num_stands=20, num_planes=12, base_dir="airport_d
 
     print(f"\n🎉 数据集生成完毕！所有数据已保存在目录: ./{base_dir}/")
 
-# ================= 执行入口 =================
+# ================= 兼容入口 =================
 if __name__ == "__main__":
-    # 在这里调整你想要生成的算例数量，比如设为 500
-    build_dataset(num_cases=20, num_stands=80, num_planes=48, base_dir="/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_extra_large_2")
+    # Historical path now delegates to the versioned, audited generator.
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+    from onpolicy.envs.HKBZ.data_generator import main as benchmark_main
+
+    raise SystemExit(benchmark_main())

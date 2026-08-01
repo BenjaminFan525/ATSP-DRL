@@ -51,3 +51,8 @@ class Resource:
         assert site_code in self.on_service, f"Site {site_code} is not in service list of Resource {self.code}!"
         self.on_service.remove(site_code)
         self.available = self.is_available()
+
+    def reset(self):
+        '''清空资源服务占用状态'''
+        self.on_service = []
+        self.available = True

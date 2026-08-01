@@ -100,7 +100,7 @@ class Site:
             assert job.code not in self.onging_jobs, f"Job {job.code} is already being serviced at Site {self.code}!"
             res = None
             # 遍历作业所需资源类型，寻找可用资源
-            for res_code in job.resources:
+            for res_code in sorted(job.resources):
                 if res_code in self.res_avail:
                     # 分配资源并记录
                     self.resources[self.res_avail[res_code][-1]].add_service(self.code)
@@ -212,7 +212,7 @@ class Site:
         '''
         # self.update_resources()
         # 遍历作业所需资源类型，检查是否有可用资源
-        for res_code in job.resources:
+        for res_code in sorted(job.resources):
             if res_code in self.res_avail:
                 return True
         return False
@@ -277,7 +277,7 @@ class Site:
             site.update_resources()  # 手动刷新可用资源列表
         '''
         self.res_avail = {}
-        for code, res in self.resources.items():
+        for code, res in sorted(self.resources.items()):
             if res.is_available():
                 if res.type in self.res_avail:
                     self.res_avail[res.type].append(code)
@@ -287,7 +287,7 @@ class Site:
         new_onehot = []
         for job in self.target_jobs:
             is_avail = 0
-            for res_code in job.resources:
+            for res_code in sorted(job.resources):
                 if res_code in self.res_avail:
                     is_avail = 1
                     break
