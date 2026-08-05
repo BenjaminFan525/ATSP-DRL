@@ -23,8 +23,13 @@ from onpolicy.config.config import get_config
 from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
 def parse_args(args, parser):
-    parser.add_argument('--ac_config', type=str, default='onpolicy/config/ac.yaml', help="Path to the ac config file")
-    parser.add_argument('--env_config', type=str, default='onpolicy/config/env.yaml', help="Path to the environment config file")
+    parser.add_argument('--ac_config', type=str,
+                        default=os.path.join(root_dir, 'onpolicy/config/ac.yaml'),
+                        help="Path to the actor-critic config file")
+    parser.add_argument('--checkpoint', required=True,
+                        help="Checkpoint produced by train_hkbz.py")
+    parser.add_argument('--dataset-dir',
+                        default=os.path.join(root_dir, 'onpolicy/envs/HKBZ/dataset/test_large'))
     all_args = parser.parse_known_args(args)[0]  
     return all_args
 
@@ -99,28 +104,19 @@ def main(args):
             
     policy = Policy(all_args, ac_config, device=device)
 
-    # 模型权重路径
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-newgae-ppo3/run22/models/checkpoint_Epoch197.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-small-ppo3/run2/models/checkpoint_Epoch142.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-medium-ppo3/run1/models/checkpoint_Epoch200.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run16/models/checkpoint_Epoch161.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run26/models/checkpoint_Epoch976.pt'
-    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run26/models/checkpoint_Epoch832.pt'
-    
-    if os.path.exists(checkpoint_dir):
-        print(f">>> 成功加载权重: {checkpoint_dir}")
-        checkpoint = torch.load(checkpoint_dir, map_location=device)
-        policy.ac.load_state_dict(checkpoint['model'])  
-        policy.ac.tau = checkpoint['tau']
-    else:
-        print("【警告】未找到预训练模型权重！")
+    checkpoint_dir = os.path.abspath(os.path.expanduser(all_args.checkpoint))
+    if not os.path.isfile(checkpoint_dir):
+        raise FileNotFoundError(f"Checkpoint does not exist: {checkpoint_dir}")
+    print(f">>> 成功加载权重: {checkpoint_dir}")
+    checkpoint = torch.load(checkpoint_dir, map_location=device)
+    policy.ac.load_state_dict(checkpoint['model'])
+    policy.ac.tau = checkpoint['tau']
         
     policy.ac.eval()
 
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test"
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_small"
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_extra_large"
+    dataset_test_dir = os.path.abspath(os.path.expanduser(all_args.dataset_dir))
+    if not os.path.isdir(dataset_test_dir):
+        raise FileNotFoundError(f"Dataset does not exist: {dataset_test_dir}")
     case_folders = sorted([d for d in os.listdir(dataset_test_dir) 
                            if os.path.isdir(os.path.join(dataset_test_dir, d)) and d.startswith('case_')])
 

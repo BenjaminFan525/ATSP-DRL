@@ -4,6 +4,7 @@ import time
 import json
 import random
 import numpy as np
+import argparse
 
 # ================= 1. 路径与模块修复 =================
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -150,7 +151,16 @@ def test_aircraft_schedule(case_path, rule="SPT"):
 
 # ================= 4. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
+    parser = argparse.ArgumentParser(description="Evaluate dispatching-rule baselines.")
+    parser.add_argument(
+        "--dataset-dir",
+        default=os.path.join(root_dir, "onpolicy/envs/HKBZ/dataset/test_large"),
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    dataset_test_dir = os.path.abspath(os.path.expanduser(args.dataset_dir))
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")

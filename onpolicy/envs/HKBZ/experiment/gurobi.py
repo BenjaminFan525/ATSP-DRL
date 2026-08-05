@@ -1,8 +1,8 @@
 import gurobipy as gp
 from gurobipy import GRB
 import json
-import math
 import os
+import argparse
 
 def solve_atsp_hrc(case_dir, time_limit=1800):
     print(f"🚀 开始使用 Gurobi 求解算例: {case_dir}")
@@ -155,6 +155,9 @@ def solve_atsp_hrc(case_dir, time_limit=1800):
         return None, None
 
 if __name__ == "__main__":
-    # 指向你的生成算例目录
-    test_case_path = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test/case_01" 
-    solve_atsp_hrc(test_case_path)
+    parser = argparse.ArgumentParser(description="Solve one HKBZ case with Gurobi.")
+    parser.add_argument("case_dir", help="Directory containing the five case JSON files.")
+    parser.add_argument("--time-limit", type=float, default=1800.0)
+    args = parser.parse_args()
+    solve_atsp_hrc(os.path.abspath(os.path.expanduser(args.case_dir)),
+                   time_limit=args.time_limit)

@@ -1,0 +1,2 @@
+# Optional exact baseline; requires a separate Gurobi installation and license.
+gurobipy>=10.0

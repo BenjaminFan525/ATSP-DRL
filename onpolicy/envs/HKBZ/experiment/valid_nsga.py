@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import time
 import json
+import argparse
 
 # ================= 1. 路径与模块引入 =================
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -134,7 +135,7 @@ class AircraftSchedulingProblem(ElementwiseProblem):
 
 
 # ================= 4. 封装单次评估逻辑 =================
-def test_nsga2_on_case(case_path):
+def test_nsga2_on_case(case_path, pop_size=20, generations=20, seed=1):
     flights_path = os.path.join(case_path, 'flights.json')
     n_agents = 12 
     if os.path.exists(flights_path):
@@ -166,7 +167,7 @@ def test_nsga2_on_case(case_path):
         
     # 参数提示：正式跑论文数据时，建议将 pop_size 调至 50-100，n_gen 调至 100-200
     algorithm = NSGA2(
-        pop_size=20, 
+        pop_size=pop_size,
         n_offsprings=10,
         sampling=FloatRandomSampling(),
         crossover=SBX(prob=0.9, eta=15),
@@ -177,7 +178,8 @@ def test_nsga2_on_case(case_path):
     start_cpu = time.process_time()
     
     # verbose 设为 False 以免批量运行时日志刷屏
-    res = minimize(problem, algorithm, ('n_gen', 20), seed=1, verbose=False)
+    res = minimize(problem, algorithm, ('n_gen', generations), seed=seed,
+                   verbose=False)
     
     end_cpu = time.process_time()
     cpu_time = end_cpu - start_cpu
@@ -190,7 +192,16 @@ def test_nsga2_on_case(case_path):
 
 # ================= 5. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
+    parser = argparse.ArgumentParser(description="Evaluate the NSGA-II baseline.")
+    parser.add_argument(
+        "--dataset-dir",
+        default=os.path.join(root_dir, "onpolicy/envs/HKBZ/dataset/test_large"),
+    )
+    parser.add_argument("--population-size", type=int, default=20)
+    parser.add_argument("--generations", type=int, default=20)
+    parser.add_argument("--seed", type=int, default=1)
+    args = parser.parse_args()
+    dataset_test_dir = os.path.abspath(os.path.expanduser(args.dataset_dir))
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")
@@ -216,7 +227,12 @@ if __name__ == "__main__":
         case_path = os.path.join(dataset_test_dir, case_name)
         print(f"⚙️ 正在求解用例: {case_name} ...", end="", flush=True)
         
-        c_max, cpu_time = test_nsga2_on_case(case_path)
+        c_max, cpu_time = test_nsga2_on_case(
+            case_path,
+            pop_size=args.population_size,
+            generations=args.generations,
+            seed=args.seed,
+        )
         
         if c_max is not None:
             all_cmax_results[case_name] = c_max

@@ -13,7 +13,6 @@ import numpy as np
 import torch
 import yaml
 import time
-import copy
 from torch_geometric.data import HeteroData
 from torch_geometric.loader.dataloader import Batch
 
@@ -22,7 +21,7 @@ root_dir = os.path.abspath(os.path.join(current_dir, '../../../../'))
 sys.path.insert(0, root_dir)
 
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
-from onpolicy.envs.env_wrappers import GraphSubprocVecEnv, DummyVecEnv
+from onpolicy.envs.env_wrappers import GraphSubprocVecEnv
 from onpolicy.config.config import get_config
 from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
@@ -30,8 +29,15 @@ from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy 
 # import pstats
 
 def parse_args(args, parser):
-    parser.add_argument('--ac_config', type=str, default='onpolicy/config/ac.yaml', help="Path to the ac config file")
-    parser.add_argument('--env_config', type=str, default='onpolicy/config/env.yaml', help="Path to the environment config file")
+    parser.add_argument('--ac_config', type=str,
+                        default=os.path.join(root_dir, 'onpolicy/config/ac.yaml'),
+                        help="Path to the actor-critic config file")
+    parser.add_argument('--checkpoint', required=True,
+                        help="Checkpoint produced by train_hkbz.py")
+    parser.add_argument('--dataset-dir',
+                        default=os.path.join(root_dir, 'onpolicy/envs/HKBZ/dataset/test_large'))
+    parser.add_argument('--samples', type=int, default=50,
+                        help="Stochastic rollouts per case.")
     all_args = parser.parse_known_args(args)[0]  
     return all_args
 
@@ -171,11 +177,9 @@ def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
     
-    # 强制开启 CUDA 加速
-    all_args.cuda = True 
-    if torch.cuda.is_available():
-        print(">>> 检测到 GPU，正在启用火力全开模式...")
-        device = torch.device("cuda:0")
+    if all_args.cuda and torch.cuda.is_available():
+        print(f">>> 使用推理设备: {all_args.device}")
+        device = torch.device(all_args.device)
     else:
         print(">>> 警告: 未检测到 GPU，使用 CPU...")
         device = torch.device("cpu")
@@ -190,27 +194,19 @@ def main(args):
             
     policy = Policy(all_args, ac_config, device=device)
 
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-newgae-ppo3/run22/models/checkpoint_Epoch197.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run16/models/checkpoint_Epoch155.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run16/models/checkpoint_Epoch161.pt'
-    checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-large-ppo3/run26/models/checkpoint_Epoch832.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-small-ppo3/run2/models/checkpoint_Epoch142.pt'
-    # checkpoint_dir = '/home/fanyx/HKBZ-environment/onpolicy/scripts/results/IA/simple/gnn_mappo/train-medium-ppo3/run1/models/checkpoint_Epoch200.pt'
-
-    if os.path.exists(checkpoint_dir):
-        print(f">>> 成功加载权重: {checkpoint_dir}")
-        checkpoint = torch.load(checkpoint_dir, map_location=device)
-        policy.ac.load_state_dict(checkpoint['model'])  
-        policy.ac.tau = checkpoint['tau']
-    else:
-        print("【警告】未找到预训练模型权重！")
+    checkpoint_dir = os.path.abspath(os.path.expanduser(all_args.checkpoint))
+    if not os.path.isfile(checkpoint_dir):
+        raise FileNotFoundError(f"Checkpoint does not exist: {checkpoint_dir}")
+    print(f">>> 成功加载权重: {checkpoint_dir}")
+    checkpoint = torch.load(checkpoint_dir, map_location=device)
+    policy.ac.load_state_dict(checkpoint['model'])
+    policy.ac.tau = checkpoint['tau']
         
     policy.ac.eval()
 
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test"
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_small"
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
-    # dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_extra_large_2"
+    dataset_test_dir = os.path.abspath(os.path.expanduser(all_args.dataset_dir))
+    if not os.path.isdir(dataset_test_dir):
+        raise FileNotFoundError(f"Dataset does not exist: {dataset_test_dir}")
     case_folders = sorted([d for d in os.listdir(dataset_test_dir) 
                            if os.path.isdir(os.path.join(dataset_test_dir, d)) and d.startswith('case_')])
 
@@ -237,7 +233,7 @@ def main(args):
     'case_20': 6692.0,
 }
     
-    SAMPLE_NUM = 50 
+    SAMPLE_NUM = all_args.samples
     
     # 替换点 1：将 c_max_sum 改为存储 c_max 结果的列表
     metrics = {

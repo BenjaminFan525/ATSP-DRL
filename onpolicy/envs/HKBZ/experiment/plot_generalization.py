@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import argparse
+from pathlib import Path
 
 # ================= 1. 设置学术绘图全局格式 =================
 plt.rcParams['font.family'] = 'sans-serif'
@@ -9,7 +11,7 @@ plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['axes.linewidth'] = 1.2
 
 # ================= 2. 数据生成器 =================
-def generate_mock_data():
+def benchmark_data():
     # 删除了末尾多余的 \n
     algorithms = ['FIFO', 'SPT', 'MWKR', 'IGA\n', 
                   'DRL-G\nsmall', 'DRL-G\nmedium', 'DRL-G\nlarge', 
@@ -23,7 +25,13 @@ def generate_mock_data():
 
 # ================= 3. 核心绘图逻辑 =================
 if __name__ == "__main__":
-    algorithms, means, stds = generate_mock_data()
+    parser = argparse.ArgumentParser(description="Plot the bundled generalization results.")
+    parser.add_argument(
+        "--output",
+        default=str(Path(__file__).resolve().parent / "figures/generalization_bar.pdf"),
+    )
+    args = parser.parse_args()
+    algorithms, means, stds = benchmark_data()
     
     # 配色方案
     colors = ['#B0BEC5', '#B0BEC5', '#B0BEC5', '#90CAF9', 
@@ -62,7 +70,8 @@ if __name__ == "__main__":
                 ha='center', va='bottom', color='white', fontweight='bold', fontsize=9, zorder=4)
 
     # ================= 5. 保存图片 =================
-    save_path = '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/generalization_bar.pdf'
+    save_path = os.path.abspath(os.path.expanduser(args.output))
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     
     plt.tight_layout()
     plt.savefig(save_path, format='pdf', bbox_inches='tight')

@@ -4,6 +4,7 @@ import os
 import json
 import numpy as np
 import time
+import argparse
 
 # ================= 1. 路径与模块引入 =================
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -165,7 +166,8 @@ class TimeLimitCallback(Callback):
 
 
 # ================= 4. 封装单次评估逻辑 =================
-def test_iga_on_case(case_path):
+def test_iga_on_case(case_path, time_limit=1800, pop_size=20,
+                     generations=20, seed=1):
     flights_path = os.path.join(case_path, 'flights.json')
     n_agents = 12 
     if os.path.exists(flights_path):
@@ -195,13 +197,14 @@ def test_iga_on_case(case_path):
     
     try:
         # 把时间戳传进物理推演环境里
-        problem = AircraftSchedulingProblem(config, global_start_time, max_time_seconds=1800)
+        problem = AircraftSchedulingProblem(config, global_start_time,
+                                             max_time_seconds=time_limit)
     except Exception as e:
         print(f"环境初始化失败 (Case: {os.path.basename(case_path)}): {e}")
         return None, None
         
     algorithm = GA(
-        pop_size=20, 
+        pop_size=pop_size,
         eliminate_duplicates=True,
         sampling=FloatRandomSampling(),
         crossover=SBX(prob=0.9, eta=15),
@@ -209,14 +212,15 @@ def test_iga_on_case(case_path):
     )
 
     # 🛡️ 注册宏观的代数回调时间锁
-    time_limit_cb = TimeLimitCallback(global_start_time, max_time_seconds=1800)
+    time_limit_cb = TimeLimitCallback(global_start_time,
+                                      max_time_seconds=time_limit)
     
     res = minimize(
         problem, 
         algorithm, 
-        ('n_gen', 20), 
+        ('n_gen', generations),
         callback=time_limit_cb, 
-        seed=1, 
+        seed=seed,
         verbose=False
     )
     
@@ -230,7 +234,18 @@ def test_iga_on_case(case_path):
 
 # ================= 5. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/test_large"
+    parser = argparse.ArgumentParser(description="Evaluate the IGA baseline.")
+    parser.add_argument(
+        "--dataset-dir",
+        default=os.path.join(root_dir, "onpolicy/envs/HKBZ/dataset/test_large"),
+    )
+    parser.add_argument("--time-limit", type=float, default=1800.0,
+                        help="Wall-clock limit in seconds for each case.")
+    parser.add_argument("--population-size", type=int, default=20)
+    parser.add_argument("--generations", type=int, default=20)
+    parser.add_argument("--seed", type=int, default=1)
+    args = parser.parse_args()
+    dataset_test_dir = os.path.abspath(os.path.expanduser(args.dataset_dir))
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")
@@ -268,14 +283,20 @@ if __name__ == "__main__":
     metrics = {'c_max_sum': 0.0, 'cpu_sum': 0.0, 'gap_sum': 0.0, 'valid_count': 0, 'gap_count': 0}
 
     print(f"\n🚀 开始 IGA 批量评估，共检测到 {len(case_folders)} 个测试用例...")
-    print("⚠️ 提示：进化算法计算量较大，已加装全局 1800 秒超时安全锁。")
+    print(f"⚠️ 提示：进化算法计算量较大，每个算例限时 {args.time_limit:g} 秒。")
     print("="*60)
 
     for case_name in case_folders:
         case_path = os.path.join(dataset_test_dir, case_name)
         print(f"⚙️ 正在求解用例: {case_name} ...", end="", flush=True)
         
-        c_max, cpu_time = test_iga_on_case(case_path)
+        c_max, cpu_time = test_iga_on_case(
+            case_path,
+            time_limit=args.time_limit,
+            pop_size=args.population_size,
+            generations=args.generations,
+            seed=args.seed,
+        )
         
         if c_max is not None:
             all_cmax_results[case_name] = c_max

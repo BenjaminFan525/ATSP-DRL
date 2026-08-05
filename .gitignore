@@ -1,6 +1,46 @@
-.vscode/
-result/
-onpolicy/envs/HKBZ/dataset
-onpolicy/scripts/results
-*.pkl
+# Python
 __pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments and local configuration
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Editors and temporary merge files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
+
+# Local datasets and generated layouts
+onpolicy/envs/HKBZ/dataset/
+airport_dataset/
+
+# Training artifacts
+result/
+logs/
+training_logs/
+onpolicy/scripts/results/
+runs/
+wandb/
+*.pt
+*.pth
+*.ckpt
+*.pkl
+events.out.tfevents.*
+
+# Build and packaging
+build/
+dist/
+*.egg-info/

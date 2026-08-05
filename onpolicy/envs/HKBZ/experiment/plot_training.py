@@ -1,12 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 # ================= 1. 设置参照图风格 =================
 # plt.rcParams['font.family'] = 'sans-serif'
 # plt.rcParams['font.sans-serif'] = ['Arial', 'Helvetica', 'DejaVu Sans']
 plt.rcParams['font.family'] = 'serif'
-plt.rcParams['font.serif'] = ['Times New Roman'] # 删掉后面的 fallback
+plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif']
 plt.rcParams['mathtext.fontset'] = 'stix'        # 让坐标轴里的负号和公式也变成 Times 风格
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['axes.linewidth'] = 0.5
@@ -77,16 +80,14 @@ if __name__ == "__main__":
     c_makespan = '#d62728' # 红色系
 
     tasks = [
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/rewards_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/reward_small.pdf', 'Reward', c_reward, False),
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/rewards_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/reward_medium.pdf', 'Reward', c_reward, False),
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/rewards_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/reward_large.pdf', 'Reward', c_reward, False),
-        
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_small.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_small.pdf', 'Makespan', c_makespan, True),
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_medium.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_medium.pdf', 'Makespan', c_makespan, True),
-        ('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/results/makespan_large.csv', '/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/makespan_large.pdf', 'Makespan', c_makespan, True)
+        (SCRIPT_DIR / 'results/rewards_small.csv', SCRIPT_DIR / 'figures/reward_small.pdf', 'Reward', c_reward, False),
+        (SCRIPT_DIR / 'results/rewards_medium.csv', SCRIPT_DIR / 'figures/reward_medium.pdf', 'Reward', c_reward, False),
+        (SCRIPT_DIR / 'results/makespan_small.csv', SCRIPT_DIR / 'figures/makespan_small.pdf', 'Makespan', c_makespan, True),
+        (SCRIPT_DIR / 'results/makespan_medium.csv', SCRIPT_DIR / 'figures/makespan_medium.pdf', 'Makespan', c_makespan, True),
+        (SCRIPT_DIR / 'results/makespan_large.csv', SCRIPT_DIR / 'figures/makespan_large.pdf', 'Makespan', c_makespan, True),
     ]
     
     print("🚀 开始批量生成独立学术图表...")
     for csv_in, pdf_out, ylabel, color, origin_curve in tasks:
-        generate_single_styled_pdf(csv_in, pdf_out, ylabel, color, origin_curve)
+        generate_single_styled_pdf(str(csv_in), str(pdf_out), ylabel, color, origin_curve)
     print("🎉 全部处理完毕！")

@@ -1,24 +1,18 @@
 import time
 import os
-import json
 import numpy as np
 import torch
-from onpolicy.runner.shared.base_runner import Runner
 from torch_geometric.loader.dataloader import Batch
 import wandb
-import imageio
-import copy
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 from onpolicy.utils.shared_buffer import SharedReplayBuffer
-import cProfile
-import pstats
 
 def _t2n(x):
     return x.detach().cpu().numpy()
 
-class HKBZ_Runner(Runner):
-    """Runner class to perform training, evaluation. and data collection for the IAs. See parent class for details."""
+class HKBZ_Runner:
+    """Train and evaluate the HKBZ GNN-MAPPO policy."""
     def __init__(self, config):
         self.all_args = config['all_args']
         self.envs = config['envs']
@@ -41,12 +35,10 @@ class HKBZ_Runner(Runner):
         self.episode_length = self.all_args.episode_length
         self.n_rollout_threads = self.all_args.n_rollout_threads
         self.n_eval_rollout_threads = self.all_args.n_eval_rollout_threads
-        self.n_render_rollout_threads = self.all_args.n_render_rollout_threads
         self.use_linear_lr_decay = self.all_args.use_linear_lr_decay
         self.use_anneal = self.all_args.use_anneal
         self.hidden_size = self.all_args.hidden_size
         self.use_wandb = self.all_args.use_wandb
-        self.use_render = self.all_args.use_render
         self.recurrent_N = self.all_args.recurrent_N
         self.obj = self.all_args.obj
         self.reward_coef = self.all_args.reward_coef
@@ -76,9 +68,6 @@ class HKBZ_Runner(Runner):
             self.save_dir = str(self.run_dir / 'models')
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
-            self.render_dir = str(self.run_dir / 'renders')
-            if not os.path.exists(self.render_dir):
-                os.makedirs(self.render_dir)
         from onpolicy.algorithms.gnn_mappo.gnn_mappo import MAPPO_Trainer as TrainAlgo
         from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
@@ -274,68 +263,6 @@ class HKBZ_Runner(Runner):
 
         return np.mean(self.eval_envs.get_episode_rewards())
 
-    # TODO: add render function for FarmEnv
-    @torch.no_grad()
-    def render(self):
-        """Visualize the env."""
-        envs = self.envs
-        
-        all_frames = []
-        for episode in range(self.all_args.render_episodes):
-            obs = envs.reset()
-            if self.all_args.save_gifs:
-                image = envs.render('rgb_array')[0][0]
-                all_frames.append(image)
-            else:
-                envs.render('human')
-
-            rnn_states = np.zeros((self.n_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
-            masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
-            active_masks = np.ones_like(masks)
-            available_actions = np.ones((self.n_rollout_threads, self.num_agents, self.envs.action_space[0].n),dtype=np.float32)
-
-
-            episode_rewards = []
-            
-            for step in range(self.episode_length):
-                calc_start = time.time()
-
-                self.trainer.prep_rollout()
-                graph_obs, vector_obs = obs['graph'], obs['vector']
-                action, rnn_states = self.trainer.policy.act(
-                                                Batch.from_data_list(graph_obs),
-                                                np.concatenate(vector_obs),
-                                                np.concatenate(rnn_states),
-                                                np.concatenate(masks),
-                                                np.concatenate(active_masks),
-                                                np.concatenate(available_actions),
-                                                deterministic=True)
-                actions = np.array(np.split(_t2n(action), self.n_rollout_threads))
-                rnn_states = np.array(np.split(_t2n(rnn_states), self.n_rollout_threads))
-
-                # Obser reward and next obs
-                obs, rewards, dones, infos = envs.step(actions)
-                episode_rewards.append(rewards)
-
-                rnn_states[dones == True] = np.zeros(((dones == True).sum(), self.recurrent_N, self.hidden_size), dtype=np.float32)
-                masks = np.ones((self.n_rollout_threads, self.num_agents, 1), dtype=np.float32)
-                masks[dones == True] = np.zeros(((dones == True).sum(), 1), dtype=np.float32)
-
-                if self.all_args.save_gifs:
-                    image = envs.render('rgb_array')[0][0]
-                    all_frames.append(image)
-                    calc_end = time.time()
-                    elapsed = calc_end - calc_start
-                    if elapsed < self.all_args.ifi:
-                        time.sleep(self.all_args.ifi - elapsed)
-                else:
-                    envs.render('human')
-
-            print("average episode rewards is: " + str(np.mean(np.sum(np.array(episode_rewards), axis=0))))
-
-        if self.all_args.save_gifs:
-            imageio.mimsave(str(self.gif_dir) + '/render.gif', all_frames, duration=self.all_args.ifi)
-
     def save(self, episode=0):
         """Save policy's actor and critic networks."""
         model = self.trainer.policy
@@ -365,3 +292,22 @@ class HKBZ_Runner(Runner):
         self.policy.critic_optimizer.load_state_dict(checkpoint['critic_optim'])
         # self.episode = checkpoint['episodes']
         # self.num_episodes = self.num_episodes - checkpoint['episodes']
+
+    def log_train(self, train_infos, total_num_steps):
+        """Write scalar training metrics to Weights & Biases or TensorBoard."""
+        for key, value in train_infos.items():
+            if self.use_wandb:
+                wandb.log({key: value}, step=total_num_steps)
+            else:
+                self.writter.add_scalars(key, {key: value}, total_num_steps)
+
+    def log_env(self, env_infos, total_num_steps):
+        """Write aggregated environment metrics."""
+        for key, value in env_infos.items():
+            if len(value) == 0:
+                continue
+            metric = np.mean(value)
+            if self.use_wandb:
+                wandb.log({key: metric}, step=total_num_steps)
+            else:
+                self.writter.add_scalars(key, {key: metric}, total_num_steps)

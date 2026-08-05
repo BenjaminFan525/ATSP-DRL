@@ -1,9 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import matplotlib.font_manager as fm
-import numpy as np
 import os
+import argparse
+from pathlib import Path
 
 # ================= 1. 设置 Times New Roman 字体 (学术风) =================
 # 方法一：系统自带 (Linux/Ubuntu)
@@ -54,11 +54,11 @@ data = [
 
     # ---- 飞机 P03 (离港作业, 绿色系) ----
     # P03 已经在港夜航Site 1
-    ['P03', 'Site 1 (Gate)', 'ZY-L (解固)', 0, 5, '#388E3C'],
+    ['P03', 'Site 1 (Gate)', 'ZY-L (Unlock)', 0, 5, '#388E3C'],
     # P03 需要 R014 拖行到起飞Sites。Site 1 需等到 P03 拖行开始后释放。
     # R014 0-20 空闲。
     ['P03', 'R014 (Tow Truck)', 'ZY-T (Towing 1 to 29)', 5, 15, '#388E3C'], # 拖行Site 1 -> Site 29
-    ['P03', 'Site 29 (Rwy)', 'ZY-S (调整姿态)', 15, 25, '#388E3C'], # 到 Site 29
+    ['P03', 'Site 29 (Rwy)', 'ZY-S (Alignment)', 15, 25, '#388E3C'], # 到 Site 29
     ['P03', 'Site 29 (Rwy)', 'ZY-F (起飞)', 25, 26, '#388E3C'], # 起飞 (Site 29 释放 @ 26)
 ]
 
@@ -71,8 +71,8 @@ transport_delta = [
     ['P02', 'Site Z', 'R014 (Tow Truck)', 'ZY-Z', 'ZY-T (Towing Z to 2)', (25, 30)], # ΔT=0, Wait ΔT(Trans)=5 Wait for R014
     ['P02', 'R014 (Tow Truck)', 'Site 2 (Gate)', 'ZY-T (Towing Z to 2)', 'ZY01-Fixing', (40, 40)], # 拖行 ΔT=0
     
-    ['P03', 'Site 1 (Gate)', 'R014 (Tow Truck)', 'ZY-L (解固)', 'ZY-T (Towing 1 to 29)', (5, 5)], 
-    ['P03', 'R014 (Tow Truck)', 'Site 29 (Rwy)', 'ZY-T (Towing 1 to 29)', 'ZY-S (调整姿态)', (15, 15)], 
+    ['P03', 'Site 1 (Gate)', 'R014 (Tow Truck)', 'ZY-L (Unlock)', 'ZY-T (Towing 1 to 29)', (5, 5)],
+    ['P03', 'R014 (Tow Truck)', 'Site 29 (Rwy)', 'ZY-T (Towing 1 to 29)', 'ZY-S (Alignment)', (15, 15)],
 ]
 
 # 创建 DataFrame
@@ -176,9 +176,16 @@ ax.legend(handles=sorted_legend, loc='best', fancybox=True, shadow=False, ncol=3
 ax.set_title('AHMSP-HRC Exemplar Case Study: Optimized Collaborative Dispatching Plan', fontsize=16, pad=20, fontweight='bold')
 
 # 保存为高清矢量图 (极力推荐格式)
+parser = argparse.ArgumentParser(description="Plot the bundled Gantt case study.")
+parser.add_argument(
+    "--output",
+    default=str(Path(__file__).resolve().parent / "figures/gantt_chart_casestudy.pdf"),
+)
+args = parser.parse_args()
+output_path = os.path.abspath(os.path.expanduser(args.output))
 plt.tight_layout()
-os.makedirs('figures', exist_ok=True)
-plt.savefig('/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/experiment/figures/gantt_chart_casestudy.pdf', format='pdf', bbox_inches='tight')
-plt.show()
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+plt.savefig(output_path, format='pdf', bbox_inches='tight')
+plt.close(fig)
 
-print("🎉 AHMSP-HRC 定制甘特图样例已成功绘制: figures/gantt_chart_casestudy.pdf")
+print(f"🎉 AHMSP-HRC 定制甘特图样例已成功绘制: {output_path}")

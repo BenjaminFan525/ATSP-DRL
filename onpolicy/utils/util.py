@@ -1,7 +1,6 @@
 import numpy as np
 import math
 import torch
-import random
 
 def check(input):
     if type(input) == np.ndarray:
@@ -56,21 +55,6 @@ def get_shape_from_act_space(act_space):
 
 def expand_slice(tensor, length, batch_size):
     return tensor.unsqueeze(0).expand(length, *tensor.shape).reshape(batch_size, *tensor.shape[1:])
-
-def shuffle_dataset(nested_list, seed=None):
-    n = len(nested_list)
-    m = len(nested_list[0]) if n > 0 else 0
-
-    flat_list = [item for sublist in nested_list for item in sublist]
-    if seed is not None:
-        rng = random.Random(seed)
-        rng.shuffle(flat_list)
-    else:
-        random.shuffle(flat_list)
-
-    shuffled_nested_list = [flat_list[i:i + m] for i in range(0, len(flat_list), m)]
-    
-    return shuffled_nested_list
 
 def tile_images(img_nhwc):
     """

@@ -8,26 +8,59 @@ import numpy as np
 from pathlib import Path
 import torch
 import copy
-curr_path = os.path.dirname(os.path.abspath(__file__)) 
-parent_path = os.path.dirname(os.path.dirname(os.path.dirname(curr_path))) 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-sys.path.append(parent_path)
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from onpolicy.config.config import get_config
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
-from onpolicy.envs.env_wrappers import GraphSubprocVecEnv, DummyVecEnv
-from onpolicy.utils.util import shuffle_dataset
+from onpolicy.envs.env_wrappers import GraphSubprocVecEnv
 import yaml
 import glob
 
-"""Train script for MPEs."""
+"""Train the HKBZ GNN-MAPPO policy."""
+
+
+def _project_path(value):
+    """Resolve configuration paths relative to the repository root."""
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _load_env_config(config_path):
+    config_path = _project_path(config_path)
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Environment config does not exist: {config_path}")
+
+    with config_path.open('r', encoding='utf-8') as config_file:
+        config = yaml.safe_load(config_file) or {}
+
+    path_keys = (
+        'dataset_dir', 'eval_dataset_dir', 'jobs_path', 'fixed_res_path',
+        'mobile_res_path', 'sites_path', 'flights_path',
+    )
+    for key in path_keys:
+        if config.get(key):
+            config[key] = str(_project_path(config[key]))
+    return config
+
+
+def _split_cases(case_dirs, thread_count, split_name):
+    if thread_count > len(case_dirs):
+        raise ValueError(
+            f"{split_name} has {len(case_dirs)} cases but {thread_count} rollout "
+            "threads were requested. Reduce the thread count."
+        )
+    if len(case_dirs) % thread_count:
+        raise ValueError(
+            f"{split_name} contains {len(case_dirs)} cases, which is not divisible "
+            f"by {thread_count} rollout threads."
+        )
+    return [list(part) for part in np.array_split(case_dirs, thread_count)]
 
 def make_train_env(all_args):
     # ================= 提前读取基础配置并打乱、切分数据集 =================
-    env_config_base = {}
-    if os.path.exists(all_args.env_config):
-        with open(all_args.env_config, 'r', encoding='utf-8') as f:
-            env_config_base = yaml.safe_load(f)
+    env_config_base = _load_env_config(all_args.env_config)
             
     dataset_dir = env_config_base.get('dataset_dir', 'airport_dataset')
     case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
@@ -40,7 +73,7 @@ def make_train_env(all_args):
     rng.shuffle(case_dirs)
     
     # 将整个数据集等分为 n_rollout_threads 份
-    split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_rollout_threads)]
+    split_case_dirs = _split_cases(case_dirs, all_args.n_rollout_threads, "Training dataset")
     # ====================================================================
 
     def get_env_fn(rank):
@@ -71,10 +104,7 @@ def make_train_env(all_args):
 
 def make_eval_env(all_args):
     # ================= 评估环境：读取、打乱并切分数据集 =================
-    env_config_base = {}
-    if os.path.exists(all_args.env_config):
-        with open(all_args.env_config, 'r', encoding='utf-8') as f:
-            env_config_base = yaml.safe_load(f)
+    env_config_base = _load_env_config(all_args.env_config)
             
     dataset_dir = env_config_base.get('eval_dataset_dir', env_config_base.get('dataset_dir', 'airport_dataset'))
     case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
@@ -87,7 +117,7 @@ def make_eval_env(all_args):
     rng.shuffle(case_dirs)
     
     # 将评估数据集等分为 n_eval_rollout_threads 份
-    split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_eval_rollout_threads)]
+    split_case_dirs = _split_cases(case_dirs, all_args.n_eval_rollout_threads, "Evaluation dataset")
     # ====================================================================
 
     def get_env_fn(rank):
@@ -115,8 +145,8 @@ def make_eval_env(all_args):
 def parse_args(args, parser):
     parser.add_argument('--scenario_name', type=str,
                         default='simple', help="Which scenario to run on")
-    parser.add_argument('--ac_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/ac.yaml', help="Path to the ac config file")
-    parser.add_argument('--env_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/env.yaml', help="Path to the environment config file")
+    parser.add_argument('--ac_config', type=str, default=str(PROJECT_ROOT / 'onpolicy/config/ac.yaml'), help="Path to the actor-critic config file")
+    parser.add_argument('--env_config', type=str, default=str(PROJECT_ROOT / 'onpolicy/config/env.yaml'), help="Path to the environment config file")
 
     all_args = parser.parse_known_args(args)[0]  
 
@@ -148,7 +178,6 @@ def main(args):
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
-    all_args.use_wandb = False
     # wandb
     if all_args.use_wandb:
         run = wandb.init(config=all_args,
@@ -188,9 +217,9 @@ def main(args):
     eval_envs = make_eval_env(all_args) if all_args.use_eval else None
 
     # config
-    ac_config = all_args.ac_config
+    ac_config = _project_path(all_args.ac_config)
     if ac_config is not None:
-        with open(ac_config, 'r') as f:
+        with open(ac_config, 'r', encoding='utf-8') as f:
             ac_config = yaml.safe_load(f)
 
     config = {

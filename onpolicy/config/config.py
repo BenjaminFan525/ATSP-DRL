@@ -159,7 +159,7 @@ def get_config():
 
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str,
-                        default='gnn_mappo', choices=["rmappo", "mappo", "happo", "gnn_mappo", "hatrpo", "mat", "mat_dec"])
+                        default='gnn_mappo', choices=["gnn_mappo"])
 
     parser.add_argument("--experiment_name", type=str, default="train-medium-ppo3", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for numpy/torch")
@@ -180,10 +180,11 @@ def get_config():
     parser.add_argument("--num_episodes", type=int, default=200,
                         help='Number of episodes to train (default: 40)')
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
-    parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
+    parser.add_argument("--use_wandb", action='store_true', default=False,
+                        help="Log metrics to Weights & Biases instead of local TensorBoard files.")
 
     # env parameters
-    parser.add_argument("--env_name", type=str, default='IA', help="specify the name of environment")
+    parser.add_argument("--env_name", type=str, default='HKBZ', help="Environment name used in logs and result paths")
     parser.add_argument("--use_obs_instead_of_state", action='store_true',
                         default=False, help="Whether to use global state or concatenated obs")
 
