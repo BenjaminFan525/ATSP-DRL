@@ -45,4 +45,4 @@ python onpolicy/envs/HKBZ/experiment/plot_generalization.py
 python onpolicy/envs/HKBZ/experiment/plot_gantt.py
 ```
 
-`experiment/results/` 和 `experiment/figures/` 是提交 `7721cd6` 已包含的示例产物。`reward_large.pdf` 没有随提交提供对应 CSV，因此目前不能由仓库内容完整重建；发布论文复现包时应补充源数据或移除该图。
+`experiment/results/` 和 `experiment/figures/` 是提交 `cbaef8e` 已包含的示例产物。`reward_large.pdf` 没有随提交提供对应 CSV，因此目前不能由仓库内容完整重建；发布论文复现包时应补充源数据或移除该图。
