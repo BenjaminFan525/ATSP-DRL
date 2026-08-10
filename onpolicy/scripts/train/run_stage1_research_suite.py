@@ -21,8 +21,9 @@ import numpy as np
 import torch
 
 
-ROOT = Path("/home/fanyx/HKBZ-environment")
-PYTHON = Path("/home/fanyx/anaconda3/envs/maia/bin/python")
+ROOT = Path(__file__).resolve().parents[3]
+PYTHON = Path(sys.executable).resolve()
+LEGACY_ROOT = "/home/fanyx/HKBZ-environment"
 TRAIN = ROOT / "onpolicy/scripts/train/train_hkbz.py"
 COMPARE = ROOT / "onpolicy/envs/HKBZ/experiment/valid_fjsp_v2_comparison.py"
 IGA_PARALLEL = (
@@ -51,6 +52,17 @@ ACTIVE_PROCESS: subprocess.Popen | None = None
 TEACHER_PROCESS: subprocess.Popen | None = None
 TEACHER_LOG_HANDLE = None
 STOP_REQUESTED = False
+
+
+def relocate_saved_paths(value):
+    """Map paths stored by the source host onto this checkout."""
+    if isinstance(value, dict):
+        return {key: relocate_saved_paths(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [relocate_saved_paths(item) for item in value]
+    if isinstance(value, str):
+        return value.replace(LEGACY_ROOT, str(ROOT))
+    return value
 
 
 def parse_args() -> argparse.Namespace:
@@ -132,8 +144,8 @@ def parse_args() -> argparse.Namespace:
         help="Resume an existing suite directory and skip completed units.",
     )
     args = parser.parse_args()
-    if args.gpu != 0:
-        raise ValueError("This research queue is intentionally pinned to physical GPU 0.")
+    if args.gpu not in (0, 1):
+        raise ValueError("--gpu must select physical GPU 0 or 1 on this host.")
     if args.screen_epochs <= 0 or args.formal_epochs <= 0:
         raise ValueError("Screen and formal epochs must be positive.")
     if args.rollout_threads <= 0 or args.eval_threads <= 0:
@@ -1207,6 +1219,8 @@ def validate_resume_summary(
     saved = summary.get("configuration", {})
     current = vars(args)
     ignored = {"resume", "monitor_interval", "stall_timeout_seconds"}
+    if args.study == "tail_recovery":
+        ignored.add("plane_bc_checkpoint")
     mismatches = []
     for key, old_value in saved.items():
         if key in ignored or key not in current:
@@ -1583,7 +1597,7 @@ def main() -> int:
     status_path = suite_dir / "suite_status.json"
     summary_path = suite_dir / "suite_summary.json"
 
-    lock_path = LOG_ROOT / "gpu0_stage1_suite.lock"
+    lock_path = LOG_ROOT / f"gpu{args.gpu}_stage1_suite.lock"
     lock_handle = lock_path.open("w", encoding="utf-8")
     try:
         fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -1647,8 +1661,12 @@ def main() -> int:
                 "Resume requires existing suite_status.json and "
                 "suite_summary.json."
             )
-        suite_state = json.loads(status_path.read_text(encoding="utf-8"))
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        suite_state = relocate_saved_paths(
+            json.loads(status_path.read_text(encoding="utf-8"))
+        )
+        summary = relocate_saved_paths(
+            json.loads(summary_path.read_text(encoding="utf-8"))
+        )
         validate_resume_summary(summary, args, run_variants, aliases)
         resume_count = int(suite_state.get("resume_count", 0)) + 1
         for stale_key in (

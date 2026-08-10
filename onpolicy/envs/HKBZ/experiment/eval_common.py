@@ -16,12 +16,67 @@ from typing import Dict, Iterable, List, Optional
 import numpy as np
 
 
-def list_case_folders(dataset_dir: str, max_cases: int = 0) -> List[str]:
+def list_case_folders(
+    dataset_dir: str,
+    max_cases: int = 0,
+    *,
+    case_offset: int = 0,
+    partition_seed: int | None = None,
+    stratify_by: str | None = None,
+) -> List[str]:
     cases = sorted(
         entry.name
         for entry in Path(dataset_dir).iterdir()
         if entry.is_dir() and entry.name.startswith("case_")
     )
+    if partition_seed is not None and stratify_by:
+        metadata = load_case_metadata(dataset_dir)
+        grouped: Dict[str, List[str]] = {}
+        for case in cases:
+            label = str(metadata.get(case, {}).get(stratify_by, '')).strip()
+            if not label:
+                metadata_path = Path(dataset_dir) / case / 'metadata.json'
+                if metadata_path.is_file():
+                    label = str(
+                        json.loads(metadata_path.read_text(encoding='utf-8')).get(
+                            str(stratify_by), ''
+                        )
+                    ).strip()
+            if not label:
+                raise ValueError(
+                    f'Case {case} has no {stratify_by} metadata for stratification.'
+                )
+            grouped.setdefault(label, []).append(case)
+        rng = np.random.default_rng(int(partition_seed))
+        for pool in grouped.values():
+            rng.shuffle(pool)
+        totals = {label: len(pool) for label, pool in grouped.items()}
+        used = {label: 0 for label in grouped}
+        stratified = []
+        for position in range(1, len(cases) + 1):
+            available = [
+                label for label in sorted(grouped)
+                if used[label] < totals[label]
+            ]
+            label = max(
+                available,
+                key=lambda item: (
+                    totals[item] * position / len(cases) - used[item],
+                    item,
+                ),
+            )
+            stratified.append(grouped[label][used[label]])
+            used[label] += 1
+        cases = stratified
+    elif partition_seed is not None:
+        rng = np.random.default_rng(int(partition_seed))
+        rng.shuffle(cases)
+    case_offset = max(0, int(case_offset))
+    if case_offset >= len(cases) and cases:
+        raise ValueError(
+            f'case_offset={case_offset} is outside {len(cases)} cases.'
+        )
+    cases = cases[case_offset:]
     if max_cases > 0:
         cases = cases[:max_cases]
     return cases

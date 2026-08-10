@@ -4,6 +4,7 @@ import time
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import torch
@@ -17,11 +18,16 @@ from onpolicy.runner.shared.hkbz_runner import HKBZ_Runner
 class _IPCStressEnv:
     """Small worker env whose observation has production-like tensor count."""
 
-    def __init__(self):
+    def __init__(self, worker_index=0, call_delay=0.0):
         self.step_index = 0
+        self.worker_index = int(worker_index)
+        self.call_delay = float(call_delay)
 
     def _observation(self):
         graph = HeteroData()
+        graph["node"].worker_index = torch.full(
+            (2,), self.worker_index, dtype=torch.long
+        )
         for index in range(32):
             graph["node"][f"feature_{index}"] = torch.full(
                 (2, 2), float(self.step_index + index), dtype=torch.float32
@@ -47,6 +53,13 @@ class _IPCStressEnv:
 
     def close(self):
         return None
+
+    def worker_identity(self):
+        time.sleep(self.call_delay)
+        return self.worker_index
+
+    def echo(self, value):
+        return self.worker_index, value
 
 
 
@@ -127,6 +140,97 @@ class IPCReliabilityTest(unittest.TestCase):
         args = get_config().parse_args([])
         self.assertEqual(args.torch_mp_sharing_strategy, "file_descriptor")
         self.assertEqual(args.ipc_timeout_seconds, 300.0)
+        self.assertEqual(args.safe_async_graph_clone_workers, 0)
+        self.assertFalse(args.safe_graph_batch_pipeline)
+        self.assertFalse(args.safe_dagger_teacher_overlap)
+
+    def test_async_graph_clone_and_rpc_paths_preserve_worker_order(self):
+        worker_count = 6
+        env = GraphSubprocVecEnv(
+            [
+                (
+                    lambda index=index: _IPCStressEnv(
+                        worker_index=index,
+                        call_delay=(worker_count - index) * 0.01,
+                    )
+                )
+                for index in range(worker_count)
+            ],
+            async_graph_clone_workers=3,
+        )
+        try:
+            observations, _, _ = env.reset()
+            self.assertEqual(
+                [
+                    int(observation["node"].worker_index[0].item())
+                    for observation in observations
+                ],
+                list(range(worker_count)),
+            )
+            for observation in observations:
+                for store in observation.stores:
+                    for value in store.values():
+                        if torch.is_tensor(value):
+                            self.assertFalse(value.is_shared())
+
+            env.call_async('worker_identity')
+            with self.assertRaisesRegex(RuntimeError, 'replies are pending'):
+                env.reset()
+            self.assertEqual(env.call_wait(), list(range(worker_count)))
+
+            self.assertEqual(
+                env.call_each(
+                    'echo',
+                    [((index + 1) * 10,) for index in range(worker_count)],
+                ),
+                [(index, (index + 1) * 10) for index in range(worker_count)],
+            )
+
+            self.assertTrue(env.suspend_async_graph_cloning())
+            self.assertIsNone(env._graph_clone_executor)
+            self.assertTrue(env.resume_async_graph_cloning())
+            self.assertIsNotNone(env._graph_clone_executor)
+        finally:
+            env.close()
+
+    def test_eval_factory_fork_window_suspends_and_resumes_clone_threads(self):
+        events = []
+
+        class _TrainPool:
+            def suspend_async_graph_cloning(self):
+                events.append('suspend')
+                return True
+
+            def resume_async_graph_cloning(self):
+                events.append('resume')
+
+        class _EvalPool:
+            def close(self):
+                events.append('close')
+
+        runner = HKBZ_Runner.__new__(HKBZ_Runner)
+        runner.policy = SimpleNamespace(ac=SimpleNamespace(tau=0.7))
+        runner.evaluation_tau = 0.3
+        runner.envs = _TrainPool()
+        runner.eval_envs = None
+        runner.eval_case_counts = None
+        runner.n_eval_rollout_threads = 2
+        runner.release_eval_envs_after_eval = True
+        runner.eval_env_factory = lambda: (
+            events.append('factory') or _EvalPool(),
+            [1, 1],
+        )
+        runner._eval_with_envs = lambda **_kwargs: (
+            events.append('evaluate') or 123.0
+        )
+        runner._report_progress = lambda *_args, **_kwargs: None
+
+        self.assertEqual(runner.eval(), 123.0)
+        self.assertEqual(
+            events, ['suspend', 'factory', 'evaluate', 'close', 'resume']
+        )
+        self.assertAlmostEqual(runner.policy.ac.tau, 0.7)
+        self.assertIsNone(runner.eval_envs)
 
     def test_received_graphs_are_private_and_fd_count_is_stable(self):
         previous_strategy = torch.multiprocessing.get_sharing_strategy()

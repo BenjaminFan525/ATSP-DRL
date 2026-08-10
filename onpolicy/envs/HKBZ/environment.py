@@ -2809,6 +2809,14 @@ class AircraftScheduleEnv(gym.Env):
         """Rewind evaluation to the first case without changing case order."""
         self.data_idx = 0
 
+    def set_iga_potential_beta(self, beta):
+        """Update shaping strength between PPO epochs without rebuilding envs."""
+        beta = float(beta)
+        if not np.isfinite(beta) or beta < 0.0:
+            raise ValueError('iga_potential_beta must be finite and non-negative.')
+        self.iga_potential_beta = beta
+        return self.iga_potential_beta
+
     def _get_episode_rewards(self):
         return self.total_time
 

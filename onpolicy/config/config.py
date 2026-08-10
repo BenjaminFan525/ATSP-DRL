@@ -173,6 +173,30 @@ def get_config():
                         help="Number of parallel envs for training rollouts")
     parser.add_argument("--n_eval_rollout_threads", type=int, default=20,
                         help="Number of parallel envs for evaluating rollouts")
+    parser.add_argument(
+        "--shared_eval_socket",
+        type=str,
+        default="",
+        help=(
+            "optional AF_UNIX socket for a per-GPU shared HKBZ evaluator; "
+            "an empty value keeps in-process validation"
+        ),
+    )
+    parser.add_argument(
+        "--shared_eval_cpu_set",
+        type=str,
+        default="",
+        help=(
+            "logical CPU set temporarily assigned to the shared evaluator "
+            "while this trainer is blocked on validation"
+        ),
+    )
+    parser.add_argument(
+        "--shared_eval_timeout_seconds",
+        type=float,
+        default=7200.0,
+        help="maximum queue plus execution time for one shared validation",
+    )
     parser.add_argument("--n_render_rollout_threads", type=int, default=1,
                         help="Number of parallel envs for rendering rollouts")
     parser.add_argument("--num_env_steps", type=int, default=10e6,
@@ -184,14 +208,51 @@ def get_config():
     parser.add_argument("--max_eval_cases", type=int, default=0,
                         help="limit HKBZ validation cases for smoke tests; 0 uses the full split")
     parser.add_argument(
+        "--eval_dataset_dir",
+        type=str,
+        default="",
+        help=(
+            "optional HKBZ evaluation-dataset override; an empty value uses "
+            "eval_dataset_dir from the environment YAML"
+        ),
+    )
+    parser.add_argument(
+        "--eval_case_offset",
+        type=int,
+        default=0,
+        help=(
+            "number of cases to skip in the fixed evaluation partition order; "
+            "combine with --max_eval_cases to isolate tune/select subsets"
+        ),
+    )
+    parser.add_argument(
+        "--eval_partition_seed",
+        type=int,
+        default=20260803,
+        help=(
+            "seed for the fixed evaluation partition order; deliberately "
+            "independent of the model-training seed"
+        ),
+    )
+    parser.add_argument(
+        "--eval_partition_stratify_by",
+        choices=["", "distribution", "profile"],
+        default="",
+        help=(
+            "optional metadata key used to stratify fixed tune/select "
+            "partitions; distribution is recommended for Stage-1 v2"
+        ),
+    )
+    parser.add_argument(
         "--train_sampling_mode",
         type=str,
         default="uniform",
-        choices=["uniform", "distribution_balanced"],
+        choices=["uniform", "distribution_balanced", "profile_balanced"],
         help=(
-            "HKBZ case sampler; distribution_balanced oversamples metadata "
-            "distributions to the requested mixture without discarding unique "
-            "training cases when no explicit sample-size cap is set"
+            "HKBZ case sampler; balanced modes oversample either metadata "
+            "distributions or profiles to the requested mixture without "
+            "discarding unique training cases when no explicit sample-size "
+            "cap is set"
         ),
     )
     parser.add_argument(
@@ -349,6 +410,16 @@ def get_config():
         ),
     )
     parser.add_argument(
+        "--bc_reference_kl_coef_schedule",
+        type=str,
+        default="",
+        help=(
+            "optional comma-separated per-PPO-epoch BC-reference KL "
+            "coefficients; the final value is held for later epochs and an "
+            "empty schedule preserves --bc_reference_kl_coef"
+        ),
+    )
+    parser.add_argument(
         "--bc_reference_target_kl",
         type=float,
         default=0.0,
@@ -456,6 +527,17 @@ def get_config():
                         default=True, help="by default True, use anneal to adjust hyperparameters. If set, do not use anneal.")
     parser.add_argument("--anneal_original", type=float, default=1.0, help="the original value of anneal, default 1.0")
     parser.add_argument("--anneal_final", type=float, default=0.1, help="the final value of anneal, default 0.1")
+    parser.add_argument(
+        "--tau_anneal_epochs",
+        type=int,
+        default=0,
+        help=(
+            "number of training epochs used to move tau from "
+            "--anneal_original to --anneal_final, including both endpoints; "
+            "later epochs hold the final tau. 0 preserves the legacy linear "
+            "schedule across the complete run"
+        ),
+    )
 
     # save parameters
     parser.add_argument("--save_interval", type=int, default=1, help="time duration between contiunous twice models saving.")
@@ -478,6 +560,34 @@ def get_config():
         type=float,
         default=300.0,
         help="hard timeout for one vector-environment IPC response batch",
+    )
+    parser.add_argument(
+        "--safe_async_graph_clone_workers",
+        type=int,
+        default=0,
+        help=(
+            "number of parent-side threads used to clone graph observations "
+            "while other ordered IPC replies arrive; 0 keeps the synchronous "
+            "path"
+        ),
+    )
+    parser.add_argument(
+        "--safe_graph_batch_pipeline",
+        action="store_true",
+        default=False,
+        help=(
+            "prefetch deterministic PyG Batch construction and reuse each "
+            "prepared batch across equivalent policy evaluations"
+        ),
+    )
+    parser.add_argument(
+        "--safe_dagger_teacher_overlap",
+        action="store_true",
+        default=False,
+        help=(
+            "overlap read-only IGA-teacher RPCs with deterministic student "
+            "inference while preserving environment result order"
+        ),
     )
     parser.add_argument("--recovery_checkpoint_interval_shards", type=int, default=1,
                         help="overwrite checkpoint_Recovery.pt every N completed shards; <=0 disables")
@@ -645,6 +755,20 @@ def get_config():
         help='independent seed for reproducible DAgger teacher/student mixing',
     )
     parser.add_argument(
+        '--plane_bc_dagger_tail_start_fraction', type=float, default=1.0,
+        help=(
+            'teacher-trajectory progress where risk-triggered DAgger begins; '
+            '1.0 disables tail-specific teacher execution'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_dagger_tail_teacher_rate', type=float, default=0.0,
+        help=(
+            'minimum teacher execution rate after the tail-risk threshold; '
+            'the per-epoch DAgger rate remains the lower bound elsewhere'
+        ),
+    )
+    parser.add_argument(
         '--global_feature_mode',
         type=str,
         default='none',
@@ -678,6 +802,20 @@ def get_config():
         help=(
             'maximum BC state weight at the end of the IGA teacher trajectory; '
             'must be at least 1'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_tail_final_start_fraction', type=float, default=1.0,
+        help=(
+            'progress where a second, steeper final-tail BC ramp begins; 1.0 '
+            'keeps the legacy one-ramp weighting'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_tail_final_weight', type=float, default=-1.0,
+        help=(
+            'maximum BC weight at trajectory completion for the second ramp; '
+            'a negative value inherits --plane_bc_tail_weight'
         ),
     )
     parser.add_argument(
@@ -719,8 +857,30 @@ def get_config():
         help='scale of IGA-calibrated potential-based reward shaping',
     )
     parser.add_argument(
+        '--iga_potential_beta_schedule', type=str, default='',
+        help=(
+            'optional comma-separated per-PPO-epoch potential beta values; '
+            'the final value is held for later epochs and an empty schedule '
+            'preserves --iga_potential_beta'
+        ),
+    )
+    parser.add_argument(
         '--iga_potential_gamma', type=float, default=0.99,
         help='discount used in gamma * Phi(next_state) - Phi(state)',
+    )
+    parser.add_argument(
+        '--tail_policy_start_fraction', type=float, default=1.0,
+        help=(
+            'episode-time fraction where smooth late-decision PPO emphasis '
+            'starts; 1.0 disables it'
+        ),
+    )
+    parser.add_argument(
+        '--tail_policy_weight', type=float, default=1.0,
+        help=(
+            'maximum late-decision policy weight at Cmax; weights are '
+            'renormalized per case so every case keeps the same total mass'
+        ),
     )
     parser.add_argument('--device_deadlock_repeat_limit', type=int, default=300,
                         help="raise a diagnostic error after the same active device-request state repeats this many times")

@@ -82,6 +82,42 @@ class TrainSamplingTest(unittest.TestCase):
                     seed=1,
                 )
 
+    def test_profile_balanced_sampler_targets_named_risk_profiles(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cases = []
+            for index, profile in enumerate(
+                ['balanced'] * 4 + ['stress_arrival'], start=1
+            ):
+                case_dir = root / f'case_{index:04d}'
+                case_dir.mkdir()
+                (case_dir / 'metadata.json').write_text(
+                    json.dumps({
+                        'distribution': (
+                            'ood_stress'
+                            if profile == 'stress_arrival' else 'iid'
+                        ),
+                        'profile': profile,
+                    }),
+                    encoding='utf-8',
+                )
+                cases.append(str(case_dir))
+            selected, audit = select_train_case_dirs(
+                cases,
+                mode='profile_balanced',
+                weights_spec='balanced=0.5,stress_arrival=0.5',
+                seed=3,
+            )
+            counts = Counter(
+                json.loads(
+                    (Path(path) / 'metadata.json').read_text(encoding='utf-8')
+                )['profile']
+                for path in selected
+            )
+            self.assertEqual(counts, Counter({'balanced': 4, 'stress_arrival': 4}))
+            self.assertEqual(audit['group_key'], 'profile')
+            self.assertTrue(audit['expanded_for_full_coverage'])
+
 
 if __name__ == "__main__":
     unittest.main()

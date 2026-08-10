@@ -86,6 +86,9 @@ class SharedReplayBuffer(object):
         self.policy_sample_weights = np.zeros_like(self.rewards)
         self.value_sample_weights = np.zeros_like(self.rewards)
         self.team_returns = np.zeros((self.n_rollout_threads,), dtype=np.float32)
+        self.team_cmax_values = np.zeros(
+            (self.n_rollout_threads,), dtype=np.float32
+        )
         self.decision_times = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads), dtype=np.float32
         )
@@ -121,6 +124,7 @@ class SharedReplayBuffer(object):
         self.policy_sample_weights.fill(0.0)
         self.value_sample_weights.fill(0.0)
         self.team_returns.fill(0.0)
+        self.team_cmax_values.fill(0.0)
         self.masks.fill(1.0)
         self.bad_masks.fill(1.0)
         self.active_masks.fill(0.0)
@@ -343,6 +347,18 @@ class SharedReplayBuffer(object):
             neginf=-1e4,
         )
 
+    def set_team_cmax_values(self, cmax_values):
+        """Store one finite terminal Cmax per case for tail-credit weighting."""
+        values = np.asarray(cmax_values, dtype=np.float32).reshape(-1)
+        expected = (self.n_rollout_threads,)
+        if values.shape != expected:
+            raise ValueError(
+                f'cmax_values must have shape {expected}, got {values.shape}.'
+            )
+        if not np.isfinite(values).all() or np.any(values <= 0.0):
+            raise ValueError('cmax_values must be finite and positive.')
+        self.team_cmax_values[:] = values
+
     def compute_team_time_returns(
         self,
         team_returns,
@@ -454,6 +470,67 @@ class SharedReplayBuffer(object):
         return {
             'policy_case_weight_max_error': float(policy_error),
             'value_case_weight_max_error': float(value_error),
+        }
+
+    def apply_time_tail_policy_weights(self, start_fraction, final_weight):
+        """Redistribute each case's policy mass toward its late decisions.
+
+        The ramp uses environment time divided by terminal Cmax.  It changes
+        neither the value targets nor the total weight of a case, preventing
+        long trajectories from regaining the decision-count bias removed by
+        case-balanced PPO.
+        """
+        start_fraction = float(start_fraction)
+        final_weight = float(final_weight)
+        if not 0.0 <= start_fraction <= 1.0:
+            raise ValueError('tail policy start fraction must be in [0, 1].')
+        if final_weight < 1.0 or not np.isfinite(final_weight):
+            raise ValueError('tail policy weight must be finite and at least 1.')
+        T = int(getattr(self, 'filled_steps', self.episode_length))
+        if T <= 0 or start_fraction >= 1.0 or final_weight <= 1.0:
+            return {
+                'tail_policy_enabled': 0.0,
+                'tail_policy_weighted_fraction': 0.0,
+                'tail_policy_case_weight_max_error': 0.0,
+            }
+        if np.any(self.team_cmax_values <= 0.0):
+            raise RuntimeError(
+                'Tail policy weighting requires terminal Cmax for every case.'
+            )
+
+        weighted_count = 0
+        positive_count = 0
+        errors = []
+        denominator = max(1.0 - start_fraction, 1e-12)
+        for env_idx, cmax in enumerate(self.team_cmax_values):
+            weights = self.policy_sample_weights[:T, env_idx, :, 0]
+            positive = weights > 0.0
+            old_mass = float(weights.sum())
+            if old_mass <= 0.0:
+                continue
+            progress = np.clip(
+                self.decision_times[:T, env_idx] / float(cmax), 0.0, 1.0
+            )
+            ramp = np.clip(
+                (progress - start_fraction) / denominator, 0.0, 1.0
+            )
+            multipliers = 1.0 + (final_weight - 1.0) * ramp
+            weights *= multipliers[:, None]
+            new_mass = float(weights.sum())
+            if new_mass <= 0.0 or not np.isfinite(new_mass):
+                raise RuntimeError('Tail policy weighting produced invalid mass.')
+            weights *= old_mass / new_mass
+            errors.append(abs(float(weights.sum()) - old_mass))
+            positive_count += int(positive.sum())
+            weighted_count += int(
+                (positive & (ramp[:, None] > 0.0)).sum()
+            )
+        return {
+            'tail_policy_enabled': 1.0,
+            'tail_policy_weighted_fraction': (
+                float(weighted_count) / max(float(positive_count), 1.0)
+            ),
+            'tail_policy_case_weight_max_error': float(max(errors, default=0.0)),
         }
 
     def graph_recurrent_generator(self, advantages, mini_batch_size):

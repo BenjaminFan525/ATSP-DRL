@@ -79,6 +79,23 @@ def parse_args(argv):
     )
     parser.add_argument("--output_json", type=str, required=True)
     parser.add_argument("--max_cases", type=int, default=0)
+    parser.add_argument(
+        "--case_offset", type=int, default=0,
+        help="skip cases in the fixed partition order before applying max_cases",
+    )
+    parser.add_argument(
+        "--partition_seed", type=int, default=None,
+        help=(
+            "optional fixed case-order seed, shared with train_hkbz.py's "
+            "--eval_partition_seed for disjoint tune/select evaluation"
+        ),
+    )
+    parser.add_argument(
+        "--partition_stratify_by",
+        choices=["distribution", "profile"],
+        default=None,
+        help="optional metadata key for deterministic stratified partitions",
+    )
     parser.add_argument("--max_steps", type=int, default=2000)
     parser.add_argument("--model_batch_size", type=int, default=20)
     parser.add_argument("--evolution_time_budget", type=float, default=1800.0)
@@ -494,7 +511,13 @@ def summarize(records):
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
     dataset_dir = str(Path(args.dataset_test_dir).resolve())
-    case_names = list_case_folders(dataset_dir, args.max_cases)
+    case_names = list_case_folders(
+        dataset_dir,
+        args.max_cases,
+        case_offset=args.case_offset,
+        partition_seed=args.partition_seed,
+        stratify_by=args.partition_stratify_by,
+    )
     metadata = load_case_metadata(dataset_dir)
     if not case_names:
         raise RuntimeError(f"No test cases found in {dataset_dir}")
@@ -515,6 +538,9 @@ def main(argv=None):
         "methods_requested": [METHOD_ALIASES[name] for name in args.methods],
         "requested_policy_tau": float(args.policy_tau),
         "case_count": len(case_names),
+        "case_offset": int(args.case_offset),
+        "partition_seed": args.partition_seed,
+        "partition_stratify_by": args.partition_stratify_by,
         "methods": {},
     }
     write_json(args.output_json, payload)

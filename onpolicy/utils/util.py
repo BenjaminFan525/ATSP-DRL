@@ -21,8 +21,29 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def update_linear_anneal(model, anneal_original, anneal_final, epoch, total_num_epochs):
-    model.tau = anneal_final + (anneal_original - anneal_final) * (1 - epoch / total_num_epochs)
+def update_linear_anneal(
+        model, anneal_original, anneal_final, epoch, total_num_epochs,
+        tau_anneal_epochs=0):
+    """Update the policy temperature once per training epoch.
+
+    ``tau_anneal_epochs=0`` retains the historical schedule exactly.  A
+    positive value includes both endpoints in the requested number of epochs
+    and then holds ``anneal_final``.  The latter is useful for separating an
+    early exploration phase from a late stability phase without changing tau
+    inside a rollout/PPO-update epoch.
+    """
+    tau_anneal_epochs = int(tau_anneal_epochs)
+    if tau_anneal_epochs < 0:
+        raise ValueError("tau_anneal_epochs must be non-negative")
+    if tau_anneal_epochs == 0:
+        progress = epoch / total_num_epochs
+    elif tau_anneal_epochs == 1:
+        progress = 1.0
+    else:
+        progress = min(max(epoch, 0) / (tau_anneal_epochs - 1), 1.0)
+    model.tau = anneal_final + (
+        (anneal_original - anneal_final) * (1 - progress)
+    )
 
 def huber_loss(e, d):
     a = (abs(e) <= d).float()

@@ -20,7 +20,10 @@ from onpolicy.utils.valuenorm import ValueNorm
 
 
 ROOT = Path(__file__).resolve().parents[4]
-CASE_DIR = ROOT / "onpolicy/envs/HKBZ/dataset/train_large/case_46"
+CASE_DIR = (
+    ROOT
+    / "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046"
+)
 
 
 class _PolicyArgs:
@@ -62,6 +65,44 @@ def _make_env(global_feature_mode="none"):
 
 
 class JointTrainingRegressionTest(unittest.TestCase):
+    def test_tail_policy_weighting_preserves_each_case_mass(self):
+        args = get_config().parse_args([])
+        args.episode_length = 4
+        args.n_rollout_threads = 2
+        args.hidden_size = 8
+        args.recurrent_N = 1
+        buffer = SharedReplayBuffer(args, 2, None, None, None)
+        buffer.filled_steps = 4
+        buffer.policy_sample_weights[:4, :, :, 0] = 0.125
+        buffer.decision_times[:4, 0] = [0.0, 500.0, 750.0, 1000.0]
+        buffer.decision_times[:4, 1] = [0.0, 100.0, 200.0, 300.0]
+        buffer.set_team_cmax_values([1000.0, 300.0])
+
+        metrics = buffer.apply_time_tail_policy_weights(0.75, 3.0)
+
+        np.testing.assert_allclose(
+            buffer.policy_sample_weights[:4].sum(axis=(0, 2, 3)),
+            [1.0, 1.0],
+            rtol=0.0,
+            atol=1e-6,
+        )
+        self.assertGreater(
+            buffer.policy_sample_weights[3, 0, 0, 0],
+            buffer.policy_sample_weights[0, 0, 0, 0],
+        )
+        self.assertEqual(metrics['tail_policy_enabled'], 1.0)
+        self.assertLess(metrics['tail_policy_case_weight_max_error'], 1e-6)
+
+    def test_epoch_method_schedule_holds_final_value(self):
+        self.assertEqual(
+            HKBZ_Runner._parse_epoch_schedule('0, 0.05, 0.1', 'test'),
+            (0.0, 0.05, 0.1),
+        )
+        self.assertAlmostEqual(
+            HKBZ_Runner._epoch_schedule_value((0.0, 0.05, 0.1), 7, 9.0),
+            0.1,
+        )
+
     def test_plane_bc_temporal_weight_smoothly_emphasizes_tail(self):
         runner = HKBZ_Runner.__new__(HKBZ_Runner)
         runner.plane_bc_tail_start_fraction = 0.75
@@ -73,6 +114,31 @@ class JointTrainingRegressionTest(unittest.TestCase):
         )
 
         np.testing.assert_allclose(weights, [1.0, 1.0, 2.0, 3.0])
+
+    def test_plane_bc_two_stage_tail_weight_reaches_final_tail_target(self):
+        runner = HKBZ_Runner.__new__(HKBZ_Runner)
+        runner.plane_bc_tail_start_fraction = 0.75
+        runner.plane_bc_tail_weight = 4.0
+        runner.plane_bc_tail_final_start_fraction = 0.90
+        runner.plane_bc_tail_final_weight = 8.0
+
+        weights = runner._plane_bc_temporal_weights(
+            np.asarray([750.0, 825.0, 900.0, 950.0, 1000.0]),
+            np.full(5, 1000.0),
+        )
+
+        np.testing.assert_allclose(weights, [1.0, 2.5, 4.0, 6.0, 8.0])
+
+    def test_dagger_tail_risk_floor_preserves_more_teacher_states(self):
+        runner = HKBZ_Runner.__new__(HKBZ_Runner)
+        runner.plane_bc_dagger_tail_start_fraction = 0.75
+        runner.plane_bc_dagger_tail_teacher_rate = 0.80
+
+        rates = runner._dagger_execution_rates(
+            0.40, np.asarray([0.20, 0.74, 0.75, 0.95])
+        )
+
+        np.testing.assert_allclose(rates, [0.40, 0.40, 0.80, 0.80])
 
     def test_graph_batch_memory_guard(self):
         self.assertEqual(
@@ -108,6 +174,66 @@ class JointTrainingRegressionTest(unittest.TestCase):
             self.assertEqual(
                 int(data['graph']['operation'].batch.max().item()), 1
             )
+        finally:
+            env.close()
+
+    def test_graph_batch_preparation_preserves_rng_and_policy_outputs(self):
+        env = _make_env()
+        try:
+            obs, _, info = env.reset()
+            graph_list = [obs.clone(), obs.clone()]
+            sample = (graph_list, 'unchanged')
+            torch_state = torch.random.get_rng_state().clone()
+            numpy_state = np.random.get_state()
+
+            prepared = MAPPO_Trainer._prepare_graph_sample(sample)
+
+            self.assertIsInstance(prepared[0], Batch)
+            self.assertEqual(prepared[0].num_graphs, 2)
+            self.assertEqual(prepared[1], 'unchanged')
+            self.assertTrue(torch.equal(torch.random.get_rng_state(), torch_state))
+            observed_numpy_state = np.random.get_state()
+            self.assertEqual(observed_numpy_state[0], numpy_state[0])
+            np.testing.assert_array_equal(
+                observed_numpy_state[1], numpy_state[1]
+            )
+            self.assertEqual(observed_numpy_state[2:], numpy_state[2:])
+
+            policy = _make_policy()
+            policy.ac.eval()
+            active_agents = np.repeat(
+                info['active_agents'][None, :], 2, axis=0
+            )
+            agent_types = np.repeat(
+                info['agent_types'][None, :], 2, axis=0
+            )
+            last_indices = -np.ones_like(active_agents, dtype=np.int64)
+            rnn_states = np.zeros(
+                (2, env.n_agents, 1, 64), dtype=np.float32
+            )
+            with torch.inference_mode():
+                list_outputs = policy.get_actions(
+                    graph_list,
+                    rnn_states,
+                    active_agents,
+                    last_indices,
+                    last_indices,
+                    agent_types=agent_types,
+                    deterministic=True,
+                )
+                batch_outputs = policy.get_actions(
+                    prepared[0],
+                    rnn_states,
+                    active_agents,
+                    last_indices,
+                    last_indices,
+                    agent_types=agent_types,
+                    deterministic=True,
+                )
+            for list_output, batch_output in zip(list_outputs, batch_outputs):
+                torch.testing.assert_close(
+                    list_output, batch_output, rtol=0.0, atol=0.0
+                )
         finally:
             env.close()
 
@@ -725,6 +851,7 @@ class JointTrainingRegressionTest(unittest.TestCase):
             args.max_device_num = env.max_device_num
             args.resource_policy = "drl"
             args.use_valuenorm = True
+            args.safe_graph_batch_pipeline = True
 
             with open(ROOT / "onpolicy/config/ac.yaml", "r", encoding="utf-8") as stream:
                 ac_config = yaml.safe_load(stream)
@@ -789,6 +916,7 @@ class JointTrainingRegressionTest(unittest.TestCase):
                 trainer.value_normalizer,
             )
             train_info = trainer.train(buffer)
+            self.assertEqual(train_info["safe_graph_batch_pipeline"], 1.0)
 
             for key in (
                 "policy_loss",

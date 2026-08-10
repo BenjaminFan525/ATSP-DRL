@@ -23,12 +23,79 @@ sys.path.append(parent_path)
 
 from onpolicy.config.config import get_config
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
+from onpolicy.envs.HKBZ.experiment.eval_common import list_case_folders
 from onpolicy.envs.env_wrappers import GraphSubprocVecEnv, DummyVecEnv
 from onpolicy.utils.util import shuffle_dataset
 import yaml
 import glob
 
 """Train script for MPEs."""
+
+
+def apply_formal_safe_pipeline_manifest(all_args, repository_root=None):
+    """Apply an explicitly declared, formal-only safe-pipeline manifest.
+
+    The Stage-1 suite scheduler is intentionally long lived.  A scheduler that
+    was started before these CLI flags existed cannot add them to later formal
+    child commands without being restarted.  This opt-in manifest lets a fresh
+    training child discover the declaration while keeping every screen/audit
+    command on the default synchronous path.
+    """
+    experiment_name = str(getattr(all_args, 'experiment_name', '') or '')
+    formal_marker = '_formal_'
+    if formal_marker not in experiment_name:
+        return None
+    run_tag = experiment_name.split(formal_marker, 1)[0]
+    if not run_tag or Path(run_tag).name != run_tag:
+        raise ValueError(
+            f'Unsafe formal experiment prefix for pipeline manifest: {run_tag!r}'
+        )
+    root = Path(repository_root or parent_path).resolve()
+    manifest_path = (
+        root / 'result/hkbz_train_logs' / run_tag
+        / 'formal_safe_pipeline.json'
+    )
+    if not manifest_path.is_file():
+        return None
+    with manifest_path.open('r', encoding='utf-8') as handle:
+        manifest = json.load(handle)
+    if manifest.get('enabled') is not True:
+        return None
+    if manifest.get('formal_only') is not True:
+        raise ValueError(
+            f'Safe-pipeline manifest must declare formal_only=true: '
+            f'{manifest_path}'
+        )
+    if str(manifest.get('run_tag', '')) != run_tag:
+        raise ValueError(
+            'Safe-pipeline manifest run_tag mismatch: '
+            f'expected={run_tag!r}, observed={manifest.get("run_tag")!r}'
+        )
+    clone_workers = int(manifest.get('safe_async_graph_clone_workers', 0))
+    if clone_workers < 0:
+        raise ValueError(
+            'safe_async_graph_clone_workers in the activation manifest must '
+            'be non-negative.'
+        )
+    for key in (
+        'safe_graph_batch_pipeline', 'safe_dagger_teacher_overlap'
+    ):
+        if not isinstance(manifest.get(key), bool):
+            raise ValueError(
+                f'{key} in the activation manifest must be boolean.'
+            )
+    all_args.safe_async_graph_clone_workers = clone_workers
+    all_args.safe_graph_batch_pipeline = manifest[
+        'safe_graph_batch_pipeline'
+    ]
+    all_args.safe_dagger_teacher_overlap = manifest[
+        'safe_dagger_teacher_overlap'
+    ]
+    all_args.safe_pipeline_activation_source = str(manifest_path.resolve())
+    return {
+        **manifest,
+        'path': str(manifest_path.resolve()),
+    }
 
 
 def parse_distribution_weights(spec):
@@ -75,21 +142,25 @@ def _largest_remainder_quotas(weights, total):
     return quotas
 
 
-def _case_distribution(case_dir):
+def _case_metadata_group(case_dir, key):
     metadata_path = Path(case_dir) / 'metadata.json'
     if not metadata_path.is_file():
         raise FileNotFoundError(
-            'distribution_balanced sampling requires metadata.json for every '
+            'balanced sampling requires metadata.json for every '
             f'case, missing {metadata_path}.'
         )
     with metadata_path.open('r', encoding='utf-8') as handle:
         metadata = json.load(handle)
-    distribution = str(metadata.get('distribution', '')).strip()
-    if not distribution:
+    group = str(metadata.get(key, '')).strip()
+    if not group:
         raise ValueError(
-            f'Case metadata has no distribution label: {metadata_path}.'
+            f'Case metadata has no {key} label: {metadata_path}.'
         )
-    return distribution
+    return group
+
+
+def _case_distribution(case_dir):
+    return _case_metadata_group(case_dir, 'distribution')
 
 
 def select_train_case_dirs(
@@ -125,21 +196,25 @@ def select_train_case_dirs(
             'unique_cases': len(set(selected)),
             'expanded_for_full_coverage': False,
         }
-    if mode != 'distribution_balanced':
+    group_key = {
+        'distribution_balanced': 'distribution',
+        'profile_balanced': 'profile',
+    }.get(mode)
+    if group_key is None:
         raise ValueError(f'Unsupported train_sampling_mode={mode!r}.')
 
     weights = parse_distribution_weights(weights_spec)
     grouped = {name: [] for name in weights}
     unexpected = Counter()
     for case_dir in sorted(case_dirs):
-        distribution = _case_distribution(case_dir)
-        if distribution not in grouped:
-            unexpected[distribution] += 1
+        group = _case_metadata_group(case_dir, group_key)
+        if group not in grouped:
+            unexpected[group] += 1
         else:
-            grouped[distribution].append(case_dir)
+            grouped[group].append(case_dir)
     if unexpected:
         raise ValueError(
-            'train_sampling_weights does not cover dataset distributions: '
+            f'train_sampling_weights does not cover dataset {group_key}s: '
             f'{dict(sorted(unexpected.items()))}.'
         )
     missing = [name for name, cases in grouped.items() if not cases]
@@ -177,23 +252,27 @@ def select_train_case_dirs(
             selected.extend(pool[int(index)] for index in permutation[:take])
             quota -= take
     rng.shuffle(selected)
-    selected_counts = Counter(_case_distribution(path) for path in selected)
-    unique_counts = Counter(
-        _case_distribution(path) for path in set(selected)
+    selected_counts = Counter(
+        _case_metadata_group(path, group_key) for path in selected
     )
-    return selected, {
+    unique_counts = Counter(
+        _case_metadata_group(path, group_key) for path in set(selected)
+    )
+    audit = {
         'mode': mode,
+        'group_key': group_key,
         'requested_weights': weights,
         'source_cases': len(case_dirs),
-        'source_distribution_counts': {
+        f'source_{group_key}_counts': {
             name: len(grouped[name]) for name in sorted(grouped)
         },
         'selected_cases': len(selected),
         'unique_cases': len(set(selected)),
-        'selected_distribution_counts': dict(sorted(selected_counts.items())),
-        'unique_distribution_counts': dict(sorted(unique_counts.items())),
+        f'selected_{group_key}_counts': dict(sorted(selected_counts.items())),
+        f'unique_{group_key}_counts': dict(sorted(unique_counts.items())),
         'expanded_for_full_coverage': expanded_for_full_coverage,
     }
+    return selected, audit
 
 
 def make_train_env(all_args):
@@ -285,6 +364,7 @@ def make_train_env(all_args):
         GraphSubprocVecEnv(
             [get_env_fn(rank) for rank in range(all_args.n_rollout_threads)],
             ipc_timeout_seconds=all_args.ipc_timeout_seconds,
+            async_graph_clone_workers=all_args.safe_async_graph_clone_workers,
         ),
         max(len(rank_cases) for rank_cases in split_case_dirs),
     )
@@ -316,19 +396,45 @@ def make_eval_env(all_args):
     env_config_base['use_domain_rand'] = False
     env_config_base['global_feature_mode'] = all_args.global_feature_mode
             
-    dataset_dir = env_config_base.get('eval_dataset_dir', env_config_base.get('dataset_dir', 'airport_dataset'))
-    case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
+    dataset_dir = str(
+        getattr(all_args, 'eval_dataset_dir', '')
+        or env_config_base.get(
+            'eval_dataset_dir',
+            env_config_base.get('dataset_dir', 'airport_dataset'),
+        )
+    )
+    all_case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
     
-    if not case_dirs:
+    if not all_case_dirs:
         raise ValueError(f"🚨 错误：在评估目录 '{dataset_dir}' 中没有找到任何算例文件夹！")
-        
-    # 打乱评估集 (可以保持和训练集不同的打乱方式，或者使用固定的评估顺序)
-    rng = np.random.default_rng(all_args.seed * 2) 
-    rng.shuffle(case_dirs)
 
+    eval_case_offset = max(0, int(getattr(all_args, 'eval_case_offset', 0)))
     max_eval_cases = max(0, int(getattr(all_args, 'max_eval_cases', 0)))
-    if max_eval_cases > 0:
-        case_dirs = case_dirs[:max_eval_cases]
+    case_names = list_case_folders(
+        dataset_dir,
+        max_eval_cases,
+        case_offset=eval_case_offset,
+        partition_seed=int(all_args.eval_partition_seed),
+        stratify_by=(
+            str(getattr(all_args, 'eval_partition_stratify_by', '') or '')
+            or None
+        ),
+    )
+    case_dirs = [os.path.join(dataset_dir, name) for name in case_names]
+    print(
+        '[EvalPartition] '
+        + json.dumps({
+            'dataset_dir': str(Path(dataset_dir).resolve()),
+            'partition_seed': int(all_args.eval_partition_seed),
+            'stratify_by': str(
+                getattr(all_args, 'eval_partition_stratify_by', '') or ''
+            ),
+            'offset': eval_case_offset,
+            'selected_cases': len(case_dirs),
+            'first_case': Path(case_dirs[0]).name if case_dirs else None,
+        }, ensure_ascii=False, sort_keys=True),
+        flush=True,
+    )
     if all_args.n_eval_rollout_threads > len(case_dirs):
         raise ValueError(
             "n_eval_rollout_threads cannot exceed the number of selected validation cases: "
@@ -363,6 +469,7 @@ def make_eval_env(all_args):
         GraphSubprocVecEnv(
             [get_env_fn(rank) for rank in range(all_args.n_eval_rollout_threads)],
             ipc_timeout_seconds=all_args.ipc_timeout_seconds,
+            async_graph_clone_workers=all_args.safe_async_graph_clone_workers,
         ),
         [len(rank_cases) for rank_cases in split_case_dirs],
     )
@@ -381,11 +488,12 @@ def parse_args(args, parser):
         all_args.max_device_num = int(env_cfg.get('max_device_num', all_args.max_device_num))
         all_args.resource_policy = env_cfg.get('resource_policy', all_args.resource_policy)
         all_args.dataset_manifest = str(env_cfg.get('dataset_manifest', ''))
-        all_args.eval_dataset_dir = str(
-            env_cfg.get(
-                'eval_dataset_dir', env_cfg.get('dataset_dir', '')
+        if not str(getattr(all_args, 'eval_dataset_dir', '') or '').strip():
+            all_args.eval_dataset_dir = str(
+                env_cfg.get(
+                    'eval_dataset_dir', env_cfg.get('dataset_dir', '')
+                )
             )
-        )
         # Reward and training options remain CLI-controlled.  Overwriting them
         # here made explicit experiment flags silently lose to stale YAML.
 
@@ -395,8 +503,37 @@ def parse_args(args, parser):
 def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
+    pipeline_manifest = apply_formal_safe_pipeline_manifest(all_args)
+    if int(all_args.safe_async_graph_clone_workers) < 0:
+        raise ValueError('--safe_async_graph_clone_workers must be non-negative.')
+    if pipeline_manifest is not None:
+        print(
+            '[SafePipelineActivation] '
+            + json.dumps(
+                pipeline_manifest, ensure_ascii=False, sort_keys=True
+            ),
+            flush=True,
+        )
     if all_args.iga_potential_beta < 0.0:
         raise ValueError('--iga_potential_beta must be non-negative.')
+    for flag, raw in (
+        ('--iga_potential_beta_schedule', all_args.iga_potential_beta_schedule),
+        ('--bc_reference_kl_coef_schedule', all_args.bc_reference_kl_coef_schedule),
+    ):
+        try:
+            values = [
+                float(item.strip())
+                for item in str(raw or '').split(',')
+                if item.strip()
+            ]
+        except ValueError as error:
+            raise ValueError(f'{flag} must be a comma-separated float list.') from error
+        if any(not np.isfinite(value) or value < 0.0 for value in values):
+            raise ValueError(f'{flag} values must be finite and non-negative.')
+    if not 0.0 <= all_args.tail_policy_start_fraction <= 1.0:
+        raise ValueError('--tail_policy_start_fraction must be in [0, 1].')
+    if all_args.tail_policy_weight < 1.0:
+        raise ValueError('--tail_policy_weight must be at least 1.')
     if not 0.0 <= all_args.iga_potential_gamma <= 1.0:
         raise ValueError('--iga_potential_gamma must be in [0, 1].')
     if all_args.hindsight_reward_mode == 'iga_potential':
@@ -407,6 +544,13 @@ def main(args):
                 f'--iga_potential_weights_path, got {weights_path}.'
             )
         all_args.iga_potential_weights_path = str(weights_path.resolve())
+    if bool(all_args.shared_eval_socket) != bool(all_args.shared_eval_cpu_set):
+        raise ValueError(
+            '--shared_eval_socket and --shared_eval_cpu_set must be supplied '
+            'together.'
+        )
+    if float(all_args.shared_eval_timeout_seconds) <= 0.0:
+        raise ValueError('--shared_eval_timeout_seconds must be positive.')
     all_args.use_recurrent_policy = True
     faulthandler.enable(all_threads=True)
     torch.multiprocessing.set_sharing_strategy(all_args.torch_mp_sharing_strategy)
@@ -472,12 +616,13 @@ def main(args):
 
     # env init
     envs, n_envs = make_train_env(all_args)
-    # Evaluation workers are expensive and must not remain resident during
-    # rollout/update.  HKBZ_Runner creates them only for an evaluation call
-    # and closes them immediately afterwards.
+    # Without a shared per-GPU service, evaluation workers are created lazily
+    # and closed after every call.  A configured shared service owns the only
+    # persistent validation pool and this trainer sends it frozen snapshots.
     eval_envs, eval_case_counts = None, None
     eval_env_factory = (
-        (lambda: make_eval_env(all_args)) if all_args.use_eval else None
+        (lambda: make_eval_env(all_args))
+        if all_args.use_eval and not all_args.shared_eval_socket else None
     )
 
     # config
@@ -498,6 +643,9 @@ def main(args):
         "eval_case_counts": eval_case_counts,
         "eval_env_factory": eval_env_factory,
         "release_eval_envs_after_eval": True,
+        "shared_eval_socket": all_args.shared_eval_socket,
+        "shared_eval_cpu_set": all_args.shared_eval_cpu_set,
+        "shared_eval_timeout_seconds": all_args.shared_eval_timeout_seconds,
     }
 
     # run experiments
@@ -536,6 +684,24 @@ def main(args):
                     getattr(runner, 'canary_rejection_info', {})
                 ),
                 'torch_mp_sharing_strategy': all_args.torch_mp_sharing_strategy,
+                'safe_async_graph_clone_workers': int(
+                    all_args.safe_async_graph_clone_workers
+                ),
+                'safe_graph_batch_pipeline': bool(
+                    all_args.safe_graph_batch_pipeline
+                ),
+                'safe_dagger_teacher_overlap': bool(
+                    all_args.safe_dagger_teacher_overlap
+                ),
+                'safe_pipeline_activation_source': str(
+                    getattr(
+                        all_args, 'safe_pipeline_activation_source', ''
+                    )
+                ),
+                'shared_eval_socket': str(all_args.shared_eval_socket or ''),
+                'shared_eval_cpu_set': str(
+                    all_args.shared_eval_cpu_set or ''
+                ),
                 'pid': os.getpid(),
                 'ppid': os.getppid(),
                 'pgid': os.getpgid(0),

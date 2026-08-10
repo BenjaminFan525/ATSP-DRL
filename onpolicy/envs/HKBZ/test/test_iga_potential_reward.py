@@ -97,6 +97,12 @@ class IGAPotentialRewardTests(unittest.TestCase):
         self.assertAlmostEqual(args.iga_potential_beta, 0.25)
         self.assertAlmostEqual(args.iga_potential_gamma, 0.99)
 
+    def test_runtime_potential_beta_setter_validates_value(self):
+        env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)
+        self.assertAlmostEqual(env.set_iga_potential_beta(0.075), 0.075)
+        with self.assertRaisesRegex(ValueError, 'finite and non-negative'):
+            env.set_iga_potential_beta(-0.1)
+
     def test_tail_features_track_max_wait_and_release_bound(self):
         env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)
         job = SimpleNamespace(code='J1', time=100.0)

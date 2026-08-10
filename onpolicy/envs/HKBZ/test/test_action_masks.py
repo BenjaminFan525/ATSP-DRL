@@ -20,7 +20,10 @@ from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
 
 
 ROOT = Path(__file__).resolve().parents[4]
-CASE_DIR = ROOT / "onpolicy/envs/HKBZ/dataset/train_large/case_46"
+CASE_DIR = (
+    ROOT
+    / "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012"
+)
 
 
 def _make_env():

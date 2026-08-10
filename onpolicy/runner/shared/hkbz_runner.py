@@ -16,6 +16,11 @@ from onpolicy.utils.shared_buffer import SharedReplayBuffer
 import cProfile
 import pstats
 import math
+import uuid
+from types import SimpleNamespace
+from pathlib import Path
+
+from onpolicy.utils.shared_eval import SharedEvalClient, parse_cpu_set
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -30,8 +35,24 @@ class HKBZ_Runner(Runner):
         self.num_agents = config['num_agents']
         self.ac_config = config['ac_config']
         self.num_envs = config['num_envs']
+        self.evaluation_only = bool(config.get('evaluation_only', False))
         self.eval_case_counts = config.get('eval_case_counts')
         self.eval_env_factory = config.get('eval_env_factory')
+        self.shared_eval_socket = str(
+            config.get('shared_eval_socket', '') or ''
+        )
+        self.shared_eval_cpu_set = str(
+            config.get('shared_eval_cpu_set', '') or ''
+        )
+        self.shared_eval_client = None
+        if self.shared_eval_socket:
+            parse_cpu_set(self.shared_eval_cpu_set)
+            self.shared_eval_client = SharedEvalClient(
+                self.shared_eval_socket,
+                timeout_seconds=float(config.get(
+                    'shared_eval_timeout_seconds', 7200.0
+                )),
+            )
         self.release_eval_envs_after_eval = bool(
             config.get('release_eval_envs_after_eval', False)
         )
@@ -54,6 +75,31 @@ class HKBZ_Runner(Runner):
         self.all_args.episode_length = self.episode_length
         self.n_rollout_threads = self.all_args.n_rollout_threads
         self.n_eval_rollout_threads = self.all_args.n_eval_rollout_threads
+        self.safe_async_graph_clone_workers = int(
+            getattr(self.all_args, 'safe_async_graph_clone_workers', 0)
+        )
+        if self.safe_async_graph_clone_workers < 0:
+            raise ValueError(
+                '--safe_async_graph_clone_workers must be non-negative.'
+            )
+        self.safe_graph_batch_pipeline = bool(
+            getattr(self.all_args, 'safe_graph_batch_pipeline', False)
+        )
+        self.safe_dagger_teacher_overlap = bool(
+            getattr(self.all_args, 'safe_dagger_teacher_overlap', False)
+        )
+        if (
+            self.safe_async_graph_clone_workers
+            or self.safe_graph_batch_pipeline
+            or self.safe_dagger_teacher_overlap
+        ):
+            print(
+                '[SafePipeline] '
+                f'graph_clone_workers={self.safe_async_graph_clone_workers} '
+                f'graph_batch_pipeline={self.safe_graph_batch_pipeline} '
+                f'dagger_teacher_overlap={self.safe_dagger_teacher_overlap}',
+                flush=True,
+            )
         self.max_graphs_per_forward = max(0, int(getattr(self.all_args, 'max_graphs_per_forward', 0)))
         self.actor_warmup_shards = max(
             0,
@@ -139,6 +185,19 @@ class HKBZ_Runner(Runner):
         self.plane_bc_tail_weight = float(
             getattr(self.all_args, 'plane_bc_tail_weight', 1.0)
         )
+        self.plane_bc_tail_final_start_fraction = float(
+            getattr(
+                self.all_args, 'plane_bc_tail_final_start_fraction', 1.0
+            )
+        )
+        requested_final_weight = float(
+            getattr(self.all_args, 'plane_bc_tail_final_weight', -1.0)
+        )
+        self.plane_bc_tail_final_weight = (
+            self.plane_bc_tail_weight
+            if requested_final_weight < 0.0
+            else requested_final_weight
+        )
         dagger_schedule = str(
             getattr(self.all_args, 'plane_bc_dagger_schedule', '') or ''
         ).strip()
@@ -151,8 +210,30 @@ class HKBZ_Runner(Runner):
             int(getattr(self.all_args, 'plane_bc_dagger_seed', 0))
             or (int(self.all_args.seed) + 73001)
         )
+        self.plane_bc_dagger_tail_start_fraction = float(
+            getattr(
+                self.all_args,
+                'plane_bc_dagger_tail_start_fraction',
+                1.0,
+            )
+        )
+        self.plane_bc_dagger_tail_teacher_rate = float(
+            getattr(
+                self.all_args,
+                'plane_bc_dagger_tail_teacher_rate',
+                0.0,
+            )
+        )
         self.bc_reference_kl_coef = float(
             getattr(self.all_args, 'bc_reference_kl_coef', 0.0)
+        )
+        self.bc_reference_kl_coef_schedule = self._parse_epoch_schedule(
+            getattr(self.all_args, 'bc_reference_kl_coef_schedule', ''),
+            'bc_reference_kl_coef_schedule',
+        )
+        self.iga_potential_beta_schedule = self._parse_epoch_schedule(
+            getattr(self.all_args, 'iga_potential_beta_schedule', ''),
+            'iga_potential_beta_schedule',
         )
         self.bc_reference_target_kl = float(
             getattr(self.all_args, 'bc_reference_target_kl', 0.0)
@@ -293,7 +374,8 @@ class HKBZ_Runner(Runner):
         self.selection_checkpoint_dir = getattr(
             self.all_args, 'selection_checkpoint_dir', None
         )
-        self._validate_training_stage_config()
+        if not self.evaluation_only:
+            self._validate_training_stage_config()
 
         if self.use_wandb:
             self.save_dir = str(wandb.run.dir)
@@ -340,9 +422,23 @@ class HKBZ_Runner(Runner):
                 print("[Info] Restored persisted ValueNorm statistics from checkpoint.")
         
         # buffer
-        self.buffer = SharedReplayBuffer(self.all_args,
-                                        self.num_agents,
-                                        None, None, None)
+        if self.evaluation_only:
+            # Deterministic evaluation only needs the recurrent-state tail
+            # shape.  Avoid allocating the multi-gigabyte PPO replay buffer in
+            # the persistent per-GPU evaluator.
+            self.buffer = SimpleNamespace(
+                rnn_states=np.zeros(
+                    (
+                        1, 1, self.num_agents,
+                        self.recurrent_N, self.hidden_size,
+                    ),
+                    dtype=np.float32,
+                )
+            )
+        else:
+            self.buffer = SharedReplayBuffer(
+                self.all_args, self.num_agents, None, None, None
+            )
 
     def _validate_training_stage_config(self):
         resource_policy = getattr(self.all_args, 'resource_policy', 'heuristic')
@@ -375,6 +471,28 @@ class HKBZ_Runner(Runner):
             )
         if self.plane_bc_tail_weight < 1.0:
             raise ValueError('--plane_bc_tail_weight must be at least 1.')
+        if not (
+            self.plane_bc_tail_start_fraction
+            <= self.plane_bc_tail_final_start_fraction
+            <= 1.0
+        ):
+            raise ValueError(
+                '--plane_bc_tail_final_start_fraction must be between '
+                '--plane_bc_tail_start_fraction and 1.'
+            )
+        if self.plane_bc_tail_final_weight < self.plane_bc_tail_weight:
+            raise ValueError(
+                '--plane_bc_tail_final_weight must be at least '
+                '--plane_bc_tail_weight.'
+            )
+        if not 0.0 <= self.plane_bc_dagger_tail_start_fraction <= 1.0:
+            raise ValueError(
+                '--plane_bc_dagger_tail_start_fraction must be in [0, 1].'
+            )
+        if not 0.0 <= self.plane_bc_dagger_tail_teacher_rate <= 1.0:
+            raise ValueError(
+                '--plane_bc_dagger_tail_teacher_rate must be in [0, 1].'
+            )
         if any(
             rate < 0.0 or rate > 1.0
             for rate in self.plane_bc_dagger_schedule
@@ -1163,6 +1281,7 @@ class HKBZ_Runner(Runner):
         enabled = (
             self.bc_reference_kl_coef > 0.0
             or self.bc_reference_target_kl > 0.0
+            or any(value > 0.0 for value in self.bc_reference_kl_coef_schedule)
         )
         if not enabled or self.policy.has_bc_reference():
             return
@@ -1202,6 +1321,51 @@ class HKBZ_Runner(Runner):
                 f'resumable PPO: {local_reference_path}.'
             )
         print(f'[Info] Restored frozen BC reference from {reference_path}.')
+
+    @staticmethod
+    def _parse_epoch_schedule(raw, name):
+        values = tuple(
+            float(item.strip())
+            for item in str(raw or '').split(',')
+            if item.strip()
+        )
+        if any(not np.isfinite(value) or value < 0.0 for value in values):
+            raise ValueError(f'--{name} values must be finite and non-negative.')
+        return values
+
+    @staticmethod
+    def _epoch_schedule_value(values, epoch, default):
+        if not values:
+            return float(default)
+        return float(values[min(int(epoch), len(values) - 1)])
+
+    def _apply_epoch_method_schedules(self, episode):
+        potential_beta = self._epoch_schedule_value(
+            self.iga_potential_beta_schedule,
+            episode,
+            getattr(self.all_args, 'iga_potential_beta', 0.0),
+        )
+        bc_kl_coef = self._epoch_schedule_value(
+            self.bc_reference_kl_coef_schedule,
+            episode,
+            getattr(self.all_args, 'bc_reference_kl_coef', 0.0),
+        )
+        observed = self.envs.call('set_iga_potential_beta', potential_beta)
+        if any(not np.isclose(float(value), potential_beta) for value in observed):
+            raise RuntimeError('Training workers rejected potential-beta schedule.')
+        self.bc_reference_kl_coef = bc_kl_coef
+        self.trainer.bc_reference_kl_coef = bc_kl_coef
+        self._report_progress(
+            'epoch_method_schedule_applied',
+            iga_potential_beta=float(potential_beta),
+            bc_reference_kl_coef=float(bc_kl_coef),
+        )
+        print(
+            f'[MethodSchedule] epoch={episode + 1} '
+            f'iga_potential_beta={potential_beta:.6g} '
+            f'bc_reference_kl_coef={bc_kl_coef:.6g}.',
+            flush=True,
+        )
 
     def run(self):   
         
@@ -1295,6 +1459,7 @@ class HKBZ_Runner(Runner):
             self.episode = episode
             self.current_epoch = episode
             self.current_shard = -1
+            self._apply_epoch_method_schedules(episode)
             first_shard = (
                 int(self.resume_completed_shards)
                 if self.exact_resume_stage1 and episode == first_episode
@@ -1737,6 +1902,7 @@ class HKBZ_Runner(Runner):
             self.last_team_cycle_count = int(
                 sum(bool(objective['cycle_terminated']) for objective in objectives)
             )
+            self.buffer.set_team_cmax_values(cmax_values)
             scaled_team_returns = team_returns_raw * self.reward_coef
             if self.team_time_return_mode:
                 self.buffer.compute_team_time_returns(
@@ -1752,6 +1918,17 @@ class HKBZ_Runner(Runner):
                     next_values,
                 )
             return
+
+        if (
+            float(getattr(self.all_args, 'tail_policy_start_fraction', 1.0)) < 1.0
+            and float(getattr(self.all_args, 'tail_policy_weight', 1.0)) > 1.0
+        ):
+            objectives = self.envs.call('get_training_objective')
+            cmax_values = np.asarray(
+                [objective['cmax'] for objective in objectives],
+                dtype=np.float32,
+            )
+            self.buffer.set_team_cmax_values(cmax_values)
 
         hindsight_rewards = self.envs.get_rewards()
         self.buffer.rewards.fill(0.0)
@@ -1814,15 +1991,15 @@ class HKBZ_Runner(Runner):
             min(int(epoch), len(self.plane_bc_dagger_schedule) - 1)
         ])
 
-    def _plane_bc_temporal_weights(self, env_times, teacher_cmaxes):
-        """Smoothly emphasize teacher states in the final schedule quarter."""
+    @staticmethod
+    def _plane_bc_progress(env_times, teacher_cmaxes):
         env_times = np.asarray(env_times, dtype=np.float64).reshape(-1)
         teacher_cmaxes = np.asarray(
             teacher_cmaxes, dtype=np.float64
         ).reshape(-1)
         if env_times.shape != teacher_cmaxes.shape:
             raise ValueError(
-                'BC temporal-weight inputs have different shapes: '
+                'BC progress inputs have different shapes: '
                 f'{env_times.shape} != {teacher_cmaxes.shape}.'
             )
         if (
@@ -1830,23 +2007,59 @@ class HKBZ_Runner(Runner):
             or not np.all(np.isfinite(teacher_cmaxes))
             or np.any(teacher_cmaxes <= 0.0)
         ):
-            raise ValueError('BC temporal-weight inputs must be finite.')
+            raise ValueError('BC progress inputs must be finite.')
+        return np.clip(env_times / teacher_cmaxes, 0.0, 1.0)
+
+    def _dagger_execution_rates(self, base_rate, progress):
+        """Raise teacher execution only in high-risk teacher-tail states."""
+        progress = np.asarray(progress, dtype=np.float64).reshape(-1)
+        rates = np.full(progress.shape, float(base_rate), dtype=np.float64)
+        tail_start = float(getattr(
+            self, 'plane_bc_dagger_tail_start_fraction', 1.0
+        ))
+        tail_rate = float(getattr(
+            self, 'plane_bc_dagger_tail_teacher_rate', 0.0
+        ))
+        if (
+            tail_start < 1.0
+            and tail_rate > float(base_rate)
+        ):
+            rates[progress >= tail_start] = tail_rate
+        return rates
+
+    def _plane_bc_temporal_weights(self, env_times, teacher_cmaxes):
+        """Smoothly emphasize teacher states in the final schedule quarter."""
+        progress = self._plane_bc_progress(env_times, teacher_cmaxes)
         if (
             self.plane_bc_tail_weight <= 1.0
             or self.plane_bc_tail_start_fraction >= 1.0
         ):
-            return np.ones_like(env_times, dtype=np.float32)
-        progress = np.clip(env_times / teacher_cmaxes, 0.0, 1.0)
-        ramp = np.clip(
-            (
-                progress - self.plane_bc_tail_start_fraction
-            ) / (1.0 - self.plane_bc_tail_start_fraction),
+            return np.ones_like(progress, dtype=np.float32)
+        first_end = float(getattr(
+            self, 'plane_bc_tail_final_start_fraction', 1.0
+        ))
+        first_ramp = np.clip(
+            (progress - self.plane_bc_tail_start_fraction)
+            / max(first_end - self.plane_bc_tail_start_fraction, 1e-12),
             0.0,
             1.0,
         )
-        return (
-            1.0 + (self.plane_bc_tail_weight - 1.0) * ramp
-        ).astype(np.float32)
+        weights = 1.0 + (self.plane_bc_tail_weight - 1.0) * first_ramp
+        if first_end < 1.0:
+            final_ramp = np.clip(
+                (progress - first_end) / max(1.0 - first_end, 1e-12),
+                0.0,
+                1.0,
+            )
+            weights += (
+                float(getattr(
+                    self,
+                    'plane_bc_tail_final_weight',
+                    self.plane_bc_tail_weight,
+                ))
+                - self.plane_bc_tail_weight
+            ) * final_ramp
+        return weights.astype(np.float32)
 
     def _plane_bc_trainable_modules(self):
         modules = [
@@ -1951,6 +2164,7 @@ class HKBZ_Runner(Runner):
         label_actions,
         optimizer,
         state_weights=None,
+        graph_batch=None,
     ):
         plane_count = self.policy.ac.max_plane_agents
         plane_mask_np = (
@@ -1964,7 +2178,11 @@ class HKBZ_Runner(Runner):
             decision_mask,
             log_prob_components,
         ) = self.policy.evaluate_actions(
-            Batch.from_data_list(obs),
+            (
+                graph_batch
+                if graph_batch is not None
+                else Batch.from_data_list(obs)
+            ),
             rnn_states,
             active_masks,
             last_actions[..., 0],
@@ -2255,33 +2473,69 @@ class HKBZ_Runner(Runner):
                     done_flags = np.zeros(self.n_rollout_threads, dtype=bool)
                     for _step in range(self.episode_length):
                         active_masks = self._active_masks_from_info(infos)
-                        with torch.no_grad():
-                            _, policy_actions, _, next_rnn_states = (
-                                self.policy.get_actions(
-                                    Batch.from_data_list(obs),
-                                    rnn_states,
-                                    active_masks,
-                                    last_actions[..., 0],
-                                    last_actions[..., 1],
-                                    deterministic=True,
-                                )
+                        teacher_rpc_pending = False
+                        if self.safe_dagger_teacher_overlap:
+                            self.envs.call_async(
+                                'iga_teacher_actions', return_info=True
                             )
-                        teacher_results = self.envs.call(
-                            'iga_teacher_actions', return_info=True
+                            teacher_rpc_pending = True
+                        graph_batch = (
+                            Batch.from_data_list(obs)
+                            if self.safe_graph_batch_pipeline else None
                         )
-                        temporal_weights = self._plane_bc_temporal_weights(
-                            np.asarray(infos['env_total_time']),
-                            np.asarray([
+                        try:
+                            with torch.no_grad():
+                                _, policy_actions, _, next_rnn_states = (
+                                    self.policy.get_actions(
+                                        (
+                                            graph_batch
+                                            if graph_batch is not None
+                                            else Batch.from_data_list(obs)
+                                        ),
+                                        rnn_states,
+                                        active_masks,
+                                        last_actions[..., 0],
+                                        last_actions[..., 1],
+                                        deterministic=True,
+                                    )
+                                )
+                        except BaseException:
+                            # Drain the already-dispatched read-only RPC so the
+                            # vector environment never remains in a pending
+                            # state while the original inference error escapes.
+                            if teacher_rpc_pending:
+                                try:
+                                    self.envs.call_wait()
+                                except BaseException:
+                                    pass
+                            raise
+                        teacher_results = (
+                            self.envs.call_wait()
+                            if teacher_rpc_pending
+                            else self.envs.call(
+                                'iga_teacher_actions', return_info=True
+                            )
+                        )
+                        env_times = np.asarray(infos['env_total_time'])
+                        teacher_cmaxes = np.asarray([
                                 result.get('info', {}).get(
                                     'teacher_cmax', math.nan
                                 )
                                 for result in teacher_results
-                            ]),
+                            ])
+                        progress = self._plane_bc_progress(
+                            env_times, teacher_cmaxes
+                        )
+                        temporal_weights = self._plane_bc_temporal_weights(
+                            env_times, teacher_cmaxes
+                        )
+                        execution_rates = self._dagger_execution_rates(
+                            teacher_rate, progress
                         )
                         teacher_execution_mask = (
                             self.plane_bc_dagger_rng.random(
                                 self.n_rollout_threads
-                            ) < teacher_rate
+                            ) < execution_rates
                         )
                         teacher_execution_mask &= ~done_flags
                         actions, labels, label_stats = self._merge_plane_bc_actions(
@@ -2321,6 +2575,7 @@ class HKBZ_Runner(Runner):
                             labels,
                             optimizer,
                             state_weights=temporal_weights,
+                            graph_batch=graph_batch,
                         )
                         if update is not None:
                             epoch_updates += 1
@@ -2482,7 +2737,9 @@ class HKBZ_Runner(Runner):
                     f'order_acc={order_accuracy:.4f} '
                     f'labels={epoch_labels} teacher_envs={epoch_teacher_envs} '
                     f'teacher_rate={realized_teacher_rate:.3f}/'
-                    f'{teacher_rate:.3f} freeze_shared={freeze_shared}.',
+                    f'{teacher_rate:.3f} tail_teacher_rate='
+                    f'{self.plane_bc_dagger_tail_teacher_rate:.3f} '
+                    f'freeze_shared={freeze_shared}.',
                     flush=True,
                 )
                 self._report_progress(
@@ -2841,7 +3098,18 @@ class HKBZ_Runner(Runner):
 
     @torch.no_grad()
     def eval(self, render=False, evaluation_label=None):
+        if getattr(self, 'shared_eval_client', None) is not None:
+            if render:
+                raise ValueError('Shared HKBZ validation does not support rendering.')
+            previous_tau = float(self.policy.ac.tau)
+            self.policy.ac.tau = self.evaluation_tau
+            try:
+                return self._eval_via_shared_service(evaluation_label)
+            finally:
+                self.policy.ac.tau = previous_tau
+
         created_eval_envs = False
+        train_clone_threads_suspended = False
         previous_tau = float(self.policy.ac.tau)
         self.policy.ac.tau = self.evaluation_tau
         try:
@@ -2849,6 +3117,13 @@ class HKBZ_Runner(Runner):
                 if self.eval_env_factory is None:
                     raise RuntimeError(
                         "Evaluation environment factory is unavailable."
+                    )
+                suspend_clone_threads = getattr(
+                    self.envs, 'suspend_async_graph_cloning', None
+                )
+                if callable(suspend_clone_threads):
+                    train_clone_threads_suspended = bool(
+                        suspend_clone_threads()
                     )
                 self.eval_envs, self.eval_case_counts = self.eval_env_factory()
                 created_eval_envs = True
@@ -2861,17 +3136,85 @@ class HKBZ_Runner(Runner):
             )
         finally:
             self.policy.ac.tau = previous_tau
-            if created_eval_envs and self.release_eval_envs_after_eval:
-                self.eval_envs.close()
-                self.eval_envs = None
-                self.eval_case_counts = None
-                self._report_progress(
-                    'eval_envs_closed',
-                    eval_worker_count=self.n_eval_rollout_threads,
-                )
+            try:
+                if created_eval_envs and self.release_eval_envs_after_eval:
+                    self.eval_envs.close()
+                    self.eval_envs = None
+                    self.eval_case_counts = None
+                    self._report_progress(
+                        'eval_envs_closed',
+                        eval_worker_count=self.n_eval_rollout_threads,
+                    )
+            finally:
+                if train_clone_threads_suspended:
+                    self.envs.resume_async_graph_cloning()
 
     @torch.no_grad()
-    def _eval_with_envs(self, render=False, evaluation_label=None):
+    def _eval_via_shared_service(self, evaluation_label=None):
+        request_id = (
+            f'{os.getpid()}-{time.time_ns()}-{uuid.uuid4().hex[:8]}'
+        )
+        request_dir = os.path.join(str(self.run_dir), 'shared_eval_requests')
+        os.makedirs(request_dir, exist_ok=True)
+        checkpoint_path = os.path.join(request_dir, f'{request_id}.pt')
+        checkpoint = {
+            'protocol_version': 1,
+            'request_id': request_id,
+            'model': {
+                name: tensor.detach().cpu().clone()
+                for name, tensor in self.policy.ac.state_dict().items()
+            },
+            'plane_order_mode': self.policy.ac.plane_order_mode,
+            'plane_pair_decoder': self.policy.ac.plane_pair_decoder,
+        }
+        self._atomic_torch_save(checkpoint, checkpoint_path)
+        started = time.monotonic()
+        self._report_progress(
+            'shared_eval_queued',
+            shared_eval_request_id=request_id,
+            shared_eval_cpu_set=self.shared_eval_cpu_set,
+            evaluation_label=str(evaluation_label or ''),
+        )
+        try:
+            response = self.shared_eval_client.request({
+                'operation': 'evaluate',
+                'request_id': request_id,
+                'checkpoint_path': str(Path(checkpoint_path).resolve()),
+                'evaluation_label': str(evaluation_label or ''),
+                'evaluation_tau': float(self.evaluation_tau),
+                'seed': int(self.all_args.seed),
+                'cpu_set': self.shared_eval_cpu_set,
+                'plane_order_mode': self.policy.ac.plane_order_mode,
+                'plane_pair_decoder': self.policy.ac.plane_pair_decoder,
+                'n_eval_rollout_threads': int(self.n_eval_rollout_threads),
+            })
+            result = self._consume_raw_evaluation(
+                response['evaluation'],
+                evaluation_label=evaluation_label,
+            )
+            self._report_progress(
+                'shared_eval_completed',
+                shared_eval_request_id=request_id,
+                shared_eval_elapsed_seconds=float(time.monotonic() - started),
+                shared_eval_service_seconds=float(
+                    response.get('evaluation_seconds', 0.0)
+                ),
+                evaluation_label=str(evaluation_label or ''),
+            )
+            return result
+        finally:
+            try:
+                os.unlink(checkpoint_path)
+            except FileNotFoundError:
+                pass
+
+    @torch.no_grad()
+    def _eval_with_envs(
+        self,
+        render=False,
+        evaluation_label=None,
+        finalize=True,
+    ):
         case_counts = self.eval_case_counts
         if case_counts is None:
             case_counts = [1] * self.n_eval_rollout_threads
@@ -3082,6 +3425,67 @@ class HKBZ_Runner(Runner):
         else:
             eval_makespan = float(np.mean(all_makespans))
 
+        if not finalize:
+            return self._raw_evaluation_payload(eval_makespan)
+        return self._finalize_evaluation(
+            eval_makespan,
+            evaluation_label=evaluation_label,
+        )
+
+    def _raw_evaluation_payload(self, eval_makespan):
+        return {
+            'raw_makespan': float(eval_makespan),
+            'case_count': int(self.last_eval_case_count),
+            'case_ids': list(self.last_eval_case_ids),
+            'completed_count': int(self.last_eval_completed_count),
+            'completion_rate': float(self.last_eval_completion_rate),
+            'timeout_count': int(self.last_eval_timeout_count),
+            'cycle_count': int(self.last_eval_cycle_count),
+            'mean_steps': float(self.last_eval_mean_steps),
+            'max_no_progress': int(self.last_eval_max_no_progress),
+            'mean_relocations': float(self.last_eval_mean_relocations),
+            'records': copy.deepcopy(self.last_eval_records),
+        }
+
+    def _consume_raw_evaluation(self, payload, evaluation_label=None):
+        required = {
+            'raw_makespan', 'case_count', 'case_ids', 'completed_count',
+            'completion_rate', 'timeout_count', 'cycle_count', 'mean_steps',
+            'max_no_progress', 'mean_relocations', 'records',
+        }
+        missing = sorted(required - set(payload))
+        if missing:
+            raise RuntimeError(
+                f'Shared evaluator response is missing fields: {missing}'
+            )
+        records = copy.deepcopy(list(payload['records']))
+        case_ids = [str(case_id) for case_id in payload['case_ids']]
+        case_count = int(payload['case_count'])
+        if case_count != len(records) or case_count != len(case_ids):
+            raise RuntimeError(
+                'Shared evaluator coverage mismatch: '
+                f'count={case_count}, records={len(records)}, '
+                f'case_ids={len(case_ids)}'
+            )
+        if len(set(case_ids)) != len(case_ids):
+            raise RuntimeError('Shared evaluator returned duplicate case IDs.')
+        self.last_eval_case_count = case_count
+        self.last_eval_case_ids = case_ids
+        self.last_eval_completed_count = int(payload['completed_count'])
+        self.last_eval_completion_rate = float(payload['completion_rate'])
+        self.last_eval_timeout_count = int(payload['timeout_count'])
+        self.last_eval_cycle_count = int(payload['cycle_count'])
+        self.last_eval_mean_steps = float(payload['mean_steps'])
+        self.last_eval_max_no_progress = int(payload['max_no_progress'])
+        self.last_eval_mean_relocations = float(payload['mean_relocations'])
+        self.last_eval_records = records
+        return self._finalize_evaluation(
+            float(payload['raw_makespan']),
+            evaluation_label=evaluation_label,
+        )
+
+    def _finalize_evaluation(self, eval_makespan, evaluation_label=None):
+
         if str(evaluation_label) == 'pre_ppo':
             self.pre_ppo_case_makespan = {
                 record['case_key']: float(record['makespan'])
@@ -3214,6 +3618,9 @@ class HKBZ_Runner(Runner):
                 'bc_reference_kl_coef': float(
                     self.bc_reference_kl_coef
                 ),
+                'bc_reference_kl_coef_schedule': list(
+                    self.bc_reference_kl_coef_schedule
+                ),
                 'bc_reference_target_kl': float(
                     self.bc_reference_target_kl
                 ),
@@ -3252,6 +3659,15 @@ class HKBZ_Runner(Runner):
                 'central_team_critic': bool(
                     getattr(self.all_args, 'central_team_critic', False)
                 ),
+                'safe_async_graph_clone_workers': int(
+                    self.safe_async_graph_clone_workers
+                ),
+                'safe_graph_batch_pipeline': bool(
+                    self.safe_graph_batch_pipeline
+                ),
+                'safe_dagger_teacher_overlap': bool(
+                    self.safe_dagger_teacher_overlap
+                ),
                 'plane_bc_pretrain_epochs': int(
                     self.plane_bc_pretrain_epochs
                 ),
@@ -3261,9 +3677,18 @@ class HKBZ_Runner(Runner):
                 'iga_potential_beta': float(
                     getattr(self.all_args, 'iga_potential_beta', 0.0)
                 ),
+                'iga_potential_beta_schedule': list(
+                    self.iga_potential_beta_schedule
+                ),
                 'iga_potential_gamma': float(
                     getattr(self.all_args, 'iga_potential_gamma', 0.99)
                 ),
+                'tail_policy_start_fraction': float(getattr(
+                    self.all_args, 'tail_policy_start_fraction', 1.0
+                )),
+                'tail_policy_weight': float(getattr(
+                    self.all_args, 'tail_policy_weight', 1.0
+                )),
                 'plane_bc_shared_lr_scale': float(
                     self.plane_bc_shared_lr_scale
                 ),
@@ -3291,8 +3716,20 @@ class HKBZ_Runner(Runner):
                 'plane_bc_tail_weight': float(
                     self.plane_bc_tail_weight
                 ),
+                'plane_bc_tail_final_start_fraction': float(
+                    self.plane_bc_tail_final_start_fraction
+                ),
+                'plane_bc_tail_final_weight': float(
+                    self.plane_bc_tail_final_weight
+                ),
                 'plane_bc_dagger_schedule': list(
                     self.plane_bc_dagger_schedule
+                ),
+                'plane_bc_dagger_tail_start_fraction': float(
+                    self.plane_bc_dagger_tail_start_fraction
+                ),
+                'plane_bc_dagger_tail_teacher_rate': float(
+                    self.plane_bc_dagger_tail_teacher_rate
                 ),
                 'train_sampling_mode': str(getattr(
                     self.all_args, 'train_sampling_mode', 'uniform'
@@ -3361,11 +3798,30 @@ class HKBZ_Runner(Runner):
                 self.plane_bc_tail_start_fraction
             ),
             'plane_bc_tail_weight': self.plane_bc_tail_weight,
+            'plane_bc_tail_final_start_fraction': (
+                self.plane_bc_tail_final_start_fraction
+            ),
+            'plane_bc_tail_final_weight': self.plane_bc_tail_final_weight,
             'bc_reference_kl_coef': self.bc_reference_kl_coef,
             'bc_reference_target_kl': self.bc_reference_target_kl,
             'bc_reference_hard_gate': self.bc_reference_hard_gate,
             'plane_bc_dagger_schedule': list(
                 self.plane_bc_dagger_schedule
+            ),
+            'plane_bc_dagger_tail_start_fraction': (
+                self.plane_bc_dagger_tail_start_fraction
+            ),
+            'plane_bc_dagger_tail_teacher_rate': (
+                self.plane_bc_dagger_tail_teacher_rate
+            ),
+            'safe_async_graph_clone_workers': int(
+                self.safe_async_graph_clone_workers
+            ),
+            'safe_graph_batch_pipeline': bool(
+                self.safe_graph_batch_pipeline
+            ),
+            'safe_dagger_teacher_overlap': bool(
+                self.safe_dagger_teacher_overlap
             ),
             'global_feature_mode': str(getattr(
                 self.all_args, 'global_feature_mode', 'none'

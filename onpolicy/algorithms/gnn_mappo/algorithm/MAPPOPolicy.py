@@ -20,6 +20,11 @@ class GNN_MAPPOPolicy:
         self.weight_decay = args.weight_decay
         self.anneal_final = args.anneal_final
         self.anneal_original = args.anneal_original
+        self.tau_anneal_epochs = int(
+            getattr(args, 'tau_anneal_epochs', 0)
+        )
+        if self.tau_anneal_epochs < 0:
+            raise ValueError('--tau_anneal_epochs must be non-negative.')
         self.shared_actor_lr_scale = float(getattr(args, 'shared_actor_lr_scale', 1.0))
         self.plane_actor_lr_scale = float(getattr(args, 'plane_actor_lr_scale', 1.0))
         self.device_actor_lr_scale = float(getattr(args, 'device_actor_lr_scale', 1.0))
@@ -299,6 +304,7 @@ class GNN_MAPPOPolicy:
             self.anneal_final,
             episode,
             episodes,
+            self.tau_anneal_epochs,
         )
         if self.bc_reference_ac is not None:
             self.bc_reference_ac.tau = self.ac.tau

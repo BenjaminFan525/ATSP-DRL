@@ -2,6 +2,7 @@ import numpy as np
 import math
 import torch
 import torch.nn as nn
+from concurrent.futures import ThreadPoolExecutor
 from onpolicy.utils.util import get_gard_norm, huber_loss, mse_loss, expand_slice
 from onpolicy.utils.valuenorm import ValueNorm
 from onpolicy.algorithms.utils.util import check
@@ -94,6 +95,16 @@ class MAPPO_Trainer():
         self.bc_reference_hard_gate = bool(
             getattr(args, 'bc_reference_hard_gate', False)
         )
+        self.tail_policy_start_fraction = float(
+            getattr(args, 'tail_policy_start_fraction', 1.0)
+        )
+        self.tail_policy_weight = float(
+            getattr(args, 'tail_policy_weight', 1.0)
+        )
+        if not 0.0 <= self.tail_policy_start_fraction <= 1.0:
+            raise ValueError('--tail_policy_start_fraction must be in [0, 1].')
+        if self.tail_policy_weight < 1.0:
+            raise ValueError('--tail_policy_weight must be at least 1.')
         self.normalize_advantages = bool(getattr(args, 'normalize_advantages', True))
         self.role_balanced_loss = bool(getattr(args, 'role_balanced_loss', True))
         self.case_balanced_loss = bool(getattr(args, 'case_balanced_loss', True))
@@ -105,6 +116,9 @@ class MAPPO_Trainer():
         self.joint_team_ppo = bool(
             getattr(args, 'joint_team_ppo', False)
         )
+        self.safe_graph_batch_pipeline = bool(
+            getattr(args, 'safe_graph_batch_pipeline', False)
+        )
         
         
         if self._use_popart:
@@ -113,6 +127,36 @@ class MAPPO_Trainer():
             self.value_normalizer = ValueNorm(input_shape=1, device=self.device)
         else:
             self.value_normalizer = None
+
+    @staticmethod
+    def _prepare_graph_sample(sample):
+        """Build the deterministic CPU PyG batch once for one PPO sample."""
+        graph_batch = sample[0]
+        if isinstance(graph_batch, Batch):
+            return sample
+        if isinstance(graph_batch, np.ndarray):
+            graph_batch = Batch.from_data_list(graph_batch.tolist())
+        elif isinstance(graph_batch, list):
+            graph_batch = Batch.from_data_list(graph_batch)
+        else:
+            graph_batch = Batch.from_data_list([graph_batch])
+        return (graph_batch, *sample[1:])
+
+    def _iter_prepared_graph_samples(self, samples, executor):
+        """Yield samples in the original order while preparing the next one."""
+        if executor is None or not samples:
+            yield from samples
+            return
+        future = executor.submit(self._prepare_graph_sample, samples[0])
+        for index in range(len(samples)):
+            prepared = future.result()
+            future = (
+                executor.submit(
+                    self._prepare_graph_sample, samples[index + 1]
+                )
+                if index + 1 < len(samples) else None
+            )
+            yield prepared
 
     def _role_sample_weights(self, masks, agent_types, base_weights=None):
         masks = masks.float()
@@ -898,6 +942,10 @@ class MAPPO_Trainer():
         }
         if self.case_balanced_loss:
             case_weight_info = buffer.build_case_balanced_weights(self.role_loss_coef)
+            case_weight_info.update(buffer.apply_time_tail_policy_weights(
+                self.tail_policy_start_fraction,
+                self.tail_policy_weight,
+            ))
         returns = np.nan_to_num(buffer.returns[:rollout_steps], nan=0.0, posinf=1e4, neginf=-1e4)
         value_preds = np.nan_to_num(buffer.value_preds[:rollout_steps], nan=0.0, posinf=1e4, neginf=-1e4)
         raw_advantages, value_baseline = self._compute_rollout_advantages(
@@ -965,6 +1013,13 @@ class MAPPO_Trainer():
         actor_planned_optimizer_steps = 0
         post_update_probe_count = 0
         critic_sample_count = 0
+        graph_batch_executor = (
+            ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix='hkbz-pyg-prefetch',
+            )
+            if self.safe_graph_batch_pipeline else None
+        )
 
         # ==========================================
         # Phase 1: 集中更新 Actor (策略网络)
@@ -1000,9 +1055,18 @@ class MAPPO_Trainer():
                     actor_mass_index = 13 if self.case_balanced_loss else 11
                     masses = [self._sample_mass(sample, actor_mass_index) for sample in group]
                     group_mass = max(sum(masses), 1e-8)
-                    probe_sample = group[int(np.argmax(masses))]
+                    probe_index = int(np.argmax(masses))
+                    probe_sample = group[probe_index]
+                    prepared_probe_sample = None
                     group_optimizer_steps = 0.0
-                    for group_idx, (sample, sample_mass) in enumerate(zip(group, masses)):
+                    prepared_group = self._iter_prepared_graph_samples(
+                        group, graph_batch_executor
+                    )
+                    for group_idx, (sample, sample_mass) in enumerate(
+                        zip(prepared_group, masses)
+                    ):
+                        if group_idx == probe_index:
+                            prepared_probe_sample = sample
                         perform_step = group_idx == len(group) - 1
                         policy_results = self.update_policy_net(
                             sample,
@@ -1022,7 +1086,7 @@ class MAPPO_Trainer():
                             break
                     if group_optimizer_steps > 0.0:
                         post_update_results = self.measure_post_update_policy_shift(
-                            probe_sample
+                            prepared_probe_sample or probe_sample
                         )
                         for k, v in post_update_results.items():
                             train_info[k] += v
@@ -1097,7 +1161,12 @@ class MAPPO_Trainer():
                 critic_mass_index = 14 if self.case_balanced_loss else 5
                 masses = [self._sample_mass(sample, critic_mass_index) for sample in group]
                 group_mass = max(sum(masses), 1e-8)
-                for group_idx, (sample, sample_mass) in enumerate(zip(group, masses)):
+                prepared_group = self._iter_prepared_graph_samples(
+                    group, graph_batch_executor
+                )
+                for group_idx, (sample, sample_mass) in enumerate(
+                    zip(prepared_group, masses)
+                ):
                     perform_step = group_idx == len(group) - 1
                     value_results = self.update_value_net(
                         sample,
@@ -1242,6 +1311,12 @@ class MAPPO_Trainer():
             self.bc_reference_hard_gate
         )
         train_info['post_update_probe_count'] = float(post_update_probe_count)
+        train_info['safe_graph_batch_pipeline'] = float(
+            self.safe_graph_batch_pipeline
+        )
+
+        if graph_batch_executor is not None:
+            graph_batch_executor.shutdown(wait=True, cancel_futures=True)
 
         return train_info
     

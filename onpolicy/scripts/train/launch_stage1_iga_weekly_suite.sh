@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/home/fanyx/HKBZ-environment"
-PYTHON="/home/fanyx/anaconda3/envs/maia/bin/python"
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
 SUITE="${ROOT_DIR}/onpolicy/scripts/train/run_stage1_research_suite.py"
 TRAIN_DATA="${ROOT_DIR}/onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train"
 TEACHER_ROOT="${ROOT_DIR}/result/hkbz_train_logs/iga_teachers"
@@ -11,6 +11,11 @@ SERVICE_LOG_ROOT="${ROOT_DIR}/result/hkbz_train_logs/formal_runs"
 
 RUN_TAG="${RUN_TAG:-tail_recovery_stage1_$(date +%Y%m%d_%H%M%S)}"
 GPU="${GPU:-0}"
+case "${GPU}" in
+  0) DEFAULT_CPU_AFFINITY="0-35,72-107" ;;
+  1) DEFAULT_CPU_AFFINITY="36-71,108-143" ;;
+  *) DEFAULT_CPU_AFFINITY="" ;;
+esac
 STUDY="${STUDY:-tail_recovery}"
 SCREEN_EPOCHS="${SCREEN_EPOCHS:-2}"
 FORMAL_EPOCHS="${FORMAL_EPOCHS:-8}"
@@ -20,15 +25,15 @@ ROLLOUT_THREADS="${ROLLOUT_THREADS:-60}"
 EVAL_THREADS="${EVAL_THREADS:-60}"
 PLANE_BC_EPOCHS="${PLANE_BC_EPOCHS:-4}"
 MONITOR_INTERVAL="${MONITOR_INTERVAL:-30}"
-TRAJECTORY_WORKERS="${TRAJECTORY_WORKERS:-32}"
+TRAJECTORY_WORKERS="${TRAJECTORY_WORKERS:-36}"
 TEACHER_WORKERS="${TEACHER_WORKERS:-48}"
 POTENTIAL_RIDGE="${POTENTIAL_RIDGE:-0.001}"
 STALL_TIMEOUT_SECONDS="${STALL_TIMEOUT_SECONDS:-1800}"
 IPC_TIMEOUT_SECONDS="${IPC_TIMEOUT_SECONDS:-300}"
 RESUME="${RESUME:-0}"
-CPU_AFFINITY="${CPU_AFFINITY:-0-31,64-95}"
-CPU_WEIGHT="${CPU_WEIGHT:-50}"
-NICE_LEVEL="${NICE_LEVEL:-5}"
+CPU_AFFINITY="${CPU_AFFINITY:-${DEFAULT_CPU_AFFINITY}}"
+CPU_WEIGHT="${CPU_WEIGHT:-100}"
+NICE_LEVEL="${NICE_LEVEL:-0}"
 PLANE_BC_CHECKPOINT="${PLANE_BC_CHECKPOINT:-${ROOT_DIR}/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/global_dagger_stage1_20260729_r1_screen_G0_local_teacher_seed1/run1/models/checkpoint_PlaneBC.pt}"
 
 run_suite() {
@@ -69,6 +74,8 @@ run_suite() {
     OMP_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    CUDA_DEVICE_ORDER=PCI_BUS_ID \
     MPLCONFIGDIR=/tmp \
     "${suite_command[@]}"
 }
@@ -81,8 +88,8 @@ if [[ ! "${RUN_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
   echo "[Error] Invalid RUN_TAG: ${RUN_TAG}" >&2
   exit 1
 fi
-if [[ "${GPU}" != "0" ]]; then
-  echo "[Error] The research suite is intentionally pinned to physical GPU 0." >&2
+if [[ "${GPU}" != "0" && "${GPU}" != "1" ]]; then
+  echo "[Error] GPU must be 0 or 1 on this dual-A800 host." >&2
   exit 1
 fi
 if ! [[ "${CPU_WEIGHT}" =~ ^[0-9]+$ ]] \
@@ -156,6 +163,8 @@ systemd-run --user \
   --property=KillMode=control-group \
   --property=TimeoutStopSec=120 \
   --property=LimitNOFILE=65536 \
+  --property="AllowedCPUs=${CPU_AFFINITY}" \
+  --property="CPUAffinity=${CPU_AFFINITY}" \
   --property="CPUWeight=${CPU_WEIGHT}" \
   --property="Nice=${NICE_LEVEL}" \
   --property="StandardOutput=append:${SERVICE_LOG}" \
@@ -182,6 +191,11 @@ systemd-run --user \
   --setenv="NICE_LEVEL=${NICE_LEVEL}" \
   --setenv="PLANE_BC_CHECKPOINT=${PLANE_BC_CHECKPOINT}" \
   --setenv="PYTHONHASHSEED=0" \
+  --setenv="OMP_NUM_THREADS=1" \
+  --setenv="MKL_NUM_THREADS=1" \
+  --setenv="OPENBLAS_NUM_THREADS=1" \
+  --setenv="NUMEXPR_NUM_THREADS=1" \
+  --setenv="CUDA_DEVICE_ORDER=PCI_BUS_ID" \
   /usr/bin/taskset --cpu-list "${CPU_AFFINITY}" \
   /bin/bash "${ROOT_DIR}/onpolicy/scripts/train/launch_stage1_iga_weekly_suite.sh" --worker
 
