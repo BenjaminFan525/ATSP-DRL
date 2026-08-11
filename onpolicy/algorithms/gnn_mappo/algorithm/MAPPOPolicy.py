@@ -111,14 +111,36 @@ class GNN_MAPPOPolicy:
         for param in module_group.parameters():
             param.requires_grad_(trainable)
 
-    def set_joint_training_stage(self, freeze_plane=False, freeze_shared=False):
-        """Protect the pretrained plane policy during early device adaptation."""
+    def set_resource_joint_training_stage(
+        self,
+        freeze_plane=True,
+        freeze_shared=True,
+    ):
+        """Configure the canonical resource-joint PPO trainability contract.
+
+        Stage 2 adapts only the resource actors and all critics.  The
+        protected scope is deliberately explicit: the shared GNN encoder,
+        the plane selection GRU, the plane pair actor and (when present) the
+        learned plane-order actor.  ``plane_actor_param`` owns the latter
+        three modules, so one switch protects the complete plane backend.
+        """
         self._set_module_group_trainable(self.ac.shared_actor_param, not freeze_shared)
         self._set_module_group_trainable(self.ac.plane_actor_param, not freeze_plane)
         self._set_module_group_trainable(self.ac.device_actor_param, True)
         self._set_module_group_trainable(self.ac.transporter_actor_param, True)
-        for param in self.ac.critic_param.parameters():
-            param.requires_grad_(True)
+        self._set_module_group_trainable(self.ac.critic_param, True)
+
+    def set_joint_training_stage(self, freeze_plane=False, freeze_shared=False):
+        """Compatibility wrapper for the historical joint-stage entry point.
+
+        New callers should use :meth:`set_resource_joint_training_stage` so
+        the intended Stage-2 semantics are visible at the call site.  The
+        wrapper is retained because old runners/tests still invoke it.
+        """
+        return self.set_resource_joint_training_stage(
+            freeze_plane=freeze_plane,
+            freeze_shared=freeze_shared,
+        )
 
     def set_plane_pretraining_stage(self, freeze_shared=False, freeze_order=False):
         """Train the Stage-1 plane policy while optionally protecting BC modules."""

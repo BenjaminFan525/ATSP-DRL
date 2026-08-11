@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "stage1_status": "closed",
+  "winner": "M2_bc_kl_anneal",
+  "training_stage": "plane_pretrain",
+  "semantic_contract": {
+    "plane_order_mode": "fixed",
+    "plane_pair_decoder": "joint_pair",
+    "global_feature_mode": "f1f2"
+  },
+  "checkpoints": {
+    "1": {
+      "path": "onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_next_round_20260808_r1_formal_M2_bc_kl_anneal_seed1/run1/models/checkpoint_Best.pt",
+      "sha256": "b744a4fea35dae9c3d7e8b10ddd050250d234419be5e9c293dfa875240e87d90",
+      "size_bytes": 11189418,
+      "source_command_path": "result/hkbz_train_logs/stage1_next_round_20260808_r1/commands/formal_M2_bc_kl_anneal_seed1.json",
+      "source_command_sha256": "736921851d5e813c6a1b4cae6bbf96decf2a7ff05c519f3de98e2280a04506f2",
+      "source_command_size_bytes": 9597
+    },
+    "2": {
+      "path": "onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_next_round_20260808_r1_formal_M2_bc_kl_anneal_seed2/run1/models/checkpoint_Best.pt",
+      "sha256": "ea90799baa9fb6850a2e26d2b0875808d06f753fd1959089872163e24abdb27f",
+      "size_bytes": 11189418,
+      "source_command_path": "result/hkbz_train_logs/stage1_next_round_20260808_r1/commands/formal_M2_bc_kl_anneal_seed2.json",
+      "source_command_sha256": "cbdc4e770a76a704a42db9fb0d51e80c011c707ab890eb6a9064c95b08cdcdfa",
+      "source_command_size_bytes": 9595
+    },
+    "3": {
+      "path": "onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_next_round_20260808_r1_formal_M2_bc_kl_anneal_seed3/run1/models/checkpoint_Best.pt",
+      "sha256": "444e5ab58d6cb25bf6722494b07667a4a07458dfdfb91d67405064b71c453837",
+      "size_bytes": 11189418,
+      "source_command_path": "result/hkbz_train_logs/stage1_next_round_20260808_r1/commands/formal_M2_bc_kl_anneal_seed3.json",
+      "source_command_sha256": "78e7417d8b8f9e2dc7874b5599c98270590f3e0a752c1c02885ec05288f37e3e",
+      "source_command_size_bytes": 9597
+    }
+  },
+  "final_evidence": {
+    "formal_heldout_mean_cmax": 8140.400000000001,
+    "formal_heldout_std_composite": 3.806161734360756,
+    "blind_test_mean_cmax": 8044.061111111111,
+    "blind_test_std_cmax": 50.38242730835301,
+    "iga_180_mean_cmax": 8186.0,
+    "iga_1800_mean_cmax": 7737.85,
+    "relative_gap_vs_iga_1800": 0.03957315160039432,
+    "completion_rate": 1.0,
+    "cycle_count": 0,
+    "near_iga_achieved": false,
+    "reach_iga_achieved": false
+  },
+  "decision": {
+    "stage1_formal_reopen": false,
+    "resource_joint_transition_authorized": true,
+    "reason": "The closure arms did not improve over M2; preserve M2 as the immutable three-seed Stage-1 hand-off and move research to resource_joint."
+  }
+}

@@ -1,0 +1,32 @@
+# Stage 2 environment configuration.
+#
+# This is deliberately the Stage-1 fjsp_v3 environment contract with the
+# resource backend switched from the heuristic teacher to DRL.  Keep dataset
+# paths relative to the repository so a checked-out run does not inherit
+# machine-specific absolute paths from an old launcher.
+batch_num: 1
+plane_num_per_batch: 24
+n_agents: 24
+max_device_num: 80
+resource_policy: "drl"
+plane_cycle_repeat_limit: 8
+plane_no_progress_limit: 120
+plane_relocation_limit: 40
+plane_first_completion_bonus: 120.0
+plane_repeat_relocation_penalty: 300.0
+plane_reset_job_penalty: 120.0
+plane_no_progress_penalty: 60.0
+plane_cycle_penalty: 20000.0
+dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train"
+validation_dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/joint/tune"
+eval_dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/joint/tune"
+gate_dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/joint/gate"
+test_dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/joint/finalblind"
+finalblind_dataset_dir: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/joint/finalblind"
+dataset_manifest: "onpolicy/envs/HKBZ/dataset/fjsp_v3_resource_joint_eval_s20260811/manifest.json"
+jobs_path: "onpolicy/config/job.json"
+fixed_res_path: "onpolicy/config/fixed_resources.json"
+mobile_res_path: "onpolicy/config/mobile_resources.json"
+sites_path: "onpolicy/config/sites.json"
+flights_path: "onpolicy/config/flights.json"
+seed: 42

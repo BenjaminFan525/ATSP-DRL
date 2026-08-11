@@ -21,6 +21,13 @@ from types import SimpleNamespace
 from pathlib import Path
 
 from onpolicy.utils.shared_eval import SharedEvalClient, parse_cpu_set
+from onpolicy.utils.training_stage import (
+    CANONICAL_RESOURCE_JOINT,
+    normalize_training_stage,
+    protected_parameter_summary,
+    source_checkpoint_metadata,
+    validate_stage1_m2_checkpoint,
+)
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -126,7 +133,30 @@ class HKBZ_Runner(Runner):
         self.fuse_epoch = self.all_args.fuse_epoch
         self.start_epoch = self.all_args.start_epoch
         self.auto_fuse = self.all_args.auto_fuse
-        self.training_stage = str(getattr(self.all_args, 'training_stage', 'auto'))
+        self.training_stage = normalize_training_stage(
+            getattr(self.all_args, 'training_stage', 'auto')
+        )
+        # The launcher writes this field directly into run_status.json.  Keep
+        # it canonical even when a deprecated alias was supplied by an old
+        # service wrapper.
+        self.all_args.training_stage = self.training_stage
+        self.resource_joint_phase = (
+            'stage1_m2_restore_pending'
+            if self.training_stage == CANONICAL_RESOURCE_JOINT
+            else 'not_applicable'
+        )
+        self.stage1_m2_source = None
+        self.stage1_m2_checkpoint_summary = None
+        self.protected_parameter_summary_before_bc = None
+        self.protected_parameter_summary_after_bc = None
+        self.protected_parameter_summary_after_ppo = None
+        self.resource_actor_summary_before_ppo = None
+        self.resource_actor_summary_after_ppo = None
+        self.resource_actor_summary_before_bc = None
+        self.resource_actor_summary_after_bc = None
+        self.resource_bc_optimizer_reset = False
+        self.resource_bc_total_labels = 0
+        self.resource_bc_phase_events = []
         self.hindsight_reward_mode = str(
             getattr(self.all_args, 'hindsight_reward_mode', '')
         )
@@ -442,7 +472,9 @@ class HKBZ_Runner(Runner):
 
     def _validate_training_stage_config(self):
         resource_policy = getattr(self.all_args, 'resource_policy', 'heuristic')
-        stage = self.training_stage
+        stage = normalize_training_stage(self.training_stage)
+        self.training_stage = stage
+        self.all_args.training_stage = stage
         if (
             self.reset_optimizers_on_resume
             and not bool(getattr(self.all_args, 'resume_stage1', False))
@@ -454,6 +486,20 @@ class HKBZ_Runner(Runner):
             raise ValueError("--plane_bc_pretrain_epochs must be non-negative.")
         if self.plane_bc_rollouts_per_epoch < 0:
             raise ValueError("--plane_bc_rollouts_per_epoch must be non-negative.")
+        if self.device_bc_pretrain_epochs < 0:
+            raise ValueError("--device_bc_pretrain_epochs must be non-negative.")
+        if self.device_bc_min_labels_per_epoch < 0:
+            raise ValueError(
+                "--device_bc_min_labels_per_epoch must be non-negative."
+            )
+        if self.device_bc_min_rollouts_per_epoch < 1:
+            raise ValueError(
+                "--device_bc_min_rollouts_per_epoch must be at least one."
+            )
+        if self.device_bc_max_rollouts_per_epoch < 0:
+            raise ValueError(
+                "--device_bc_max_rollouts_per_epoch must be non-negative."
+            )
         if self.plane_bc_shared_lr_scale < 0.0:
             raise ValueError("--plane_bc_shared_lr_scale must be non-negative.")
         if self.plane_bc_pair_loss_coef < 0.0 or self.plane_bc_order_loss_coef < 0.0:
@@ -567,6 +613,12 @@ class HKBZ_Runner(Runner):
                 "--canary_eval_interval_shards > 0."
             )
         if stage == 'auto':
+            if self.device_bc_pretrain_epochs > 0:
+                raise ValueError(
+                    "Resource BC settings require the explicit canonical "
+                    "--training_stage resource_joint; auto cannot infer the "
+                    "Stage-1 M2 hand-off contract."
+                )
             return
         if stage == 'plane_pretrain':
             if resource_policy != 'heuristic':
@@ -598,41 +650,72 @@ class HKBZ_Runner(Runner):
             if self.num_episodes <= 0:
                 raise ValueError("plane_pretrain requires at least one PPO epoch.")
             return
-        if stage == 'device_bc':
+        if stage == CANONICAL_RESOURCE_JOINT:
             if resource_policy != 'drl':
-                raise ValueError("device_bc requires resource_policy='drl'.")
+                raise ValueError(
+                    "resource_joint requires resource_policy='drl'."
+                )
             if self.checkpoint_dir is None:
-                raise ValueError("device_bc requires the new plane checkpoint.")
+                raise ValueError(
+                    "resource_joint requires the Stage-1 M2 checkpoint "
+                    "via --checkpoint_dir."
+                )
             if self.device_bc_pretrain_epochs <= 0:
-                raise ValueError("device_bc requires --device_bc_pretrain_epochs > 0.")
-            if self.num_episodes != 0:
-                raise ValueError("device_bc is an isolated stage and requires --num_episodes 0.")
-            return
-        if stage == 'frozen_joint':
-            if resource_policy != 'drl' or self.checkpoint_dir is None:
-                raise ValueError("frozen_joint requires DRL resources and the device BC checkpoint.")
-            if self.device_bc_pretrain_epochs != 0:
-                raise ValueError("frozen_joint cannot run device BC again.")
+                raise ValueError(
+                    "resource_joint requires --device_bc_pretrain_epochs > 0 "
+                    "for the in-run resource BC warm-up."
+                )
             if self.num_episodes <= 0:
-                raise ValueError("frozen_joint requires at least one PPO epoch.")
+                raise ValueError(
+                    "resource_joint requires --num_episodes > 0 for frozen "
+                    "resource PPO; device BC is no longer an isolated run."
+                )
+            if self.device_bc_train_gnn:
+                raise ValueError(
+                    "resource_joint resource BC must not train the shared GNN; "
+                    "remove --device_bc_train_gnn."
+                )
+            if not self.device_bc_reset_optim:
+                raise ValueError(
+                    "resource_joint requires fresh PPO optimizers after resource BC; "
+                    "--no_device_bc_reset_optim is rejected."
+                )
+            if not self.device_bc_save:
+                raise ValueError(
+                    "resource_joint requires the resource_bc_warmup checkpoint; "
+                    "--no_device_bc_save is rejected."
+                )
+            if self.device_bc_min_labels_per_epoch <= 0:
+                raise ValueError(
+                    "resource_joint requires a positive "
+                    "--device_bc_min_labels_per_epoch; insufficient BC labels "
+                    "must fail closed."
+                )
+            if self.device_bc_max_rollouts_per_epoch <= 0:
+                raise ValueError(
+                    "resource_joint requires --device_bc_max_rollouts_per_epoch > 0."
+                )
             if (
                 self.gnn_freeze_epochs < self.num_episodes
                 or self.plane_freeze_epochs < self.num_episodes
             ):
                 raise ValueError(
-                    "frozen_joint must freeze the shared encoder and plane actor "
-                    "for every epoch in this stage."
+                    "resource_joint must freeze the shared encoder and plane "
+                    "actor for every Stage-2 PPO epoch: both "
+                    "--gnn_freeze_epochs and --plane_freeze_epochs must be "
+                    "at least --num_episodes."
+                )
+            if bool(getattr(self.all_args, 'resume_stage1', False)):
+                raise ValueError(
+                    "resource_joint consumes an immutable Stage-1 M2 source; "
+                    "--resume_stage1 is only valid for plane_pretrain recovery."
+                )
+            if self.selection_checkpoint_dir is not None:
+                raise ValueError(
+                    "resource_joint does not accept --selection_checkpoint_dir; "
+                    "checkpoint selection must start from the strict M2 source."
                 )
             return
-        if stage == 'full_joint':
-            if resource_policy != 'drl' or self.checkpoint_dir is None:
-                raise ValueError("full_joint requires DRL resources and the frozen-joint checkpoint.")
-            if self.device_bc_pretrain_epochs != 0:
-                raise ValueError("full_joint cannot run device BC again.")
-            if self.gnn_freeze_epochs != 0 or self.plane_freeze_epochs != 0:
-                raise ValueError("full_joint must start with all policy modules unfrozen.")
-            if self.num_episodes <= 0:
-                raise ValueError("full_joint requires at least one PPO epoch.")
 
     @staticmethod
     def _validate_graph_batch_memory_config(mini_batch_size, data_chunk_length, max_graphs):
@@ -859,17 +942,48 @@ class HKBZ_Runner(Runner):
 
     def _case_metadata(self, case_path):
         normalized_path = os.path.abspath(str(case_path))
+        metadata_cache = getattr(self, '_case_metadata_cache', None)
+        if metadata_cache is None:
+            metadata_cache = {}
+            self._case_metadata_cache = metadata_cache
+        if normalized_path in metadata_cache:
+            return copy.deepcopy(metadata_cache[normalized_path])
+
         case_dir = os.path.basename(normalized_path)
         split_name = os.path.basename(os.path.dirname(normalized_path))
         path_key = f'{split_name}/{case_dir}'
-        metadata = dict(self.dataset_case_metadata.get(path_key, {}))
+
+        # Evaluation datasets are allowed to use a manifest schema that is
+        # different from the legacy top-level ``splits`` schema.  The case
+        # directory metadata is the common, immutable lineage contract across
+        # both schemas, so load it before applying any manifest override.
+        metadata = {}
+        metadata_path = os.path.join(normalized_path, 'metadata.json')
+        if os.path.isfile(metadata_path):
+            with open(metadata_path, 'r', encoding='utf-8') as metadata_file:
+                case_metadata = json.load(metadata_file)
+            if not isinstance(case_metadata, dict):
+                raise ValueError(
+                    'Case metadata must be a JSON object: '
+                    f'{metadata_path}'
+                )
+            metadata.update(case_metadata)
+
+        metadata.update(dict(
+            getattr(self, 'dataset_case_metadata', {}).get(path_key, {})
+        ))
+        fingerprints = metadata.get('fingerprints', {})
+        if isinstance(fingerprints, dict):
+            case_sha256 = str(fingerprints.get('case_sha256', '')).strip()
+            if case_sha256:
+                metadata.setdefault('case_sha256', case_sha256)
         metadata.setdefault('case_id', f"{split_name}_{case_dir.rsplit('_', 1)[-1]}")
         metadata.setdefault('split', split_name)
         metadata['case_dir'] = case_dir
         metadata['case_path'] = normalized_path
         metadata['case_key'] = path_key
-        return metadata
-
+        metadata_cache[normalized_path] = copy.deepcopy(metadata)
+        return copy.deepcopy(metadata)
     @staticmethod
     def _json_safe(value):
         if isinstance(value, dict):
@@ -1125,12 +1239,138 @@ class HKBZ_Runner(Runner):
         info.update(self._evaluation_group_metrics())
         return info
 
+    def _protected_resource_joint_summary(self):
+        """Return the current bitwise identity of Stage-2 protected state."""
+        if not hasattr(self, 'policy') or self.policy is None:
+            return None
+        return protected_parameter_summary(self.policy.ac.state_dict())
+
+    def _resource_actor_summary(self):
+        """Return a bitwise digest for the Stage-2 trainable actor scope."""
+        if not hasattr(self, 'policy') or self.policy is None:
+            return None
+        return protected_parameter_summary(
+            self.policy.ac.state_dict(),
+            prefixes=(
+                'device_sel_enc.',
+                'device_actor.',
+                'transporter_sel_enc.',
+                'transporter_actor.',
+            ),
+        )
+
+    def _assert_resource_joint_protected(self, expected, phase):
+        """Fail closed if any protected plane/shared tensor changed."""
+        if self.training_stage != CANONICAL_RESOURCE_JOINT:
+            return None
+        observed = self._protected_resource_joint_summary()
+        if expected is None or observed is None:
+            raise RuntimeError(
+                f"resource_joint protected-parameter evidence is missing at {phase}."
+            )
+        if observed != expected:
+            raise RuntimeError(
+                "resource_joint protected parameters changed during "
+                f"{phase}; expected sha256={expected.get('sha256')} "
+                f"observed sha256={observed.get('sha256')}."
+            )
+        return observed
+
+    def _set_resource_joint_phase(self, phase, event=None, **extra):
+        """Publish a canonical Stage-2 phase and its immutable evidence."""
+        self.resource_joint_phase = str(phase)
+        self.resource_bc_phase_events.append(self.resource_joint_phase)
+        payload = {
+            'phase': self.resource_joint_phase,
+            'source_m2_checkpoint': dict(self.stage1_m2_source or {}),
+            'source_m2_path': str((self.stage1_m2_source or {}).get('path', '')),
+            'source_m2_sha256': str(
+                (self.stage1_m2_source or {}).get('sha256', '')
+            ),
+            'stage1_m2_checkpoint_summary': self.stage1_m2_checkpoint_summary,
+            'protected_parameter_summary': (
+                self._protected_resource_joint_summary()
+                if hasattr(self, 'policy') else None
+            ),
+            **extra,
+        }
+        self._report_progress(event or f'resource_joint_{phase}', **payload)
+
+    def _stage2_status_metadata(self):
+        return {
+            'training_stage': self.training_stage,
+            'phase': self.resource_joint_phase,
+            'source_m2_checkpoint': dict(self.stage1_m2_source or {}),
+            'source_m2_path': str((self.stage1_m2_source or {}).get('path', '')),
+            'source_m2_sha256': str(
+                (self.stage1_m2_source or {}).get('sha256', '')
+            ),
+            'stage1_m2_checkpoint_summary': self.stage1_m2_checkpoint_summary,
+            'protected_parameter_summary': (
+                self._protected_resource_joint_summary()
+                if self.training_stage == CANONICAL_RESOURCE_JOINT
+                else None
+            ),
+            'resource_actor_summary': (
+                self._resource_actor_summary()
+                if self.training_stage == CANONICAL_RESOURCE_JOINT
+                else None
+            ),
+        }
+
     def _report_progress(self, event, **extra):
-        callback = self.progress_callback
+        callback = getattr(self, 'progress_callback', None)
         if callback is None:
             return
+
+        # A few resume/selection paths construct a minimal runner via
+        # ``__new__`` before the normal Stage2 attributes are initialized.
+        # Keep those legacy callbacks useful while retaining the complete
+        # resource_joint evidence on a fully initialized runner.
+        training_stage = getattr(self, 'training_stage', 'auto') or 'auto'
+        resource_joint_phase = (
+            getattr(self, 'resource_joint_phase', 'not_applicable')
+            or 'not_applicable'
+        )
+        stage1_m2_source = getattr(self, 'stage1_m2_source', None) or {}
+        stage1_m2_checkpoint_summary = getattr(
+            self, 'stage1_m2_checkpoint_summary', None
+        )
+        resource_actor_summary_before_ppo = getattr(
+            self, 'resource_actor_summary_before_ppo', None
+        )
+        resource_actor_summary_after_ppo = getattr(
+            self, 'resource_actor_summary_after_ppo', None
+        )
+        resource_actor_summary_before_bc = getattr(
+            self, 'resource_actor_summary_before_bc', None
+        )
+        resource_actor_summary_after_bc = getattr(
+            self, 'resource_actor_summary_after_bc', None
+        )
+        protected_parameter_summary = None
+        if (
+            training_stage == CANONICAL_RESOURCE_JOINT
+            and getattr(self, 'policy', None) is not None
+        ):
+            protected_parameter_summary = (
+                self._protected_resource_joint_summary()
+            )
         payload = {
             'event': str(event),
+            'training_stage': training_stage,
+            'phase': resource_joint_phase,
+            'source_m2_checkpoint': dict(stage1_m2_source),
+            'source_m2_path': str(stage1_m2_source.get('path', '')),
+            'source_m2_sha256': str(
+                stage1_m2_source.get('sha256', '')
+            ),
+            'stage1_m2_checkpoint_summary': stage1_m2_checkpoint_summary,
+            'protected_parameter_summary': protected_parameter_summary,
+            'resource_actor_summary_before_ppo': resource_actor_summary_before_ppo,
+            'resource_actor_summary_after_ppo': resource_actor_summary_after_ppo,
+            'resource_actor_summary_before_bc': resource_actor_summary_before_bc,
+            'resource_actor_summary_after_bc': resource_actor_summary_after_bc,
             'epoch': int(getattr(self, 'current_epoch', -1)),
             'shard': int(getattr(self, 'current_shard', -1)),
             'total_num_steps': int(getattr(self, 'total_num_steps', 0)),
@@ -1372,6 +1612,16 @@ class HKBZ_Runner(Runner):
         start = time.time()
         episodes = self.num_episodes
         self.total_num_steps = int(self.resume_total_num_steps)
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            # restore() runs during construction, before the launcher can
+            # attach its run_status callback.  Publish the completed hand-off
+            # as the first runtime event and carry its immutable digest into
+            # every later status/checkpoint.
+            self.resource_joint_phase = 'stage1_m2_restored'
+            if self.protected_parameter_summary_before_bc is None:
+                self.protected_parameter_summary_before_bc = (
+                    self._protected_resource_joint_summary()
+                )
         if self.exact_resume_stage1:
             self._copy_resume_artifacts()
             self._report_progress(
@@ -1382,15 +1632,37 @@ class HKBZ_Runner(Runner):
                 total_num_steps=int(self.total_num_steps),
             )
         else:
-            self._report_progress('training_started', total_epochs=int(episodes))
+            self._report_progress(
+                'training_started',
+                total_epochs=int(episodes),
+                **(
+                    self._stage2_status_metadata()
+                    if self.training_stage == CANONICAL_RESOURCE_JOINT
+                    else {}
+                ),
+            )
 
         if self.plane_bc_pretrain_epochs > 0:
             self.plane_bc_pretrain()
 
         if self.device_bc_pretrain_epochs > 0:
+            if self.training_stage == CANONICAL_RESOURCE_JOINT:
+                self._set_resource_joint_phase(
+                    'resource_bc_warmup',
+                    event='resource_bc_warmup_started',
+                )
             self.device_bc_pretrain()
 
         self._ensure_bc_reference_policy()
+
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            self._set_resource_joint_phase(
+                'resource_joint_ppo',
+                event='resource_joint_ppo_started',
+            )
+            self.resource_actor_summary_before_ppo = (
+                self._resource_actor_summary()
+            )
 
         # Establish a pre-PPO baseline so checkpoint selection cannot silently
         # discard a stronger loaded/BC-warmed policy after the first update.
@@ -1478,6 +1750,11 @@ class HKBZ_Runner(Runner):
                 self.policy.set_plane_pretraining_stage(
                     freeze_shared=freeze_shared,
                     freeze_order=freeze_order,
+                )
+            elif self.training_stage == CANONICAL_RESOURCE_JOINT:
+                self.policy.set_resource_joint_training_stage(
+                    freeze_plane=freeze_plane,
+                    freeze_shared=freeze_shared,
                 )
             else:
                 self.policy.set_joint_training_stage(
@@ -1759,6 +2036,20 @@ class HKBZ_Runner(Runner):
                     if canary_requested_stop:
                         break
 
+            if self.training_stage == CANONICAL_RESOURCE_JOINT:
+                # Bind the checkpoint written below to the protected-state
+                # evidence from this PPO epoch, not to a stale pre-update
+                # snapshot.
+                self.protected_parameter_summary_after_ppo = (
+                    self._assert_resource_joint_protected(
+                        self.protected_parameter_summary_before_bc,
+                        f'resource_joint_ppo_epoch_{episode + 1}',
+                    )
+                )
+                self.resource_actor_summary_after_ppo = (
+                    self._resource_actor_summary()
+                )
+
             # Always save a resumable post-train checkpoint before the
             # potentially expensive deterministic validation.
             self.save(
@@ -1858,11 +2149,28 @@ class HKBZ_Runner(Runner):
             # stats = pstats.Stats(profiler).sort_stats('cumtime')
             # stats.print_stats(30) # 打印耗时前20的函数
 
-            # log information
-            # if episode % self.log_interval == 0:
-                # env_infos = {}
-                # self.log_train(train_infos, total_num_steps * self.envs.num_fields)
-                # self.log_env(env_infos, total_num_steps)
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            self.protected_parameter_summary_after_ppo = (
+                self._assert_resource_joint_protected(
+                    self.protected_parameter_summary_before_bc,
+                    'resource_joint_ppo',
+                )
+            )
+            self.resource_actor_summary_after_ppo = self._resource_actor_summary()
+            if (
+                self.resource_actor_summary_before_ppo is None
+                or self.resource_actor_summary_after_ppo is None
+                or self.resource_actor_summary_before_ppo
+                == self.resource_actor_summary_after_ppo
+            ):
+                raise RuntimeError(
+                    "resource_joint PPO completed without a bitwise resource "
+                    "actor update."
+                )
+            self._set_resource_joint_phase(
+                'resource_joint_completed',
+                event='resource_joint_completed',
+            )
 
     @torch.no_grad()
     def compute(self):
@@ -2792,7 +3100,10 @@ class HKBZ_Runner(Runner):
             self.policy.ac.device_actor,
             self.policy.ac.transporter_actor,
         ]
-        if self.device_bc_train_gnn:
+        # Canonical Stage 2 always keeps the shared encoder and every plane
+        # module immutable during resource BC.  The legacy switch remains
+        # available for non-Stage-2 callers, but cannot widen this scope.
+        if self.device_bc_train_gnn and self.training_stage != CANONICAL_RESOURCE_JOINT:
             modules.insert(0, self.policy.ac.encoder)
         return modules
 
@@ -2891,11 +3202,36 @@ class HKBZ_Runner(Runner):
             raise RuntimeError("Device BC pretraining requires --checkpoint_dir for the pretrained plane policy.")
         if not hasattr(self.envs, 'call'):
             raise RuntimeError("Device BC pretraining requires vector env call() support.")
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            if self.device_bc_min_labels_per_epoch <= 0:
+                raise RuntimeError(
+                    "resource_joint requires a positive BC label threshold; "
+                    "insufficient labels must fail closed."
+                )
+            if self.device_bc_max_rollouts_per_epoch <= 0:
+                raise RuntimeError(
+                    "resource_joint requires a positive BC rollout budget."
+                )
 
         trainable_modules = self._device_bc_trainable_modules()
         trainable_params = [param for module in trainable_modules for param in module.parameters()]
         if not trainable_params:
             raise RuntimeError("Device BC pretraining found no trainable parameters.")
+
+        stage2_expected = None
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            stage2_expected = (
+                self.protected_parameter_summary_before_bc
+                or self._protected_resource_joint_summary()
+            )
+            if stage2_expected is None:
+                raise RuntimeError(
+                    "resource_joint cannot start resource BC without protected "
+                    "Stage-1 M2 parameter evidence."
+                )
+            self.protected_parameter_summary_before_bc = stage2_expected
+            self.resource_actor_summary_before_bc = self._resource_actor_summary()
+            self.resource_joint_phase = 'resource_bc_warmup'
 
         previous_requires_grad = self._set_device_bc_requires_grad(trainable_params)
         bc_lr = self.device_bc_lr if self.device_bc_lr > 0.0 else self.all_args.lr
@@ -3015,6 +3351,16 @@ class HKBZ_Runner(Runner):
                     if rollout_count >= min_rollouts and epoch_label_total >= min_labels:
                         break
 
+                if self.training_stage == CANONICAL_RESOURCE_JOINT:
+                    if epoch_label_total < min_labels:
+                        raise RuntimeError(
+                            "resource_joint resource BC collected insufficient "
+                            f"labels in epoch {epoch + 1}: "
+                            f"{epoch_label_total} < required {min_labels} "
+                            f"after {rollout_count}/{max_rollouts} rollouts."
+                        )
+                    self.resource_bc_total_labels += int(epoch_label_total)
+
                 if update_count > 0:
                     epoch_info['device_bc_loss'] /= update_count
                     epoch_info['device_bc_grad_norm'] /= update_count
@@ -3034,11 +3380,43 @@ class HKBZ_Runner(Runner):
             self._restore_requires_grad(previous_requires_grad)
             self.policy.ac.train()
 
-        if self.device_bc_reset_optim:
+        # Fresh PPO optimizers are mandatory for the canonical transition;
+        # Stage-1 optimizer moments may refer to absent/untrained resource
+        # modules and must never leak into Stage-2 PPO.
+        if self.training_stage == CANONICAL_RESOURCE_JOINT or self.device_bc_reset_optim:
             self.policy.reset_optimizers()
             self.trainer.policy = self.policy
+            self.resource_bc_optimizer_reset = True
             print("[Info] Reset PPO optimizers after device BC pretraining.")
-        if self.device_bc_save:
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            self.protected_parameter_summary_after_bc = (
+                self._assert_resource_joint_protected(
+                    stage2_expected,
+                    'resource_bc_warmup',
+                )
+            )
+            self.resource_actor_summary_after_bc = self._resource_actor_summary()
+            if (
+                self.resource_actor_summary_before_bc is None
+                or self.resource_actor_summary_after_bc is None
+                or self.resource_actor_summary_before_bc
+                == self.resource_actor_summary_after_bc
+            ):
+                raise RuntimeError(
+                    "resource_joint resource BC completed without a bitwise "
+                    "resource actor update."
+                )
+            self.resource_joint_phase = 'resource_bc_warmup_completed'
+            self._report_progress(
+                'resource_bc_warmup_completed',
+                phase=self.resource_joint_phase,
+                resource_bc_total_labels=int(self.resource_bc_total_labels),
+                resource_bc_optimizer_reset=True,
+                protected_parameter_summary=(
+                    self.protected_parameter_summary_after_bc
+                ),
+            )
+        if self.device_bc_save or self.training_stage == CANONICAL_RESOURCE_JOINT:
             self.save_device_bc_checkpoint()
 
     @torch.no_grad()
@@ -3469,6 +3847,33 @@ class HKBZ_Runner(Runner):
             )
         if len(set(case_ids)) != len(case_ids):
             raise RuntimeError('Shared evaluator returned duplicate case IDs.')
+        if getattr(self, 'selection_metric', 'iid') == 'composite':
+            lineage_fields = ('case_key', 'profile', 'distribution', 'case_sha256')
+            missing_lineage = {
+                field_name: [
+                    str(record.get('case_id', record_index))
+                    for record_index, record in enumerate(records)
+                    if not str(record.get(field_name, '') or '').strip()
+                ]
+                for field_name in lineage_fields
+            }
+            missing_lineage = {
+                field_name: case_names
+                for field_name, case_names in missing_lineage.items()
+                if case_names
+            }
+            if missing_lineage:
+                summary = {
+                    field_name: {
+                        'count': len(case_names),
+                        'examples': case_names[:3],
+                    }
+                    for field_name, case_names in missing_lineage.items()
+                }
+                raise RuntimeError(
+                    'Shared evaluator response is missing immutable composite '
+                    f'case metadata: {summary}'
+                )
         self.last_eval_case_count = case_count
         self.last_eval_case_ids = case_ids
         self.last_eval_completed_count = int(payload['completed_count'])
@@ -3596,6 +4001,43 @@ class HKBZ_Runner(Runner):
             'episodes': episode + 1,
             'tau': model.ac.tau,
             'training_stage': self.training_stage,
+            'phase': self.resource_joint_phase,
+            'source_m2_checkpoint': dict(self.stage1_m2_source or {}),
+            'source_m2_path': str((self.stage1_m2_source or {}).get('path', '')),
+            'source_m2_sha256': str(
+                (self.stage1_m2_source or {}).get('sha256', '')
+            ),
+            'stage1_m2_checkpoint_summary': self.stage1_m2_checkpoint_summary,
+            'protected_parameter_summary': (
+                self._protected_resource_joint_summary()
+                if self.training_stage == CANONICAL_RESOURCE_JOINT
+                else None
+            ),
+            'protected_parameter_summary_before_bc': (
+                self.protected_parameter_summary_before_bc
+            ),
+            'protected_parameter_summary_after_bc': (
+                self.protected_parameter_summary_after_bc
+            ),
+            'protected_parameter_summary_after_ppo': (
+                self.protected_parameter_summary_after_ppo
+            ),
+            'resource_bc_optimizer_reset': bool(
+                self.resource_bc_optimizer_reset
+            ),
+            'resource_bc_total_labels': int(self.resource_bc_total_labels),
+            'resource_actor_summary_before_ppo': (
+                self.resource_actor_summary_before_ppo
+            ),
+            'resource_actor_summary_after_ppo': (
+                self.resource_actor_summary_after_ppo
+            ),
+            'resource_actor_summary_before_bc': (
+                self.resource_actor_summary_before_bc
+            ),
+            'resource_actor_summary_after_bc': (
+                self.resource_actor_summary_after_bc
+            ),
             'plane_order_mode': model.ac.plane_order_mode,
             'plane_pair_decoder': model.ac.plane_pair_decoder,
             'actor_lr_multiplier': float(model.actor_lr_multiplier),
@@ -3848,8 +4290,33 @@ class HKBZ_Runner(Runner):
         save_path = os.path.join(self.save_dir, 'checkpoint_DeviceBC.pt')
         checkpoint = {
             'episodes': 0,
-            'stage': 'device_bc_pretrain',
+            # Keep the historical filename, but make the artifact's phase
+            # unambiguous for Stage-2 recovery/auditing.
+            'stage': 'resource_bc_warmup',
             'training_stage': self.training_stage,
+            'phase': self.resource_joint_phase,
+            'source_m2_checkpoint': dict(self.stage1_m2_source or {}),
+            'source_m2_path': str((self.stage1_m2_source or {}).get('path', '')),
+            'source_m2_sha256': str(
+                (self.stage1_m2_source or {}).get('sha256', '')
+            ),
+            'stage1_m2_checkpoint_summary': self.stage1_m2_checkpoint_summary,
+            'protected_parameter_summary_before_bc': (
+                self.protected_parameter_summary_before_bc
+            ),
+            'protected_parameter_summary_after_bc': (
+                self.protected_parameter_summary_after_bc
+            ),
+            'resource_bc_optimizer_reset': bool(
+                self.resource_bc_optimizer_reset
+            ),
+            'resource_bc_total_labels': int(self.resource_bc_total_labels),
+            'resource_actor_summary_before_bc': (
+                self.resource_actor_summary_before_bc
+            ),
+            'resource_actor_summary_after_bc': (
+                self.resource_actor_summary_after_bc
+            ),
             'tau': model.ac.tau,
             'plane_order_mode': model.ac.plane_order_mode,
             'plane_pair_decoder': model.ac.plane_pair_decoder,
@@ -3862,9 +4329,64 @@ class HKBZ_Runner(Runner):
         self._atomic_torch_save(checkpoint, save_path)
         print(f"[Info] Saved device BC checkpoint to {save_path}")
 
+    def _restore_stage1_m2(self, checkpoint_path):
+        """Strictly restore only the Stage-1 plane/shared hand-off state."""
+        if not os.path.isfile(str(checkpoint_path)):
+            raise FileNotFoundError(
+                "resource_joint Stage-1 M2 checkpoint does not exist: "
+                f"{checkpoint_path}"
+            )
+        source_metadata = source_checkpoint_metadata(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        validation = validate_stage1_m2_checkpoint(
+            checkpoint,
+            self.policy.ac.state_dict(),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+        )
+        # The generic loader may skip missing resource tensors by design.  The
+        # strict validator above has already proved that every protected
+        # tensor is present and shape-compatible, so this permissiveness cannot
+        # weaken the plane/shared contract.
+        self.policy.load_model_state(checkpoint['model'])
+        loaded_protected_summary = self._protected_resource_joint_summary()
+        if loaded_protected_summary != validation['source_summary']:
+            raise RuntimeError(
+                "Strict Stage-1 M2 hand-off loader did not reproduce the "
+                "validated protected plane/shared tensors bitwise."
+            )
+        self.policy.ac.tau = checkpoint.get('tau', self.policy.ac.tau)
+        self.all_args.anneal_original = self.policy.ac.tau
+        self._pending_value_normalizer_state = checkpoint.get('value_normalizer')
+        self.stage1_m2_source = source_metadata
+        self.stage1_m2_checkpoint_summary = {
+            **validation,
+            'source_m2_checkpoint': dict(source_metadata),
+        }
+        self.protected_parameter_summary_before_bc = (
+            self._protected_resource_joint_summary()
+        )
+        self.resource_joint_phase = 'stage1_m2_restored'
+        print(
+            "[Info] Strict Stage-1 M2 hand-off accepted for resource_joint: "
+            f"{source_metadata['path']} "
+            f"(sha256={source_metadata['sha256']})."
+        )
+        # Stage 2 always creates fresh PPO optimizers after the resource BC
+        # warm-up; loading Stage-1 moments here would be misleading evidence.
+        self.policy.reset_optimizers()
+        self.resource_bc_optimizer_reset = False
+        return checkpoint
+
     def restore(self, checkpoint):
         """Restore policy's networks from a saved model."""
         checkpoint_path = checkpoint
+        if self.training_stage == CANONICAL_RESOURCE_JOINT:
+            self._restore_stage1_m2(checkpoint_path)
+            return
         checkpoint = torch.load(checkpoint, map_location=self.device)
         print(
             f"[Info] Loading checkpoint {checkpoint_path} "

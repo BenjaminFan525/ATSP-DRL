@@ -1,6 +1,8 @@
 import argparse
 import json
 
+from onpolicy.utils.training_stage import normalize_training_stage
+
 
 def get_config():
     """ 
@@ -500,9 +502,9 @@ def get_config():
     )
     parser.add_argument(
         "--training_stage",
-        type=str,
+        type=normalize_training_stage,
         default="auto",
-        choices=["auto", "plane_pretrain", "device_bc", "frozen_joint", "full_joint"],
+        choices=["auto", "plane_pretrain", "resource_joint"],
         help="explicit HKBZ training stage; auto preserves legacy single-process behavior",
     )
     parser.add_argument(
