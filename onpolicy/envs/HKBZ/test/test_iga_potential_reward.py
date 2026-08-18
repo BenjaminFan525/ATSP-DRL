@@ -20,6 +20,11 @@ from onpolicy.scripts.train.run_stage1_research_suite import (
     training_command,
     variants,
 )
+from onpolicy.utils.checkpoint_contract import (
+    stage1_observation_metadata,
+    stage1_reward_contract,
+    validate_stage1_checkpoint_contract,
+)
 
 
 def bare_potential_env():
@@ -52,6 +57,59 @@ def feature_state(remaining_work):
 
 
 class IGAPotentialRewardTests(unittest.TestCase):
+    def test_shape_compatible_global_modes_have_distinct_schema_ids(self):
+        legacy = AircraftScheduleEnv.global_feature_contract('f1f2')
+        departure = AircraftScheduleEnv.global_feature_contract(
+            'f1f2_departure'
+        )
+        self.assertEqual(legacy['dimension'], departure['dimension'])
+        self.assertEqual(legacy['feature_names'][:18], departure['feature_names'][:18])
+        self.assertNotEqual(legacy['feature_names'][18:], departure['feature_names'][18:])
+        self.assertNotEqual(legacy['schema_id'], departure['schema_id'])
+
+    def test_checkpoint_contract_rejects_shape_compatible_semantic_swap(self):
+        metadata = stage1_observation_metadata('f1f2')
+        checkpoint = {
+            **metadata,
+            'plane_order_mode': 'fixed',
+            'plane_pair_decoder': 'joint_pair',
+        }
+        validate_stage1_checkpoint_contract(
+            checkpoint,
+            global_feature_mode='f1f2',
+            plane_order_mode='fixed',
+            plane_pair_decoder='joint_pair',
+            strict_metadata=True,
+        )
+        with self.assertRaisesRegex(ValueError, 'semantic mismatch'):
+            validate_stage1_checkpoint_contract(
+                checkpoint,
+                global_feature_mode='f1f2_departure',
+                plane_order_mode='fixed',
+                plane_pair_decoder='joint_pair',
+                strict_metadata=True,
+            )
+
+    def test_strict_reward_contract_prevents_double_terminal_cmax(self):
+        action = stage1_reward_contract(
+            reward_mode='cmax_delta',
+            reward_coef=0.01,
+            hindsight_cmax_coef=1.0,
+            terminal_cmax_coef=0.0,
+            gamma=1.0,
+            potential_gamma=1.0,
+        )
+        self.assertEqual(action['terminal_objective'], 'negative_cmax')
+        with self.assertRaisesRegex(ValueError, 'equivalent scaled -Cmax'):
+            stage1_reward_contract(
+                reward_mode='cmax_delta',
+                reward_coef=0.01,
+                hindsight_cmax_coef=1.0,
+                terminal_cmax_coef=1.0,
+                gamma=1.0,
+                potential_gamma=1.0,
+            )
+
     def test_iga_potential_is_allocated_once_across_simultaneous_actions(self):
         env = bare_potential_env()
         env.potential_transition_log = [{
@@ -96,6 +154,20 @@ class IGAPotentialRewardTests(unittest.TestCase):
         self.assertEqual(args.hindsight_reward_mode, 'iga_potential')
         self.assertAlmostEqual(args.iga_potential_beta, 0.25)
         self.assertAlmostEqual(args.iga_potential_gamma, 0.99)
+
+    def test_config_exposes_departure_phase_training_arguments(self):
+        args = get_config().parse_args([
+            '--hindsight_reward_mode', 'team_time_potential',
+            '--global_feature_mode', 'f1f2_departure',
+            '--plane_bc_phase_aware',
+            '--plane_bc_per_agent_dagger',
+            '--plane_bc_staging_move_weight', '2.5',
+        ])
+        self.assertEqual(args.hindsight_reward_mode, 'team_time_potential')
+        self.assertEqual(args.global_feature_mode, 'f1f2_departure')
+        self.assertTrue(args.plane_bc_phase_aware)
+        self.assertTrue(args.plane_bc_per_agent_dagger)
+        self.assertAlmostEqual(args.plane_bc_staging_move_weight, 2.5)
 
     def test_runtime_potential_beta_setter_validates_value(self):
         env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)
@@ -161,6 +233,43 @@ class IGAPotentialRewardTests(unittest.TestCase):
                 for name in AircraftScheduleEnv.IGA_POTENTIAL_TAIL_FEATURES
             },
         )
+
+    def test_team_time_potential_requires_exact_v2_contract(self):
+        env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)
+        env.hindsight_reward_mode = 'team_time_potential'
+        with tempfile.TemporaryDirectory() as temporary:
+            weights_path = Path(temporary) / 'v2_weights.json'
+            payload = {
+                'potential_schema_version': (
+                    AircraftScheduleEnv.IGA_POTENTIAL_SCHEMA_VERSION
+                ),
+                'environment_semantics_version': (
+                    AircraftScheduleEnv.SEMANTICS_VERSION
+                ),
+                'feature_names': list(
+                    AircraftScheduleEnv.IGA_POTENTIAL_FEATURES
+                ),
+                'weights': {
+                    name: float(name == 'remaining_work')
+                    for name in AircraftScheduleEnv.IGA_POTENTIAL_FEATURES
+                },
+            }
+            weights_path.write_text(json.dumps(payload), encoding='utf-8')
+            env._load_iga_potential_config({
+                'iga_potential_beta': 0.1,
+                'iga_potential_gamma': 1.0,
+                'iga_potential_weights_path': str(weights_path),
+            })
+            self.assertEqual(env.iga_potential_weights['remaining_work'], 1.0)
+
+            payload['environment_semantics_version'] = 'obsolete-semantics'
+            weights_path.write_text(json.dumps(payload), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'semantics mismatch'):
+                env._load_iga_potential_config({
+                    'iga_potential_beta': 0.1,
+                    'iga_potential_gamma': 1.0,
+                    'iga_potential_weights_path': str(weights_path),
+                })
 
     def test_potential_calibration_weights_cases_and_distributions(self):
         rows = [

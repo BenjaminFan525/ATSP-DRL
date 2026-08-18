@@ -60,7 +60,7 @@ class TwoStageOrchestrationTest(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def test_env_inherits_fjsp_v3_and_only_switches_resource_policy(self):
+    def test_env_inherits_fjsp_v3_and_enables_resource_joint_semantics(self):
         env_plane = yaml.safe_load(
             (ROOT / "onpolicy/config/env_plane_pretrain.yaml").read_text(
                 encoding="utf-8"
@@ -87,6 +87,7 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         ):
             self.assertEqual(env_stage2[key], env_plane[key], key)
         self.assertEqual(env_stage2["resource_policy"], "drl")
+        self.assertTrue(env_stage2["device_lookahead_dispatch"])
         self.assertIn("fjsp_v3", env_stage2["dataset_dir"])
         self.assertNotIn("fjsp_v2", json.dumps(env_stage2))
         for value in env_stage2.values():
@@ -128,6 +129,10 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         self.assertNotIn("--resume_stage1", switches)
         self.assertNotIn("--joint_team_ppo", switches)
         self.assertNotIn("--central_team_critic", switches)
+        self.assertIn("--device_lookahead_dispatch", switches)
+        self.assertEqual(
+            values["--device_lookahead_safety_margin"], "60.0"
+        )
         self.assertEqual(values["--hindsight_reward_mode"], "team_cmax")
         self.assertEqual(values["--hindsight_terminal_cmax_coef"], "1.0")
         self.assertNotIn("--bc_reference_kl_coef", values)
@@ -156,6 +161,13 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         self.assertEqual(observed["migration_contract"]["to"], "resource_joint")
         self.assertEqual(observed["migration_contract"]["device_bc_train_gnn"], False)
         self.assertEqual(observed["migration_contract"]["device_bc_reset_optim"], True)
+        self.assertEqual(
+            observed["migration_contract"]["device_lookahead_dispatch"], True
+        )
+        self.assertEqual(
+            observed["migration_contract"]["device_lookahead_safety_margin"],
+            60.0,
+        )
 
     def test_verified_handoff_resolves_seed_and_semantics(self):
         digest = hashlib.sha256(self.source.read_bytes()).hexdigest()

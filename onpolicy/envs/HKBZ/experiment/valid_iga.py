@@ -11,6 +11,7 @@ root_dir = os.path.abspath(os.path.join(current_dir, '../../../../'))
 sys.path.insert(0, root_dir)
 
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv 
+from onpolicy.envs.HKBZ.experiment.eval_common import legal_plane_candidates
 
 # 💡 将 NSGA2 替换为单目标的 GA (Genetic Algorithm)
 from pymoo.algorithms.soo.nonconvex.ga import GA
@@ -24,73 +25,86 @@ from pymoo.core.callback import Callback # <--- 引入 Callback 用于控制时�
 # ================= 2. 染色体解码与策略执行 =================
 def GA_Policy(env, info, job_priorities, site_priorities):
     """
-    根据遗传算法传入的基因权重，为当前活跃的智能体分配动作。
+    Decode genes through the environment's authoritative joint-action masks.
+
+    The environment owns all temporal semantics (including post-service
+    staging, the global departure barrier and the runway/R014 requirement).
+    Reconstructing legality from ``Plane.get_avail_jobs`` would silently use
+    the pre-departure semantics and can leave an otherwise feasible chromosome
+    stuck after service completion.
     """
-    n_agents = env.n_agents
-    actions = np.zeros((n_agents, 2), dtype=np.int32)
-    actions[:] = [-1, -1]
-    active_agents = info['active_agents']
-    
-    candidates = []
-    pid_to_plane = {}
-    avail_sites = env.get_avail_sites()
-    
-    # 1. 收集合法候选动作池
+    active_agents = np.asarray(info['active_agents'], dtype=bool)
+    preferences = {}
+    priority_keys = {}
+
     for plane in env.planes.values():
-        pid = int(plane.code.split('_')[2])
-        pid_to_plane[pid] = plane
-        
-        if not active_agents[pid]: continue
-            
-        current_site = plane.site.code
-        current_site_jobs = plane.get_avail_jobs(plane.site)
-        
-        if current_site != 'Z' and len(current_site_jobs) > 0:
-            for j_code in current_site_jobs:
-                j_idx = env.job_code_list.index(j_code)
-                s_idx = env.site_code_list.index(current_site)
-                score = job_priorities[pid, j_idx] + site_priorities[pid, s_idx]
-                candidates.append({'pid': pid, 'site': current_site, 'job': j_code, 'score': score, 'is_move': False})
-                
-        else:
-            for s_code in avail_sites:
-                next_site_jobs = plane.get_avail_jobs(env.sites[s_code])
-                for j_code in next_site_jobs:
-                    j_idx = env.job_code_list.index(j_code)
-                    s_idx = env.site_code_list.index(s_code)
-                    score = job_priorities[pid, j_idx] + site_priorities[pid, s_idx]
-                    candidates.append({'pid': pid, 'site': s_code, 'job': j_code, 'score': score, 'is_move': True})
+        pid = int(plane.code.split('_')[-1])
+        if pid >= active_agents.size or not active_agents[pid]:
+            continue
+        candidates = []
+        for candidate in legal_plane_candidates(env, pid):
+            candidate = dict(candidate)
+            candidate['score'] = float(
+                job_priorities[pid, candidate['job_idx']]
+                + site_priorities[pid, candidate['site_idx']]
+            )
+            candidates.append(candidate)
+        if not candidates:
+            raise RuntimeError(
+                f'Active plane {pid} has no legal joint action at step '
+                f'{env.steps}.'
+            )
+        candidates.sort(
+            key=lambda item: (
+                -item['score'], item['job_idx'], item['site_idx']
+            )
+        )
+        preferences[pid] = candidates
+        priority_keys[pid] = -candidates[0]['score']
 
-    # 2. 根据基因解码出的 Score 进行降序排列
-    candidates.sort(key=lambda x: x['score'], reverse=True)
+    # A greedy global candidate list can strand a later plane even when a
+    # collision-free assignment exists.  Augmenting-path matching preserves
+    # each plane's chromosome ordering while guaranteeing unique sites.
+    site_matches = {}
 
-    # 3. 贪婪动作分配 (已同步机位抢占修复)
-    assigned_pids = set()
-    claimed_sites = set()
-    
-    for cand in candidates:
-        pid, site, job = cand['pid'], cand['site'], cand['job']
-        if pid in assigned_pids: continue
-        if site in claimed_sites: continue 
-            
-        assigned_pids.add(pid)
-        claimed_sites.add(site)
-            
-        job_idx = env.job_code_list.index(job) + pid * len(env.job_code_list)
-        site_idx = env.site_code_list.index(site)
-        actions[pid][0] = job_idx
-        actions[pid][1] = site_idx
+    def augment(pid, seen_sites):
+        for candidate in preferences[pid]:
+            site_idx = candidate['site_idx']
+            if site_idx in seen_sites:
+                continue
+            seen_sites.add(site_idx)
+            previous = site_matches.get(site_idx)
+            if previous is None or augment(previous[0], seen_sites):
+                site_matches[site_idx] = (pid, candidate)
+                return True
+        return False
 
-    # 4. 兜底容错
-    for pid in range(n_agents):
-        if active_agents[pid] and pid not in assigned_pids:
-            plane = pid_to_plane.get(pid)
-            if plane:
-                job_idx = pid * len(env.job_code_list) 
-                site_idx = env.site_code_list.index(plane.site.code)
-                actions[pid][0] = job_idx
-                actions[pid][1] = site_idx
-                
+    pid_order = sorted(
+        preferences, key=lambda pid: (priority_keys[pid], pid)
+    )
+    for pid in pid_order:
+        if not augment(pid, set()):
+            counts = {
+                active_pid: len(items)
+                for active_pid, items in preferences.items()
+            }
+            raise RuntimeError(
+                'No collision-free site matching exists for active planes; '
+                f'failed_pid={pid}, candidate_counts={counts}.'
+            )
+
+    selected = {
+        pid: candidate for pid, candidate in site_matches.values()
+    }
+    if set(selected) != set(preferences):
+        raise RuntimeError(
+            f'Incomplete action matching: selected={sorted(selected)}, '
+            f'active={sorted(preferences)}.'
+        )
+    actions = np.full((env.n_agents, 2), -1, dtype=np.int32)
+    for pid, candidate in selected.items():
+        actions[pid, 0] = candidate['op_global_idx']
+        actions[pid, 1] = candidate['site_idx']
     return actions
 
 

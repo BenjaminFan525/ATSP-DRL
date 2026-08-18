@@ -19,14 +19,24 @@ import math
 import uuid
 from types import SimpleNamespace
 from pathlib import Path
+from scipy.optimize import linear_sum_assignment
 
-from onpolicy.utils.shared_eval import SharedEvalClient, parse_cpu_set
+from onpolicy.utils.shared_eval import (
+    PROTOCOL_VERSION,
+    SharedEvalClient,
+    parse_cpu_set,
+)
 from onpolicy.utils.training_stage import (
     CANONICAL_RESOURCE_JOINT,
     normalize_training_stage,
     protected_parameter_summary,
     source_checkpoint_metadata,
     validate_stage1_m2_checkpoint,
+)
+from onpolicy.utils.checkpoint_contract import (
+    stage1_observation_metadata,
+    stage1_reward_contract,
+    validate_stage1_checkpoint_contract,
 )
 
 def _t2n(x):
@@ -161,9 +171,14 @@ class HKBZ_Runner(Runner):
             getattr(self.all_args, 'hindsight_reward_mode', '')
         )
         self.team_return_mode = self.hindsight_reward_mode in {
-            'team_cmax', 'team_time'
+            'team_cmax', 'team_time', 'team_time_potential'
         }
-        self.team_time_return_mode = self.hindsight_reward_mode == 'team_time'
+        self.team_time_return_mode = self.hindsight_reward_mode in {
+            'team_time', 'team_time_potential'
+        }
+        self.team_time_potential_mode = (
+            self.hindsight_reward_mode == 'team_time_potential'
+        )
         self.recovery_checkpoint_interval_shards = max(
             0,
             int(getattr(self.all_args, 'recovery_checkpoint_interval_shards', 1)),
@@ -176,6 +191,9 @@ class HKBZ_Runner(Runner):
         self.last_team_cycle_count = 0
         self.plane_bc_pretrain_epochs = int(
             getattr(self.all_args, 'plane_bc_pretrain_epochs', 0)
+        )
+        self.plane_bc_only = bool(
+            getattr(self.all_args, 'plane_bc_only', False)
         )
         self.plane_bc_teacher_dir = str(
             getattr(self.all_args, 'plane_bc_teacher_dir', '') or ''
@@ -236,6 +254,35 @@ class HKBZ_Runner(Runner):
             for item in dagger_schedule.split(',')
             if item.strip()
         )
+        staging_dagger_schedule = str(getattr(
+            self.all_args, 'plane_bc_staging_dagger_schedule', ''
+        ) or '').strip()
+        self.plane_bc_staging_dagger_schedule = tuple(
+            float(item.strip())
+            for item in staging_dagger_schedule.split(',')
+            if item.strip()
+        )
+        self.plane_bc_per_agent_dagger = bool(getattr(
+            self.all_args, 'plane_bc_per_agent_dagger', False
+        ))
+        self.plane_bc_phase_aware = bool(getattr(
+            self.all_args, 'plane_bc_phase_aware', False
+        ))
+        self.plane_bc_service_weight = float(getattr(
+            self.all_args, 'plane_bc_service_weight', 1.0
+        ))
+        self.plane_bc_staging_hold_weight = float(getattr(
+            self.all_args, 'plane_bc_staging_hold_weight', 1.0
+        ))
+        self.plane_bc_staging_move_weight = float(getattr(
+            self.all_args, 'plane_bc_staging_move_weight', 2.0
+        ))
+        self.plane_bc_service_tail_start_fraction = float(getattr(
+            self.all_args, 'plane_bc_service_tail_start_fraction', 1.0
+        ))
+        self.plane_bc_service_tail_weight = float(getattr(
+            self.all_args, 'plane_bc_service_tail_weight', 1.0
+        ))
         self.plane_bc_dagger_rng = np.random.default_rng(
             int(getattr(self.all_args, 'plane_bc_dagger_seed', 0))
             or (int(self.all_args.seed) + 73001)
@@ -264,6 +311,9 @@ class HKBZ_Runner(Runner):
         self.iga_potential_beta_schedule = self._parse_epoch_schedule(
             getattr(self.all_args, 'iga_potential_beta_schedule', ''),
             'iga_potential_beta_schedule',
+        )
+        self.current_iga_potential_beta = float(
+            getattr(self.all_args, 'iga_potential_beta', 0.0)
         )
         self.bc_reference_target_kl = float(
             getattr(self.all_args, 'bc_reference_target_kl', 0.0)
@@ -315,6 +365,16 @@ class HKBZ_Runner(Runner):
         )
         self.early_stop_patience = max(0, int(getattr(self.all_args, 'early_stop_patience', 0)))
         self.reset_optimizers_on_resume = bool(getattr(self.all_args, 'reset_optimizers_on_resume', False))
+        self.reset_value_normalizer_on_resume = bool(getattr(
+            self.all_args, 'reset_value_normalizer_on_resume', False
+        ))
+        self.strict_checkpoint_contract = bool(getattr(
+            self.all_args, 'strict_checkpoint_contract', False
+        ))
+        self.strict_stage1_reward_contract = bool(getattr(
+            self.all_args, 'strict_stage1_reward_contract', False
+        ))
+        self.stage1_reward_contract_metadata = None
         self.canary_eval_interval_shards = int(getattr(self.all_args, 'canary_eval_interval_shards', 0))
         self.canary_max_regression = float(getattr(self.all_args, 'canary_max_regression', 0.0))
         self.canary_stop_on_regression = bool(getattr(self.all_args, 'canary_stop_on_regression', False))
@@ -482,6 +542,13 @@ class HKBZ_Runner(Runner):
             raise ValueError(
                 "--reset_optimizers_on_resume requires --resume_stage1."
             )
+        if (
+            self.reset_value_normalizer_on_resume
+            and not bool(getattr(self.all_args, 'resume_stage1', False))
+        ):
+            raise ValueError(
+                "--reset_value_normalizer_on_resume requires --resume_stage1."
+            )
         if self.plane_bc_pretrain_epochs < 0:
             raise ValueError("--plane_bc_pretrain_epochs must be non-negative.")
         if self.plane_bc_rollouts_per_epoch < 0:
@@ -612,6 +679,11 @@ class HKBZ_Runner(Runner):
                 "--canary_stop_on_regression requires "
                 "--canary_eval_interval_shards > 0."
             )
+        if self.plane_bc_only:
+            if self.plane_bc_pretrain_epochs <= 0:
+                raise ValueError('--plane_bc_only requires PlaneBC epochs.')
+            if not self.use_eval:
+                raise ValueError('--plane_bc_only requires --use_eval.')
         if stage == 'auto':
             if self.device_bc_pretrain_epochs > 0:
                 raise ValueError(
@@ -630,6 +702,30 @@ class HKBZ_Runner(Runner):
                 )
             if resume_stage1 and self.checkpoint_dir is None:
                 raise ValueError("--resume_stage1 requires --checkpoint_dir.")
+            if (
+                self.strict_stage1_reward_contract
+                and self.checkpoint_dir is not None
+                and not self.reset_value_normalizer_on_resume
+            ):
+                raise ValueError(
+                    'Strict Stage-1 reward ablations must reset ValueNorm '
+                    'when restoring the shared BC checkpoint.'
+                )
+            if self.strict_stage1_reward_contract:
+                self.stage1_reward_contract_metadata = stage1_reward_contract(
+                    reward_mode=self.hindsight_reward_mode,
+                    reward_coef=self.reward_coef,
+                    hindsight_cmax_coef=getattr(
+                        self.all_args, 'hindsight_cmax_coef', 0.0
+                    ),
+                    terminal_cmax_coef=getattr(
+                        self.all_args, 'hindsight_terminal_cmax_coef', 0.0
+                    ),
+                    gamma=getattr(self.all_args, 'gamma', 1.0),
+                    potential_gamma=getattr(
+                        self.all_args, 'iga_potential_gamma', 0.99
+                    ),
+                )
             if self.selection_checkpoint_dir is not None and not resume_stage1:
                 raise ValueError(
                     "--selection_checkpoint_dir is only valid with --resume_stage1."
@@ -1593,6 +1689,7 @@ class HKBZ_Runner(Runner):
         observed = self.envs.call('set_iga_potential_beta', potential_beta)
         if any(not np.isclose(float(value), potential_beta) for value in observed):
             raise RuntimeError('Training workers rejected potential-beta schedule.')
+        self.current_iga_potential_beta = float(potential_beta)
         self.bc_reference_kl_coef = bc_kl_coef
         self.trainer.bc_reference_kl_coef = bc_kl_coef
         self._report_progress(
@@ -1716,6 +1813,19 @@ class HKBZ_Runner(Runner):
                     best_eval_makespan=float(self.best_eval_makespan),
                 )
                 self._seed_best_from_selection_checkpoint()
+
+        if self.plane_bc_only:
+            self._report_progress(
+                'plane_bc_only_completed',
+                plane_bc_epoch=int(self.plane_bc_pretrain_epochs),
+                best_eval_makespan=float(self.best_eval_makespan),
+            )
+            print(
+                '[PlaneBC] BC-only screening completed after deterministic '
+                'Pre-PPO validation; no PPO update was executed.',
+                flush=True,
+            )
+            return
 
         first_episode = int(self.resume_epoch) if self.exact_resume_stage1 else 0
         pbar = tqdm(range(first_episode, episodes),
@@ -2213,13 +2323,34 @@ class HKBZ_Runner(Runner):
             self.buffer.set_team_cmax_values(cmax_values)
             scaled_team_returns = team_returns_raw * self.reward_coef
             if self.team_time_return_mode:
-                self.buffer.compute_team_time_returns(
-                    scaled_team_returns,
-                    cmax_values,
+                cmax_coef = (
                     float(self.all_args.hindsight_terminal_cmax_coef)
-                    * self.reward_coef,
-                    next_values,
+                    * self.reward_coef
                 )
+                if self.team_time_potential_mode:
+                    diagnostics = (
+                        self.buffer.compute_team_time_potential_returns(
+                            scaled_team_returns,
+                            cmax_values,
+                            cmax_coef,
+                            self.current_iga_potential_beta
+                            * self.reward_coef,
+                            next_values,
+                        )
+                    )
+                    for name, value in diagnostics.items():
+                        self.writter.add_scalar(
+                            f'team_time_potential/{name}',
+                            value,
+                            max(0, int(self.current_epoch) + 1),
+                        )
+                else:
+                    self.buffer.compute_team_time_returns(
+                        scaled_team_returns,
+                        cmax_values,
+                        cmax_coef,
+                        next_values,
+                    )
             else:
                 self.buffer.compute_team_returns(
                     scaled_team_returns,
@@ -2257,6 +2388,24 @@ class HKBZ_Runner(Runner):
         train_infos = self.trainer.train(self.buffer, update_actor=update_actor)
         return train_infos
 
+    @staticmethod
+    def _graph_potential_values(obs):
+        values = []
+        for graph in obs:
+            value = getattr(graph, 'iga_potential_value', None)
+            if value is None:
+                values.append(0.0)
+                continue
+            if torch.is_tensor(value):
+                value = value.detach().cpu().numpy()
+            array = np.asarray(value, dtype=np.float64).reshape(-1)
+            if array.size != 1 or not np.isfinite(array[0]):
+                raise ValueError(
+                    'Each graph must contain one finite iga_potential_value.'
+                )
+            values.append(float(array[0]))
+        return np.asarray(values, dtype=np.float32)
+
     def warmup(self):
         self.trainer.prep_rollout()
         self.buffer.reset_rollout()
@@ -2278,6 +2427,7 @@ class HKBZ_Runner(Runner):
             infos['env_total_time'], dtype=np.float32
         ).reshape(self.n_rollout_threads)
         self.buffer.decision_times[0] = initial_times
+        self.buffer.potential_values[0] = self._graph_potential_values(obs)
 
         self.buffer.rnn_states[0] = np.zeros((self.n_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
         
@@ -2298,6 +2448,51 @@ class HKBZ_Runner(Runner):
         return float(self.plane_bc_dagger_schedule[
             min(int(epoch), len(self.plane_bc_dagger_schedule) - 1)
         ])
+
+    def _dagger_staging_teacher_rate(self, epoch):
+        if not self.plane_bc_staging_dagger_schedule:
+            return self._dagger_teacher_rate(epoch)
+        return float(self.plane_bc_staging_dagger_schedule[
+            min(int(epoch), len(self.plane_bc_staging_dagger_schedule) - 1)
+        ])
+
+    def _per_agent_dagger_mask(
+        self,
+        obs,
+        teacher_results,
+        base_rate,
+        staging_rate,
+        done_flags,
+    ):
+        plane_count = self.policy.ac.max_plane_agents
+        rates = np.full(
+            (self.n_rollout_threads, plane_count),
+            float(base_rate),
+            dtype=np.float64,
+        )
+        active = np.zeros_like(rates, dtype=bool)
+        for env_idx, (graph, result) in enumerate(zip(obs, teacher_results)):
+            teacher_actions = np.asarray(result['actions'], dtype=np.int64)
+            teacher_plane = teacher_actions[:plane_count]
+            active[env_idx] = (
+                (teacher_plane[:, 0] >= 0)
+                & (teacher_plane[:, 1] >= 0)
+            )
+            phase_codes = np.asarray(
+                graph.job_phase_codes.detach().cpu(), dtype=np.int64
+            )
+            n_jobs = len(phase_codes)
+            local_ops = np.mod(
+                np.maximum(teacher_plane[:, 0], 0), max(1, n_jobs)
+            )
+            staging = phase_codes[local_ops] == 1
+            rates[env_idx, staging & active[env_idx]] = float(
+                staging_rate
+            )
+        active[np.asarray(done_flags, dtype=bool), :] = False
+        return (
+            self.plane_bc_dagger_rng.random(rates.shape) < rates
+        ) & active
 
     @staticmethod
     def _plane_bc_progress(env_times, teacher_cmaxes):
@@ -2379,6 +2574,104 @@ class HKBZ_Runner(Runner):
             modules.append(self.policy.ac.plane_order_actor)
         return modules
 
+    @staticmethod
+    def _mix_feasible_plane_actions(
+        policy_actions,
+        teacher_actions,
+        teacher_preferences,
+        active_teacher,
+    ):
+        """Mix per-plane DAgger choices without creating site contention."""
+        policy_actions = np.asarray(policy_actions, dtype=np.int64)
+        teacher_actions = np.asarray(teacher_actions, dtype=np.int64)
+        teacher_preferences = np.asarray(
+            teacher_preferences, dtype=bool
+        ).reshape(-1)
+        active_teacher = np.asarray(active_teacher, dtype=bool).reshape(-1)
+        mixed = policy_actions.copy()
+        active_indices = np.flatnonzero(active_teacher)
+        if active_indices.size == 0:
+            return mixed, np.zeros_like(active_teacher), 0
+
+        preferred = np.where(
+            teacher_preferences[:, None], teacher_actions, policy_actions
+        )
+        alternate = np.where(
+            teacher_preferences[:, None], policy_actions, teacher_actions
+        )
+        preferred_sites = [
+            int(preferred[plane_idx, 1]) for plane_idx in active_indices
+        ]
+        if (
+            all(site >= 0 for site in preferred_sites)
+            and len(set(preferred_sites)) == len(preferred_sites)
+        ):
+            mixed[active_indices] = preferred[active_indices]
+            realized_teacher = np.zeros_like(active_teacher)
+            realized_teacher[active_indices] = np.all(
+                preferred[active_indices, :2]
+                == teacher_actions[active_indices, :2],
+                axis=1,
+            )
+            return mixed, realized_teacher, 0
+        candidate_sites = sorted(set(
+            int(action[1])
+            for plane_idx in active_indices
+            for action in (preferred[plane_idx], alternate[plane_idx])
+            if int(action[1]) >= 0
+        ))
+        if len(candidate_sites) < len(active_indices):
+            raise RuntimeError(
+                'Per-agent DAgger action union cannot form a conflict-free '
+                'site assignment.'
+            )
+        site_to_column = {
+            site: column for column, site in enumerate(candidate_sites)
+        }
+        unavailable = 1e6
+        costs = np.full(
+            (len(active_indices), len(candidate_sites)),
+            unavailable,
+            dtype=np.float64,
+        )
+        for row, plane_idx in enumerate(active_indices):
+            preferred_site = int(preferred[plane_idx, 1])
+            alternate_site = int(alternate[plane_idx, 1])
+            if preferred_site >= 0:
+                costs[row, site_to_column[preferred_site]] = 1e-9 * row
+            if alternate_site >= 0:
+                alternate_column = site_to_column[alternate_site]
+                costs[row, alternate_column] = min(
+                    costs[row, alternate_column], 1.0 + 1e-9 * row
+                )
+        rows, columns = linear_sum_assignment(costs)
+        if len(rows) != len(active_indices) or np.any(
+            costs[rows, columns] >= unavailable
+        ):
+            raise RuntimeError(
+                'Failed to repair per-agent DAgger site contention.'
+            )
+
+        realized_teacher = np.zeros_like(active_teacher)
+        conflict_repairs = 0
+        for row, column in zip(rows, columns):
+            plane_idx = int(active_indices[int(row)])
+            assigned_site = candidate_sites[int(column)]
+            preferred_action = preferred[plane_idx]
+            alternate_action = alternate[plane_idx]
+            if int(preferred_action[1]) == assigned_site:
+                selected = preferred_action
+            elif int(alternate_action[1]) == assigned_site:
+                selected = alternate_action
+                conflict_repairs += 1
+            else:
+                raise RuntimeError('DAgger assignment selected an unknown site.')
+            mixed[plane_idx] = selected
+            realized_teacher[plane_idx] = bool(
+                np.array_equal(selected[:2], teacher_actions[plane_idx, :2])
+            )
+        return mixed, realized_teacher, conflict_repairs
+
     def _merge_plane_bc_actions(
         self,
         policy_actions,
@@ -2400,12 +2693,34 @@ class HKBZ_Runner(Runner):
             )
         teacher_execution_mask = np.asarray(
             teacher_execution_mask, dtype=bool
-        ).reshape(policy_actions.shape[0])
+        )
+        plane_count = self.policy.ac.max_plane_agents
+        per_agent_execution = teacher_execution_mask.ndim == 2
+        if per_agent_execution:
+            expected_shape = (policy_actions.shape[0], plane_count)
+            if teacher_execution_mask.shape != expected_shape:
+                raise ValueError(
+                    'Per-agent teacher_execution_mask must have shape '
+                    f'{expected_shape}, got {teacher_execution_mask.shape}.'
+                )
+            if learned_order:
+                raise ValueError(
+                    'Per-agent DAgger requires fixed plane order.'
+                )
+        else:
+            teacher_execution_mask = teacher_execution_mask.reshape(
+                policy_actions.shape[0]
+            )
         available_count = 0
         active_plane_labels = 0
         pair_correct = 0
         order_correct = 0
         order_labels = 0
+        teacher_executed_planes = 0
+        student_executed_planes = 0
+        teacher_executed_envs = 0
+        student_executed_envs = 0
+        conflict_repairs = 0
         for env_idx, result in enumerate(teacher_results):
             info = result.get('info', {}) if isinstance(result, dict) else {}
             if not bool(info.get('available', False)):
@@ -2417,14 +2732,9 @@ class HKBZ_Runner(Runner):
             teacher_actions = np.asarray(
                 result['actions'], dtype=np.int64
             )
-            plane_count = self.policy.ac.max_plane_agents
             labels[env_idx, :plane_count, :action_width] = teacher_actions[
                 :plane_count, :action_width
             ]
-            if teacher_execution_mask[env_idx]:
-                actions[env_idx, :plane_count, :action_width] = teacher_actions[
-                    :plane_count, :action_width
-                ]
             available_count += 1
             teacher_plane_actions = teacher_actions[:plane_count, :action_width]
             active_teacher = (
@@ -2433,6 +2743,38 @@ class HKBZ_Runner(Runner):
             )
             active_count = int(active_teacher.sum())
             active_plane_labels += active_count
+            if per_agent_execution:
+                mixed, realized_teacher, repairs = (
+                    self._mix_feasible_plane_actions(
+                        policy_actions[env_idx, :plane_count, :action_width],
+                        teacher_plane_actions,
+                        teacher_execution_mask[env_idx],
+                        active_teacher,
+                    )
+                )
+                actions[env_idx, :plane_count, :action_width] = mixed
+                teacher_executed_planes += int(
+                    (realized_teacher & active_teacher).sum()
+                )
+                student_executed_planes += int(
+                    ((~realized_teacher) & active_teacher).sum()
+                )
+                teacher_executed_envs += int(
+                    bool((realized_teacher & active_teacher).any())
+                )
+                student_executed_envs += int(
+                    bool(((~realized_teacher) & active_teacher).any())
+                )
+                conflict_repairs += int(repairs)
+            elif teacher_execution_mask[env_idx]:
+                actions[env_idx, :plane_count, :action_width] = teacher_actions[
+                    :plane_count, :action_width
+                ]
+                teacher_executed_planes += active_count
+                teacher_executed_envs += int(active_count > 0)
+            else:
+                student_executed_planes += active_count
+                student_executed_envs += int(active_count > 0)
             if active_count > 0:
                 predicted = policy_actions[env_idx, :plane_count, :action_width]
                 pair_correct += int(
@@ -2459,8 +2801,11 @@ class HKBZ_Runner(Runner):
             'pair_correct': pair_correct,
             'order_correct': order_correct,
             'order_labels': order_labels,
-            'teacher_executed_envs': int(teacher_execution_mask.sum()),
-            'student_executed_envs': int((~teacher_execution_mask).sum()),
+            'teacher_executed_envs': teacher_executed_envs,
+            'student_executed_envs': student_executed_envs,
+            'teacher_executed_planes': teacher_executed_planes,
+            'student_executed_planes': student_executed_planes,
+            'dagger_conflict_repairs': conflict_repairs,
         }
 
     def _plane_bc_update(
@@ -2529,6 +2874,30 @@ class HKBZ_Runner(Runner):
             )
             for graph in obs
         ])
+        phase_codes_np = np.stack([
+            np.asarray(
+                getattr(
+                    graph,
+                    'job_phase_codes',
+                    torch.zeros(
+                        critical_ops_np.shape[1], dtype=torch.long
+                    ),
+                ).detach().cpu(),
+                dtype=np.int64,
+            )
+            for graph in obs
+        ])
+        service_progress_np = np.stack([
+            np.asarray(
+                getattr(
+                    graph,
+                    'agent_service_progress',
+                    torch.zeros(plane_count, dtype=torch.float32),
+                ).detach().cpu(),
+                dtype=np.float32,
+            )[:plane_count]
+            for graph in obs
+        ])
         n_jobs = critical_ops_np.shape[1]
         label_ops_np = np.asarray(
             label_actions[:, :plane_count, 0], dtype=np.int64
@@ -2549,12 +2918,59 @@ class HKBZ_Runner(Runner):
         critical_np = np.take_along_axis(
             critical_ops_np, local_ops_np, axis=1
         )
+        selected_phase_np = np.take_along_axis(
+            phase_codes_np, local_ops_np, axis=1
+        )
+        service_np = selected_phase_np == 0
+        staging_np = selected_phase_np == 1
+        forced_departure_np = selected_phase_np == 2
+        staging_hold_np = staging_np & same_site_np
+        staging_move_np = staging_np & relocation_np
         stratum_weights_np = np.ones_like(
             label_sites_np, dtype=np.float32
         )
-        stratum_weights_np[initial_np] *= self.plane_bc_initial_weight
-        stratum_weights_np[relocation_np] *= self.plane_bc_relocation_weight
-        stratum_weights_np[critical_np] *= self.plane_bc_critical_op_weight
+        if self.plane_bc_phase_aware:
+            stratum_weights_np[service_np] *= self.plane_bc_service_weight
+            stratum_weights_np[staging_hold_np] *= (
+                self.plane_bc_staging_hold_weight
+            )
+            stratum_weights_np[staging_move_np] *= (
+                self.plane_bc_staging_move_weight
+            )
+            stratum_weights_np[initial_np & service_np] *= (
+                self.plane_bc_initial_weight
+            )
+            stratum_weights_np[relocation_np & service_np] *= (
+                self.plane_bc_relocation_weight
+            )
+            stratum_weights_np[critical_np & service_np] *= (
+                self.plane_bc_critical_op_weight
+            )
+            if (
+                self.plane_bc_service_tail_start_fraction < 1.0
+                and self.plane_bc_service_tail_weight > 1.0
+            ):
+                service_ramp = np.clip(
+                    (
+                        service_progress_np
+                        - self.plane_bc_service_tail_start_fraction
+                    ) / max(
+                        1.0 - self.plane_bc_service_tail_start_fraction,
+                        1e-12,
+                    ),
+                    0.0,
+                    1.0,
+                )
+                service_multiplier = 1.0 + (
+                    self.plane_bc_service_tail_weight - 1.0
+                ) * service_ramp
+                stratum_weights_np[service_np] *= service_multiplier[
+                    service_np
+                ]
+        else:
+            stratum_weights_np[initial_np] *= self.plane_bc_initial_weight
+            stratum_weights_np[relocation_np] *= self.plane_bc_relocation_weight
+            stratum_weights_np[critical_np] *= self.plane_bc_critical_op_weight
         stratum_weights = torch.ones_like(
             action_log_probs, dtype=action_log_probs.dtype
         )
@@ -2564,12 +2980,28 @@ class HKBZ_Runner(Runner):
             device=self.device,
         )
         pair_weight = pair_mask.to(action_log_probs.dtype) * stratum_weights
-        # Each case receives unit total mass regardless of its number of
-        # teacher decisions; within a case the important strata retain their
-        # requested relative multipliers.
+        phase_state_scale = torch.ones(
+            (pair_weight.shape[0], 1),
+            dtype=pair_weight.dtype,
+            device=pair_weight.device,
+        )
+        if self.plane_bc_phase_aware:
+            # Preserve the requested phase multiplier between environment
+            # states.  Row normalization alone would cancel a staging weight
+            # whenever that state contains only one trainable plane.
+            phase_state_scale = (
+                pair_weight.sum(dim=1, keepdim=True)
+                / pair_mask.to(pair_weight.dtype).sum(
+                    dim=1, keepdim=True
+                ).clamp_min(1.0)
+            ).clamp_min(1.0)
+        # Each environment state receives unit base mass regardless of its
+        # number of simultaneous teacher decisions; important strata retain
+        # their requested relative multipliers.
         pair_weight = pair_weight / pair_weight.sum(
             dim=1, keepdim=True
         ).clamp_min(1.0)
+        pair_weight = pair_weight * phase_state_scale
         order_weight = order_mask.to(action_log_probs.dtype)
         order_weight = order_weight / order_weight.sum(
             dim=1, keepdim=True
@@ -2599,17 +3031,23 @@ class HKBZ_Runner(Runner):
         order_loss = -(
             log_prob_components['order_log_probs'] * order_weight
         ).sum() / order_weight.sum().clamp_min(1e-8)
-        def category_mask(mask_np):
+        def category_mask(mask_np, pair_only=True):
             result = torch.zeros_like(pair_mask, dtype=torch.bool)
             result[:, :plane_count] = torch.as_tensor(
                 mask_np, dtype=torch.bool, device=self.device
             )
-            return result & pair_mask
+            return result & (pair_mask if pair_only else plane_mask)
 
         initial_mask = category_mask(initial_np)
         relocation_mask = category_mask(relocation_np)
         same_site_mask = category_mask(same_site_np)
         critical_mask = category_mask(critical_np)
+        service_mask = category_mask(service_np)
+        staging_hold_mask = category_mask(staging_hold_np)
+        staging_move_mask = category_mask(staging_move_np)
+        forced_departure_mask = category_mask(
+            forced_departure_np, pair_only=False
+        )
         pair_nll = -log_prob_components['pair_log_probs']
 
         def category_nll(mask):
@@ -2655,6 +3093,23 @@ class HKBZ_Runner(Runner):
             'plane_bc_relocation_nll': category_nll(relocation_mask),
             'plane_bc_same_site_nll': category_nll(same_site_mask),
             'plane_bc_critical_nll': category_nll(critical_mask),
+            'plane_bc_service_labels': int(service_mask.sum().item()),
+            'plane_bc_staging_hold_labels': int(
+                staging_hold_mask.sum().item()
+            ),
+            'plane_bc_staging_move_labels': int(
+                staging_move_mask.sum().item()
+            ),
+            'plane_bc_forced_departure_labels': int(
+                forced_departure_mask.sum().item()
+            ),
+            'plane_bc_service_nll': category_nll(service_mask),
+            'plane_bc_staging_hold_nll': category_nll(
+                staging_hold_mask
+            ),
+            'plane_bc_staging_move_nll': category_nll(
+                staging_move_mask
+            ),
             'plane_bc_effective_case_mass': float(
                 pair_weight.sum().detach().cpu().item()
             ),
@@ -2753,6 +3208,18 @@ class HKBZ_Runner(Runner):
                 epoch_order_targets = 0
                 epoch_teacher_executed_envs = 0
                 epoch_student_executed_envs = 0
+                epoch_dagger_conflict_repairs = 0
+                epoch_phase_labels = {
+                    phase: 0 for phase in (
+                        'service', 'staging_hold', 'staging_move',
+                        'forced_departure',
+                    )
+                }
+                epoch_phase_nll_mass = {
+                    phase: 0.0 for phase in (
+                        'service', 'staging_hold', 'staging_move',
+                    )
+                }
                 for rollout_idx in range(rollout_target):
                     rollout_started_at = time.monotonic()
                     obs, dones, infos = self.envs.reset()
@@ -2837,15 +3304,31 @@ class HKBZ_Runner(Runner):
                         temporal_weights = self._plane_bc_temporal_weights(
                             env_times, teacher_cmaxes
                         )
-                        execution_rates = self._dagger_execution_rates(
-                            teacher_rate, progress
-                        )
-                        teacher_execution_mask = (
-                            self.plane_bc_dagger_rng.random(
-                                self.n_rollout_threads
-                            ) < execution_rates
-                        )
-                        teacher_execution_mask &= ~done_flags
+                        if self.plane_bc_phase_aware:
+                            # Phase-local service progress is applied inside
+                            # _plane_bc_update; absolute episode-time tail
+                            # weighting is intentionally disabled here.
+                            temporal_weights = np.ones_like(
+                                temporal_weights, dtype=np.float32
+                            )
+                        if self.plane_bc_per_agent_dagger:
+                            teacher_execution_mask = self._per_agent_dagger_mask(
+                                obs,
+                                teacher_results,
+                                teacher_rate,
+                                self._dagger_staging_teacher_rate(epoch),
+                                done_flags,
+                            )
+                        else:
+                            execution_rates = self._dagger_execution_rates(
+                                teacher_rate, progress
+                            )
+                            teacher_execution_mask = (
+                                self.plane_bc_dagger_rng.random(
+                                    self.n_rollout_threads
+                                ) < execution_rates
+                            )
+                            teacher_execution_mask &= ~done_flags
                         actions, labels, label_stats = self._merge_plane_bc_actions(
                             _t2n(policy_actions),
                             teacher_results,
@@ -2898,6 +3381,15 @@ class HKBZ_Runner(Runner):
                             epoch_order_labels += int(
                                 update['plane_bc_order_labels']
                             )
+                            for phase in epoch_phase_labels:
+                                labels_key = f'plane_bc_{phase}_labels'
+                                label_total = int(update[labels_key])
+                                epoch_phase_labels[phase] += label_total
+                                nll_key = f'plane_bc_{phase}_nll'
+                                if nll_key in update:
+                                    epoch_phase_nll_mass[phase] += (
+                                        float(update[nll_key]) * label_total
+                                    )
                             self.writter.add_scalar(
                                 'plane_bc/loss',
                                 update['plane_bc_loss'],
@@ -2923,6 +3415,13 @@ class HKBZ_Runner(Runner):
                                 'plane_bc_same_site_labels',
                                 'plane_bc_critical_labels',
                                 'plane_bc_effective_case_mass',
+                                'plane_bc_service_nll',
+                                'plane_bc_staging_hold_nll',
+                                'plane_bc_staging_move_nll',
+                                'plane_bc_service_labels',
+                                'plane_bc_staging_hold_labels',
+                                'plane_bc_staging_move_labels',
+                                'plane_bc_forced_departure_labels',
                             ):
                                 self.writter.add_scalar(
                                     'plane_bc/' + metric_name.replace(
@@ -2939,10 +3438,13 @@ class HKBZ_Runner(Runner):
                         epoch_order_correct += label_stats['order_correct']
                         epoch_order_targets += label_stats['order_labels']
                         epoch_teacher_executed_envs += int(
-                            teacher_execution_mask.sum()
+                            label_stats['teacher_executed_planes']
                         )
                         epoch_student_executed_envs += int(
-                            ((~teacher_execution_mask) & (~done_flags)).sum()
+                            label_stats['student_executed_planes']
+                        )
+                        epoch_dagger_conflict_repairs += int(
+                            label_stats['dagger_conflict_repairs']
                         )
                         obs, _, dones, infos = self.envs.step(actions)
                         next_rnn_states = _t2n(next_rnn_states)
@@ -3036,6 +3538,19 @@ class HKBZ_Runner(Runner):
                     realized_teacher_rate,
                     epoch + 1,
                 )
+                epoch_phase_nll = {
+                    phase: epoch_phase_nll_mass[phase]
+                    / max(1, epoch_phase_labels[phase])
+                    for phase in epoch_phase_nll_mass
+                }
+                for phase, value in epoch_phase_nll.items():
+                    self.writter.add_scalar(
+                        f'plane_bc_epoch/{phase}_nll', value, epoch + 1
+                    )
+                for phase, value in epoch_phase_labels.items():
+                    self.writter.add_scalar(
+                        f'plane_bc_epoch/{phase}_labels', value, epoch + 1
+                    )
                 print(
                     f'[PlaneBC] epoch={epoch + 1}/'
                     f'{self.plane_bc_pretrain_epochs} loss={mean_loss:.6f} '
@@ -3047,6 +3562,8 @@ class HKBZ_Runner(Runner):
                     f'teacher_rate={realized_teacher_rate:.3f}/'
                     f'{teacher_rate:.3f} tail_teacher_rate='
                     f'{self.plane_bc_dagger_tail_teacher_rate:.3f} '
+                    f'phase_labels={epoch_phase_labels} '
+                    f'conflict_repairs={epoch_dagger_conflict_repairs} '
                     f'freeze_shared={freeze_shared}.',
                     flush=True,
                 )
@@ -3071,6 +3588,11 @@ class HKBZ_Runner(Runner):
                         realized_teacher_rate
                     ),
                     plane_bc_teacher_execution_target=float(teacher_rate),
+                    plane_bc_phase_labels=dict(epoch_phase_labels),
+                    plane_bc_phase_nll=dict(epoch_phase_nll),
+                    plane_bc_dagger_conflict_repairs=int(
+                        epoch_dagger_conflict_repairs
+                    ),
                     plane_bc_shared_frozen=bool(freeze_shared),
                 )
         finally:
@@ -3472,6 +3994,7 @@ class HKBZ_Runner(Runner):
             active_masks,
             policy_masks=policy_masks,
             decision_times=infos['env_total_time'],
+            potential_values=self._graph_potential_values(obs),
         )
 
     @torch.no_grad()
@@ -3535,8 +4058,11 @@ class HKBZ_Runner(Runner):
         request_dir = os.path.join(str(self.run_dir), 'shared_eval_requests')
         os.makedirs(request_dir, exist_ok=True)
         checkpoint_path = os.path.join(request_dir, f'{request_id}.pt')
+        observation_metadata = stage1_observation_metadata(getattr(
+            self.all_args, 'global_feature_mode', 'none'
+        ))
         checkpoint = {
-            'protocol_version': 1,
+            'protocol_version': PROTOCOL_VERSION,
             'request_id': request_id,
             'model': {
                 name: tensor.detach().cpu().clone()
@@ -3544,6 +4070,15 @@ class HKBZ_Runner(Runner):
             },
             'plane_order_mode': self.policy.ac.plane_order_mode,
             'plane_pair_decoder': self.policy.ac.plane_pair_decoder,
+            'global_feature_mode': str(getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            )),
+            'observation_schema_id': observation_metadata[
+                'observation_schema_id'
+            ],
+            'environment_semantics_version': observation_metadata[
+                'environment_semantics_version'
+            ],
         }
         self._atomic_torch_save(checkpoint, checkpoint_path)
         started = time.monotonic()
@@ -3564,6 +4099,15 @@ class HKBZ_Runner(Runner):
                 'cpu_set': self.shared_eval_cpu_set,
                 'plane_order_mode': self.policy.ac.plane_order_mode,
                 'plane_pair_decoder': self.policy.ac.plane_pair_decoder,
+                'global_feature_mode': str(getattr(
+                    self.all_args, 'global_feature_mode', 'none'
+                )),
+                'observation_schema_id': observation_metadata[
+                    'observation_schema_id'
+                ],
+                'environment_semantics_version': observation_metadata[
+                    'environment_semantics_version'
+                ],
                 'n_eval_rollout_threads': int(self.n_eval_rollout_threads),
             })
             result = self._consume_raw_evaluation(
@@ -3997,7 +4541,11 @@ class HKBZ_Runner(Runner):
         if filename is None:
             filename = 'checkpoint_Epoch' + str(episode+1) + '.pt'
         save_path = os.path.join(self.save_dir, filename)
+        observation_metadata = stage1_observation_metadata(getattr(
+            self.all_args, 'global_feature_mode', 'none'
+        ))
         checkpoint = {
+            **observation_metadata,
             'episodes': episode + 1,
             'tau': model.ac.tau,
             'training_stage': self.training_stage,
@@ -4091,6 +4639,20 @@ class HKBZ_Runner(Runner):
                 'global_feature_mode': str(getattr(
                     self.all_args, 'global_feature_mode', 'none'
                 )),
+                'observation_schema_id': observation_metadata[
+                    'observation_schema_id'
+                ],
+                'environment_semantics_version': observation_metadata[
+                    'environment_semantics_version'
+                ],
+                'stage1_reward_contract': (
+                    dict(self.stage1_reward_contract_metadata)
+                    if self.stage1_reward_contract_metadata is not None
+                    else None
+                ),
+                'reset_value_normalizer_on_resume': bool(
+                    self.reset_value_normalizer_on_resume
+                ),
                 'gnn_freeze_epochs': int(self.gnn_freeze_epochs),
                 'plane_order_freeze_epochs': int(
                     self.plane_order_freeze_epochs
@@ -4221,7 +4783,11 @@ class HKBZ_Runner(Runner):
         save_path = os.path.join(
             self.save_dir, 'checkpoint_PlaneBC.pt'
         )
+        observation_metadata = stage1_observation_metadata(getattr(
+            self.all_args, 'global_feature_mode', 'none'
+        ))
         checkpoint = {
+            **observation_metadata,
             'episodes': 0,
             'stage': 'plane_iga_bc_pretrain',
             'training_stage': self.training_stage,
@@ -4288,7 +4854,11 @@ class HKBZ_Runner(Runner):
     def save_device_bc_checkpoint(self):
         model = self.trainer.policy
         save_path = os.path.join(self.save_dir, 'checkpoint_DeviceBC.pt')
+        observation_metadata = stage1_observation_metadata(getattr(
+            self.all_args, 'global_feature_mode', 'none'
+        ))
         checkpoint = {
+            **observation_metadata,
             'episodes': 0,
             # Keep the historical filename, but make the artifact's phase
             # unambiguous for Stage-2 recovery/auditing.
@@ -4392,16 +4962,36 @@ class HKBZ_Runner(Runner):
             f"[Info] Loading checkpoint {checkpoint_path} "
             f"(training_stage={checkpoint.get('training_stage', 'legacy')})."
         )
-        checkpoint_arch = (
-            checkpoint.get('plane_order_mode'), checkpoint.get('plane_pair_decoder')
+        contract = validate_stage1_checkpoint_contract(
+            checkpoint,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            strict_metadata=self.strict_checkpoint_contract,
         )
-        configured_arch = (self.policy.ac.plane_order_mode, self.policy.ac.plane_pair_decoder)
-        if None not in checkpoint_arch and checkpoint_arch != configured_arch:
-            raise ValueError(f'Checkpoint decoder {checkpoint_arch} != configured {configured_arch}.')
+        print(
+            '[Info] Stage-1 checkpoint observation contract accepted: '
+            f"mode={contract['global_feature_mode']} "
+            f"schema={contract['observation_schema_id']} "
+            f"strict={contract['strict_metadata']}.",
+            flush=True,
+        )
         self.policy.load_model_state(checkpoint['model'])
         self.policy.ac.tau = checkpoint.get('tau', self.policy.ac.tau)
         self.all_args.anneal_original = self.policy.ac.tau
-        self._pending_value_normalizer_state = checkpoint.get('value_normalizer')
+        if self.reset_value_normalizer_on_resume:
+            self._pending_value_normalizer_state = None
+            print(
+                '[Info] Discarded checkpoint ValueNorm statistics '
+                '(--reset_value_normalizer_on_resume).',
+                flush=True,
+            )
+        else:
+            self._pending_value_normalizer_state = checkpoint.get(
+                'value_normalizer'
+            )
         if self.reset_optimizers_on_resume:
             print(
                 "[Info] Restored model weights with fresh actor and critic optimizers "

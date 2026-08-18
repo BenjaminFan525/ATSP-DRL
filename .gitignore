@@ -1,4 +1,5 @@
 .vscode/
+/.texlive/
 result/
 onpolicy/envs/HKBZ/dataset
 onpolicy/scripts/results

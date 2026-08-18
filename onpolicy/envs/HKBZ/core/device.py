@@ -14,6 +14,11 @@ class Device:
         self.is_busy = False  # 设备是否忙碌（资源被占用）
         self.left_rec_time = 0
         self.is_disable = False
+        # Environment-level dispatch may reserve an idle transporter for one
+        # aircraft while it is pre-positioning (or waiting at the pickup
+        # stand).  A reserved device is physically idle after arrival, but it
+        # must not be consumed by another waiting aircraft.
+        self.reserved_for_plane = None
         # 将设备注册到站点设备列表中
         self.site.devices.append(self)
 
@@ -142,3 +147,4 @@ class Device:
         self.is_busy = False
         self.is_disable = False
         self.left_rec_time = 0
+        self.reserved_for_plane = None

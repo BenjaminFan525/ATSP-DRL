@@ -173,6 +173,7 @@ INHERITED_OPTIONS = frozenset(
         "--use_valuenorm",
         "--safe_graph_batch_pipeline",
         "--safe_dagger_teacher_overlap",
+        "--device_lookahead_safety_margin",
     }
 )
 
@@ -189,6 +190,7 @@ SWITCH_OPTIONS = frozenset(
         "--use_valuenorm",
         "--safe_graph_batch_pipeline",
         "--safe_dagger_teacher_overlap",
+        "--device_lookahead_dispatch",
     }
 )
 
@@ -484,6 +486,7 @@ def build_stage2_command(
         "--hindsight_cmax_coef": 0.0,
         "--hindsight_shaping_coef": 0.0,
         "--hindsight_terminal_cmax_coef": 1.0,
+        "--device_lookahead_safety_margin": 60.0,
     }
     for flag, value in fixed.items():
         set_option(command, flag, value)
@@ -491,6 +494,7 @@ def build_stage2_command(
     # Evaluation is needed for the runner's Best checkpoint lineage.  It is a
     # plain switch and does not re-enable any Stage-1 regularizer.
     set_switch(command, "--use_eval", True)
+    set_switch(command, "--device_lookahead_dispatch", True)
     set_option(command, "--eval_interval", 1)
 
     # A positive Stage-2 contract must not accidentally inherit any old
@@ -531,6 +535,11 @@ def stage2_contract(
         "from": STAGE1_KIND,
         "to": CANONICAL_STAGE,
         "resource_policy": "drl",
+        "device_lookahead_dispatch": True,
+        "device_lookahead_safety_margin": 60.0,
+        "resource_request_time_semantics": (
+            "negative_lead_time_for_lookahead_nonnegative_wait_for_blocking"
+        ),
         "checkpoint_contract": "strict_stage1_m2_protected_plane_shared",
         "source_m2_checkpoint": dict(source),
         "device_bc_pretrain_epochs": int(bc_epochs),

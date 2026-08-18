@@ -9,6 +9,13 @@ plane_num_per_batch: 24
 n_agents: 24
 max_device_num: 80
 resource_policy: "drl"
+# Once a plane has committed to an operation/site pair, expose a deferrable
+# request so mobile resources can pre-position before the plane starts waiting.
+device_lookahead_dispatch: true
+# Do not pre-position a device more than this many seconds before the plane is
+# expected to need it. The request remains deferrable and is offered again as
+# physical time advances.
+device_lookahead_safety_margin: 60.0
 plane_cycle_repeat_limit: 8
 plane_no_progress_limit: 120
 plane_relocation_limit: 40

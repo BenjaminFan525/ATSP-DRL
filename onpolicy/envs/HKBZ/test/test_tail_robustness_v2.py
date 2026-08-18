@@ -96,6 +96,7 @@ class TailRobustnessV2Test(unittest.TestCase):
                 'python', 'train_hkbz.py', '--seed', '2',
                 '--checkpoint_dir', 'recovery.pt', '--resume_stage1',
                 '--reset_optimizers_on_resume',
+                '--reset_value_normalizer_on_resume',
                 '--shared_eval_socket', '/tmp/old.sock',
                 '--shared_eval_cpu_set', '0-3',
             ]}), encoding='utf-8')
@@ -103,10 +104,23 @@ class TailRobustnessV2Test(unittest.TestCase):
             self.assertEqual(args[args.index('--seed') + 1], '2')
             for removed in (
                 '--checkpoint_dir', '--resume_stage1',
-                '--reset_optimizers_on_resume', '--shared_eval_socket',
+                '--reset_optimizers_on_resume',
+                '--reset_value_normalizer_on_resume',
+                '--shared_eval_socket',
                 '--shared_eval_cpu_set',
             ):
                 self.assertNotIn(removed, args)
+
+    def test_evaluator_accepts_preflight_manifest_source_command(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            command_path = Path(temporary) / 'manifest.json'
+            command_path.write_text(json.dumps({
+                'evaluator_command': [
+                    'python', 'train_hkbz.py', '--seed', '7',
+                ],
+            }), encoding='utf-8')
+            args = source_training_args(command_path)
+            self.assertEqual(args[args.index('--seed') + 1], '7')
 
     def test_remote_raw_evaluation_round_trip_preserves_selection_inputs(self):
         source = object.__new__(HKBZ_Runner)
@@ -153,6 +167,7 @@ class TailRobustnessV2Test(unittest.TestCase):
             runner.evaluation_tau = 0.3
             runner.shared_eval_cpu_set = '0-3'
             runner.all_args = SimpleNamespace(seed=2)
+            runner.all_args.global_feature_mode = 'f1f2_departure'
             runner.n_eval_rollout_threads = 60
             runner.progress_callback = None
             runner._consume_raw_evaluation = mock.Mock(return_value=321.0)
@@ -162,6 +177,12 @@ class TailRobustnessV2Test(unittest.TestCase):
                 self.assertTrue(checkpoint_path.is_file())
                 checkpoint = torch.load(checkpoint_path, map_location='cpu')
                 self.assertEqual(checkpoint['request_id'], request['request_id'])
+                self.assertEqual(
+                    checkpoint['global_feature_mode'], 'f1f2_departure'
+                )
+                self.assertEqual(
+                    request['global_feature_mode'], 'f1f2_departure'
+                )
                 self.assertTrue(torch.equal(
                     checkpoint['model']['weight'], torch.ones(2)
                 ))

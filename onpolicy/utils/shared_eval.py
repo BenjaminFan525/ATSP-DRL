@@ -8,7 +8,7 @@ from multiprocessing.connection import Client, wait
 from pathlib import Path
 
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 AUTHKEY = b'hkbz-shared-eval-v1'
 
 

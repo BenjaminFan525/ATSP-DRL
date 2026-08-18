@@ -26,9 +26,12 @@ from onpolicy.envs.HKBZ.experiment.eval_common import (
     load_case_metadata,
     write_json,
 )
+from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
 
 
 METHOD_LABELS = {"iga": "IGA", "nsga2": "NSGA-II"}
+IGA_TEACHER_SCOPE = "stage1_plane_policy"
+IGA_TEACHER_RESOURCE_POLICY = "heuristic"
 
 
 def parse_args():
@@ -57,6 +60,14 @@ def parse_args():
     )
     parser.add_argument("--iga_teacher_dir", type=str, default="")
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "reuse only completed, verified cases from an interrupted output; "
+            "all failed or incomplete cases are submitted again"
+        ),
+    )
     args = parser.parse_args()
     if args.workers <= 0:
         raise ValueError("--workers must be positive")
@@ -235,7 +246,12 @@ def evaluate_case(
                 completed = True
                 completion_verified = True
                 teacher = {
-                    "schema_version": 2,
+                    "schema_version": 3,
+                    "teacher_scope": IGA_TEACHER_SCOPE,
+                    "resource_policy": IGA_TEACHER_RESOURCE_POLICY,
+                    "environment_semantics_version": verification.get(
+                        "environment_semantics_version"
+                    ),
                     "case": case_name,
                     "case_id": record["case_id"],
                     "seed": record["seed"],
@@ -316,9 +332,105 @@ def summarize(records):
     }
 
 
+def _load_json(path):
+    with Path(path).open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _teacher_is_reusable(teacher_path, case_name, case_metadata):
+    """Reject partial files and labels generated under older semantics."""
+
+    try:
+        teacher = _load_json(teacher_path)
+    except (OSError, ValueError, TypeError):
+        return False
+    if int(teacher.get("schema_version", 0)) < 3:
+        return False
+    if teacher.get("teacher_scope") != IGA_TEACHER_SCOPE:
+        return False
+    if teacher.get("resource_policy") != IGA_TEACHER_RESOURCE_POLICY:
+        return False
+    if (
+        teacher.get("environment_semantics_version")
+        != AircraftScheduleEnv.SEMANTICS_VERSION
+    ):
+        return False
+    if teacher.get("case") != case_name:
+        return False
+    if not bool(teacher.get("completion_verified")):
+        return False
+    expected_hash = case_metadata.get("case_sha256")
+    if expected_hash and teacher.get("case_sha256") != expected_hash:
+        return False
+    job_priorities = np.asarray(teacher.get("job_priorities", []))
+    site_priorities = np.asarray(teacher.get("site_priorities", []))
+    return bool(
+        job_priorities.ndim == 2
+        and site_priorities.ndim == 2
+        and job_priorities.shape[0] == site_priorities.shape[0]
+        and job_priorities.shape[1] == 20
+    )
+
+
+def _validate_resume_payload(payload, args, dataset_dir, cases):
+    if (
+        payload.get("environment_semantics_version")
+        != AircraftScheduleEnv.SEMANTICS_VERSION
+    ):
+        raise RuntimeError(
+            "Refusing to resume labels from a different environment semantics."
+        )
+    if payload.get("teacher_scope") != IGA_TEACHER_SCOPE:
+        raise RuntimeError("Resume payload is not a Stage-1 plane-policy label set.")
+    if payload.get("resource_policy") != IGA_TEACHER_RESOURCE_POLICY:
+        raise RuntimeError("Stage-1 IGA labels require heuristic resources.")
+    if str(Path(payload.get("dataset_test_dir", "")).resolve()) != dataset_dir:
+        raise RuntimeError("Resume dataset directory does not match.")
+    if int(payload.get("case_count", -1)) != len(cases):
+        raise RuntimeError("Resume case count does not match.")
+    requested = [METHOD_LABELS[method] for method in args.methods]
+    if payload.get("methods_requested") != requested:
+        raise RuntimeError("Resume method list does not match.")
+    budget = payload.get("legacy_budget", {})
+    expected_budget = {
+        "population": int(args.iga_pop_size),
+        "generations": int(args.iga_generations),
+        "time_seconds": float(args.time_budget),
+        "max_attempts": int(args.iga_max_attempts),
+    }
+    if budget != expected_budget:
+        raise RuntimeError(
+            f"Resume IGA budget does not match: {budget} != {expected_budget}."
+        )
+    if int(payload.get("seed", -1)) != int(args.seed):
+        raise RuntimeError("Resume seed does not match.")
+    stored_teacher_dir = str(payload.get("iga_teacher_dir", ""))
+    if stored_teacher_dir:
+        stored_teacher_dir = str(Path(stored_teacher_dir).resolve())
+    if stored_teacher_dir != str(args.iga_teacher_dir):
+        raise RuntimeError("Resume teacher directory does not match.")
+
+
+def _record_is_reusable(method, record, args, metadata):
+    if not bool(record.get("completed")):
+        return False
+    if method != "iga" or not args.iga_teacher_dir:
+        return True
+    if not bool(record.get("completion_verified")):
+        return False
+    case_name = str(record.get("case", ""))
+    teacher_path = Path(args.iga_teacher_dir) / f"{case_name}.json"
+    return _teacher_is_reusable(
+        teacher_path, case_name, metadata.get(case_name, {})
+    )
+
+
 def main():
     args = parse_args()
     dataset_dir = str(Path(args.dataset_test_dir).resolve())
+    args.output_json = str(Path(args.output_json).resolve())
+    if args.iga_teacher_dir:
+        args.iga_teacher_dir = str(Path(args.iga_teacher_dir).resolve())
     cases = list_case_folders(dataset_dir, args.max_cases)
     metadata = load_case_metadata(dataset_dir)
     if args.iga_teacher_dir:
@@ -333,25 +445,97 @@ def main():
                 "IGA teacher metadata is incomplete for dataset split: "
                 f"missing={missing_metadata[:10]}, invalid={invalid_metadata[:10]}."
             )
-    payload = {
-        "status": "running",
-        "created_unix_time": time.time(),
-        "dataset_test_dir": dataset_dir,
-        "workers": int(args.workers),
-        "legacy_budget": {
-            "population": int(args.iga_pop_size),
-            "generations": int(args.iga_generations),
-            "time_seconds": float(args.time_budget),
-            "max_attempts": int(args.iga_max_attempts),
-        },
-        "methods_requested": [METHOD_LABELS[method] for method in args.methods],
-        "case_count": len(cases),
-        "methods": {
-            METHOD_LABELS[method]: {"status": "pending", "cases": []}
-            for method in args.methods
-        },
-    }
+
+    output_path = Path(args.output_json)
+    teacher_path = Path(args.iga_teacher_dir) if args.iga_teacher_dir else None
+    if teacher_path is not None:
+        teacher_path.mkdir(parents=True, exist_ok=True)
+
+    if output_path.exists() and not args.resume:
+        raise FileExistsError(
+            f"Output already exists; pass --resume to reuse it: {output_path}"
+        )
+    if (
+        teacher_path is not None
+        and not args.resume
+        and any(teacher_path.glob("case_*.json"))
+    ):
+        raise FileExistsError(
+            "Teacher directory already contains labels; use a fresh directory "
+            f"or pass --resume: {teacher_path}"
+        )
+    if (
+        teacher_path is not None
+        and args.resume
+        and not output_path.exists()
+        and any(teacher_path.glob("case_*.json"))
+    ):
+        raise FileNotFoundError(
+            "Cannot safely resume a non-empty teacher directory without its "
+            f"progress output: {output_path}"
+        )
+
+    if output_path.exists():
+        payload = _load_json(output_path)
+        _validate_resume_payload(payload, args, dataset_dir, cases)
+        payload["status"] = "running"
+        payload["workers"] = int(args.workers)
+        payload["last_resumed_unix_time"] = time.time()
+        for method in args.methods:
+            label = METHOD_LABELS[method]
+            previous = payload.get("methods", {}).get(label, {}).get(
+                "cases", []
+            )
+            by_case = {
+                record.get("case"): record
+                for record in previous
+                if record.get("case") in cases
+                and _record_is_reusable(method, record, args, metadata)
+            }
+            records = [by_case[case] for case in cases if case in by_case]
+            payload["methods"][label] = {
+                "status": (
+                    "completed" if len(records) == len(cases) else "running"
+                ),
+                "cases": records,
+                "summary": summarize(records),
+            }
+    else:
+        payload = {
+            "status": "running",
+            "teacher_scope": IGA_TEACHER_SCOPE,
+            "resource_policy": IGA_TEACHER_RESOURCE_POLICY,
+            "environment_semantics_version": (
+                AircraftScheduleEnv.SEMANTICS_VERSION
+            ),
+            "created_unix_time": time.time(),
+            "dataset_test_dir": dataset_dir,
+            "workers": int(args.workers),
+            "seed": int(args.seed),
+            "iga_teacher_dir": args.iga_teacher_dir,
+            "legacy_budget": {
+                "population": int(args.iga_pop_size),
+                "generations": int(args.iga_generations),
+                "time_seconds": float(args.time_budget),
+                "max_attempts": int(args.iga_max_attempts),
+            },
+            "methods_requested": [
+                METHOD_LABELS[method] for method in args.methods
+            ],
+            "case_count": len(cases),
+            "methods": {
+                METHOD_LABELS[method]: {"status": "pending", "cases": []}
+                for method in args.methods
+            },
+        }
     write_json(args.output_json, payload)
+    reusable_cases = {
+        method: {
+            record["case"]
+            for record in payload["methods"][METHOD_LABELS[method]]["cases"]
+        }
+        for method in args.methods
+    }
     tasks = [
         (
             method,
@@ -367,6 +551,7 @@ def main():
         )
         for method in args.methods
         for case in cases
+        if case not in reusable_cases[method]
     ]
 
     context = mp.get_context("fork")
@@ -399,7 +584,25 @@ def main():
                 flush=True,
             )
 
-    payload["status"] = "completed"
+    fully_verified = True
+    for method in args.methods:
+        label = METHOD_LABELS[method]
+        records = payload["methods"][label]["cases"]
+        method_complete = bool(
+            len(records) == len(cases)
+            and all(record.get("completed") for record in records)
+            and (
+                method != "iga"
+                or not args.iga_teacher_dir
+                or all(record.get("completion_verified") for record in records)
+            )
+        )
+        payload["methods"][label]["status"] = (
+            "completed" if method_complete else "failed"
+        )
+        payload["methods"][label]["summary"] = summarize(records)
+        fully_verified = fully_verified and method_complete
+    payload["status"] = "completed" if fully_verified else "failed"
     payload["completed_unix_time"] = time.time()
     write_json(args.output_json, payload)
     print(json.dumps(
@@ -410,6 +613,11 @@ def main():
         indent=2,
         ensure_ascii=False,
     ))
+    if not fully_verified:
+        raise RuntimeError(
+            "One or more cases failed completion/teacher verification; rerun "
+            "the same command with --resume to retry only those cases."
+        )
 
 
 if __name__ == "__main__":

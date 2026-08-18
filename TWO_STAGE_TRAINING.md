@@ -2,8 +2,38 @@
 
 当前入口只有两个阶段：
 
-1. **Stage 1 / M2**：既有 `plane_pretrain` 训练的 M2 产物。它是外部完成、不可变的交接源；`onpolicy/config/stage1_m2_handoff.json` 固定三个 seed 的路径、大小、SHA256 和模型语义，controller 只验证并登记，不重新解释或覆盖 Stage 1。
+1. **Stage 1 / M2**：`plane_pretrain` 的飞机策略阶段，使用 heuristic
+   移动资源并训练飞机 BC+PPO。由于离场状态机已经改变，旧 M2 只可作为历史对照，
+   不能作为新环境的有效交接源；必须先用新语义重新生成 IGA 教师并从头训练 S1。
+   新 M2 完成三种子验证后，再更新 `onpolicy/config/stage1_m2_handoff.json` 中的
+   路径、大小、SHA256 和模型语义。
 2. **Stage 2 / `resource_joint`**：使用 `env_resource_joint.yaml` 的 fjsp_v3 数据语义和 DRL resource policy。Runner 严格校验 M2 的 plane/shared protected tensors、`plane_order_mode`、`plane_pair_decoder` 与 `global_feature_mode`，然后执行正数 resource BC warm-up 和冻结 plane/shared 的 resource PPO。
+
+Stage 2 显式启用 `device_lookahead_dispatch`，并使用 60 秒
+`device_lookahead_safety_margin`。飞机一旦提交 operation/site
+组合，环境就会为该目标工序缺少的移动资源发布“可延迟”的预请求；设备因此可在
+飞机运输、等待 R014 或执行前驱工序期间预布置，而不必等到飞机正式阻塞。预请求
+选择 no-op 后会抑制到下一次物理时间推进，避免零时间重复决策；真正阻塞飞机的
+请求仍保留最后兼容设备不得 no-op 的防死锁约束。请求特征保持 checkpoint 兼容的
+8 维，其中时间维用负 lead-time 表示预请求、非负 waiting-time 表示阻塞请求。
+
+离场采用 `progressive-departure-r014-pipeline-v2` 语义。全局“所有飞机完成保障”
+屏障已取消：每架飞机完成自身全部保障工序后，先执行一次 `ZY-T` 留位/腾位决策，
+随后生成该飞机专属的 R014 pickup 请求。R014 在飞机原站位完成空驶预定位前，
+飞机不能选择 `ZY-S`，起飞跑道也不会被提前占用；车辆到位后，环境按等待时间与
+拖运距离动态匹配当前空闲跑道。这样未完工或尚未到达的其他飞机不会阻塞已完工
+飞机离场，同时仍允许已完工飞机通过一次 `ZY-T` 为后续飞机腾出机位。
+
+该语义会改变教师轨迹，旧 `departure-barrier-r014-v1` IGA 标注和在其上训练的
+S1/M2 都不能复用。新教师契约明确记录
+`teacher_scope=stage1_plane_policy`、`resource_policy=heuristic` 和
+`environment_semantics_version=progressive-departure-r014-pipeline-v2`；加载器会拒绝
+旧环境标签以及误用于 S2 的资源策略标签。
+
+新环境的 train600 标注由
+`onpolicy/scripts/train/launch_departure_iga_labels.sh` 串行执行：先用整机 CPU 生成
+IGA-180，600/600 案例完成并独立回放验证后，才自动开始 IGA-1800。两套标签用于
+S1 飞机策略的基线比较与 BC/DAgger，均不训练移动设备策略。
 
 Stage 2 的 `checkpoint_DeviceBC.pt` 只是同一阶段内部的 resource-BC warm-up 边界，不是第三阶段，也不是新的恢复源。当前不承诺 shard 级精确恢复；中断后应从已验证的 Stage-1 M2 重新执行 warm-up。
 

@@ -520,6 +520,33 @@ def get_config():
         help="restore model weights but start with fresh actor and critic optimizers",
     )
     parser.add_argument(
+        "--reset_value_normalizer_on_resume",
+        action="store_true",
+        default=False,
+        help=(
+            "restore model weights but discard checkpoint ValueNorm statistics; "
+            "required when the PPO reward/return semantics change"
+        ),
+    )
+    parser.add_argument(
+        "--strict_checkpoint_contract",
+        action="store_true",
+        default=False,
+        help=(
+            "require versioned observation and environment semantics metadata "
+            "before restoring a Stage-1 checkpoint"
+        ),
+    )
+    parser.add_argument(
+        "--strict_stage1_reward_contract",
+        action="store_true",
+        default=False,
+        help=(
+            "require gamma=1 and an exactly equivalent scaled -Cmax objective "
+            "for Stage-1 reward-credit ablations"
+        ),
+    )
+    parser.add_argument(
         "--selection_checkpoint_dir",
         type=str,
         default=None,
@@ -681,6 +708,24 @@ def get_config():
     parser.add_argument('--max_device_num', type=int, default=0, help="the max number of mobile device agents")
     parser.add_argument('--resource_policy', type=str, default='heuristic', choices=['heuristic', 'drl'],
                         help="mobile resource dispatch policy: heuristic or drl")
+    parser.add_argument(
+        '--device_lookahead_dispatch',
+        action='store_true',
+        default=False,
+        help=(
+            "expose deferrable mobile-resource requests after a plane commits "
+            "to an operation/site pair, before the plane starts waiting"
+        ),
+    )
+    parser.add_argument(
+        '--device_lookahead_safety_margin',
+        type=float,
+        default=60.0,
+        help=(
+            "maximum seconds a mobile device may arrive before a lookahead "
+            "request becomes blocking"
+        ),
+    )
     parser.add_argument('--train_domain_rand', action='store_true', default=False,
                         help="enable domain randomization during joint-policy fine-tuning")
     parser.add_argument(
@@ -705,6 +750,13 @@ def get_config():
         type=int,
         default=0,
         help='epochs of IGA-teacher behavior cloning before Stage-1 PPO',
+    )
+    parser.add_argument(
+        '--plane_bc_only', action='store_true', default=False,
+        help=(
+            'stop after PlaneBC and the deterministic Pre-PPO validation; '
+            'used for causally clean BC screening'
+        ),
     )
     parser.add_argument('--plane_bc_teacher_dir', type=str, default='',
                         help='directory containing replayable IGA teacher JSON files')
@@ -757,6 +809,20 @@ def get_config():
         help='independent seed for reproducible DAgger teacher/student mixing',
     )
     parser.add_argument(
+        '--plane_bc_per_agent_dagger', action='store_true', default=False,
+        help=(
+            'sample teacher/student execution independently for each active '
+            'plane and repair site conflicts with a feasible assignment'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_staging_dagger_schedule', type=str, default='',
+        help=(
+            'optional per-epoch teacher rates for ZY-T staging decisions; an '
+            'empty value inherits --plane_bc_dagger_schedule'
+        ),
+    )
+    parser.add_argument(
         '--plane_bc_dagger_tail_start_fraction', type=float, default=1.0,
         help=(
             'teacher-trajectory progress where risk-triggered DAgger begins; '
@@ -771,13 +837,45 @@ def get_config():
         ),
     )
     parser.add_argument(
+        '--plane_bc_phase_aware', action='store_true', default=False,
+        help=(
+            'stratify BC by service, ZY-T hold/move, and forced departure '
+            'phases; legacy weighting remains the default'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_service_weight', type=float, default=1.0,
+        help='base BC multiplier for service-phase operation-site decisions',
+    )
+    parser.add_argument(
+        '--plane_bc_staging_hold_weight', type=float, default=1.0,
+        help='BC multiplier for a ZY-T decision that keeps the current site',
+    )
+    parser.add_argument(
+        '--plane_bc_staging_move_weight', type=float, default=2.0,
+        help='BC multiplier for a ZY-T decision that vacates the current site',
+    )
+    parser.add_argument(
+        '--plane_bc_service_tail_start_fraction', type=float, default=1.0,
+        help=(
+            'per-plane service-completion fraction where service BC emphasis '
+            'starts; 1.0 disables this phase-local ramp'
+        ),
+    )
+    parser.add_argument(
+        '--plane_bc_service_tail_weight', type=float, default=1.0,
+        help='maximum service BC multiplier at 100 percent service progress',
+    )
+    parser.add_argument(
         '--global_feature_mode',
         type=str,
         default='none',
-        choices=['none', 'f1', 'f1f2'],
+        choices=['none', 'f1', 'f1f2', 'f1f2_departure'],
         help=(
             'global scheduling context: none is the legacy control, f1 adds '
-            'workload/arrival summaries, f1f2 adds resource summaries'
+            'workload/arrival summaries, f1f2 adds resource summaries, and '
+            'f1f2_departure substitutes explicit R014/runway/queue summaries '
+            'without changing the 24-dimensional encoder input'
         ),
     )
     parser.add_argument(
@@ -838,10 +936,13 @@ def get_config():
             'hybrid_cmax',
             'team_cmax',
             'team_time',
+            'team_time_potential',
         ],
         help=(
             'HKBZ reward mode; team_cmax broadcasts one terminal target; '
-            'team_time uses global negative remaining makespan at each decision'
+            'team_time uses global negative remaining makespan at each '
+            'decision; team_time_potential adds a versioned departure-aware '
+            'telescoping potential to that exact team-time target'
         ),
     )
     parser.add_argument('--hindsight_cmax_coef', type=float, default=0.0,

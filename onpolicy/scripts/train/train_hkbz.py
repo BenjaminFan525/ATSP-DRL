@@ -290,6 +290,13 @@ def make_train_env(all_args):
     env_config_base['iga_potential_gamma'] = all_args.iga_potential_gamma
     env_config_base['iga_teacher_dir'] = all_args.plane_bc_teacher_dir
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
+    env_config_base['device_lookahead_dispatch'] = bool(
+        all_args.device_lookahead_dispatch
+        or env_config_base.get('device_lookahead_dispatch', False)
+    )
+    env_config_base['device_lookahead_safety_margin'] = float(
+        all_args.device_lookahead_safety_margin
+    )
     env_config_base['plane_cycle_repeat_limit'] = all_args.plane_cycle_repeat_limit
     env_config_base['plane_no_progress_limit'] = all_args.plane_no_progress_limit
     env_config_base['plane_relocation_limit'] = all_args.plane_relocation_limit
@@ -385,6 +392,13 @@ def make_eval_env(all_args):
     env_config_base['iga_potential_gamma'] = all_args.iga_potential_gamma
     env_config_base['iga_teacher_dir'] = ''
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
+    env_config_base['device_lookahead_dispatch'] = bool(
+        all_args.device_lookahead_dispatch
+        or env_config_base.get('device_lookahead_dispatch', False)
+    )
+    env_config_base['device_lookahead_safety_margin'] = float(
+        all_args.device_lookahead_safety_margin
+    )
     env_config_base['plane_cycle_repeat_limit'] = all_args.plane_cycle_repeat_limit
     env_config_base['plane_no_progress_limit'] = all_args.plane_no_progress_limit
     env_config_base['plane_relocation_limit'] = all_args.plane_relocation_limit
@@ -519,6 +533,11 @@ def main(args):
     for flag, raw in (
         ('--iga_potential_beta_schedule', all_args.iga_potential_beta_schedule),
         ('--bc_reference_kl_coef_schedule', all_args.bc_reference_kl_coef_schedule),
+        ('--plane_bc_dagger_schedule', all_args.plane_bc_dagger_schedule),
+        (
+            '--plane_bc_staging_dagger_schedule',
+            all_args.plane_bc_staging_dagger_schedule,
+        ),
     ):
         try:
             values = [
@@ -530,20 +549,71 @@ def main(args):
             raise ValueError(f'{flag} must be a comma-separated float list.') from error
         if any(not np.isfinite(value) or value < 0.0 for value in values):
             raise ValueError(f'{flag} values must be finite and non-negative.')
+        if 'dagger' in flag and any(value > 1.0 for value in values):
+            raise ValueError(f'{flag} teacher rates must not exceed 1.')
     if not 0.0 <= all_args.tail_policy_start_fraction <= 1.0:
         raise ValueError('--tail_policy_start_fraction must be in [0, 1].')
     if all_args.tail_policy_weight < 1.0:
         raise ValueError('--tail_policy_weight must be at least 1.')
     if not 0.0 <= all_args.iga_potential_gamma <= 1.0:
         raise ValueError('--iga_potential_gamma must be in [0, 1].')
-    if all_args.hindsight_reward_mode == 'iga_potential':
+    for flag, value in (
+        ('--plane_bc_service_weight', all_args.plane_bc_service_weight),
+        (
+            '--plane_bc_staging_hold_weight',
+            all_args.plane_bc_staging_hold_weight,
+        ),
+        (
+            '--plane_bc_staging_move_weight',
+            all_args.plane_bc_staging_move_weight,
+        ),
+        (
+            '--plane_bc_service_tail_weight',
+            all_args.plane_bc_service_tail_weight,
+        ),
+    ):
+        if not np.isfinite(value) or value < 1.0:
+            raise ValueError(f'{flag} must be finite and at least 1.')
+    if not 0.0 <= all_args.plane_bc_service_tail_start_fraction <= 1.0:
+        raise ValueError(
+            '--plane_bc_service_tail_start_fraction must be in [0, 1].'
+        )
+    if (
+        all_args.plane_bc_per_agent_dagger
+        and all_args.plane_order_mode != 'fixed'
+    ):
+        raise ValueError('--plane_bc_per_agent_dagger requires fixed plane order.')
+    if all_args.hindsight_reward_mode in {
+        'iga_potential', 'team_time_potential'
+    }:
         weights_path = Path(all_args.iga_potential_weights_path).expanduser()
         if not all_args.iga_potential_weights_path or not weights_path.is_file():
             raise FileNotFoundError(
-                'iga_potential reward requires an existing '
+                f'{all_args.hindsight_reward_mode} reward requires an existing '
                 f'--iga_potential_weights_path, got {weights_path}.'
             )
         all_args.iga_potential_weights_path = str(weights_path.resolve())
+    if all_args.hindsight_reward_mode == 'team_time_potential':
+        if not np.isclose(all_args.iga_potential_gamma, 1.0):
+            raise ValueError(
+                'team_time_potential requires --iga_potential_gamma 1.0 '
+                'for exact telescoping.'
+            )
+        if not np.isclose(all_args.hindsight_terminal_cmax_coef, 1.0):
+            raise ValueError(
+                'team_time_potential requires '
+                '--hindsight_terminal_cmax_coef 1.0.'
+            )
+    if (
+        all_args.hindsight_reward_mode in {
+            'team_cmax', 'team_time', 'team_time_potential'
+        }
+        and all_args.hindsight_terminal_cmax_coef <= 0.0
+    ):
+        raise ValueError(
+            'Team reward modes require a positive '
+            '--hindsight_terminal_cmax_coef.'
+        )
     if bool(all_args.shared_eval_socket) != bool(all_args.shared_eval_cpu_set):
         raise ValueError(
             '--shared_eval_socket and --shared_eval_cpu_set must be supplied '

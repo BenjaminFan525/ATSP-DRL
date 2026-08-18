@@ -239,7 +239,7 @@ class JointTrainingRegressionTest(unittest.TestCase):
 
     def test_global_feature_modes_have_stable_batched_shape(self):
         observations = {}
-        for mode in ("none", "f1", "f1f2"):
+        for mode in ("none", "f1", "f1f2", "f1f2_departure"):
             env = _make_env(global_feature_mode=mode)
             try:
                 obs, _, _ = env.reset()
@@ -253,12 +253,18 @@ class JointTrainingRegressionTest(unittest.TestCase):
         none_features = observations["none"].global_features
         f1_features = observations["f1"].global_features
         f1f2_features = observations["f1f2"].global_features
+        departure_features = observations[
+            "f1f2_departure"
+        ].global_features
         self.assertEqual(torch.count_nonzero(none_features).item(), 0)
         self.assertGreater(torch.count_nonzero(f1_features[:, :12]).item(), 0)
         self.assertEqual(torch.count_nonzero(f1_features[:, 12:]).item(), 0)
         self.assertGreater(torch.count_nonzero(f1f2_features[:, 12:]).item(), 0)
+        self.assertGreater(
+            torch.count_nonzero(departure_features[:, 12:]).item(), 0
+        )
         batch = Batch.from_data_list([
-            observations["f1"], observations["f1f2"]
+            observations["f1"], observations["f1f2_departure"]
         ])
         self.assertEqual(tuple(batch.global_features.shape), (2, 24))
         policy = _make_policy()
@@ -423,6 +429,67 @@ class JointTrainingRegressionTest(unittest.TestCase):
             np.array([-20.0, -50.0, -30.0], dtype=np.float32),
         )
         self.assertAlmostEqual(float(buffer.rewards[:3, 0].sum()), -100.0)
+
+    def test_team_time_potential_returns_telescope_exactly(self):
+        args = get_config().parse_args([])
+        args.episode_length = 3
+        args.n_rollout_threads = 1
+        args.data_chunk_length = 3
+        buffer = SharedReplayBuffer(args, 2, None, None, None)
+        buffer.filled_steps = 3
+        buffer.decision_times[:, 0] = [0.0, 20.0, 70.0, 100.0]
+        buffer.potential_values[:, 0] = [-100.0, -70.0, -20.0, -5.0]
+        buffer.active_masks[:3, 0, :, 0] = np.array([
+            [1.0, 1.0], [1.0, 0.0], [1.0, 0.0]
+        ])
+        buffer.policy_masks[:3] = buffer.active_masks[:3]
+
+        diagnostics = buffer.compute_team_time_potential_returns(
+            np.array([-100.0], dtype=np.float32),
+            np.array([100.0], dtype=np.float32),
+            1.0,
+            0.1,
+            np.zeros((1, 2, 1), dtype=np.float32),
+        )
+
+        np.testing.assert_allclose(
+            buffer.returns[:3, 0, 0, 0], [-90.0, -73.0, -28.0]
+        )
+        np.testing.assert_allclose(
+            buffer.rewards[:3, 0].sum(axis=(1, 2)),
+            [-17.0, -45.0, -28.0],
+        )
+        self.assertAlmostEqual(float(buffer.rewards[:3, 0].sum()), -90.0)
+        self.assertLess(diagnostics['telescoping_max_abs_error'], 1e-8)
+        self.assertEqual(diagnostics['raw_terminal_potential_abs_max'], 5.0)
+
+    def test_team_time_potential_uses_each_cases_own_terminal_step(self):
+        args = get_config().parse_args([])
+        args.episode_length = 3
+        args.n_rollout_threads = 2
+        buffer = SharedReplayBuffer(args, 1, None, None, None)
+        buffer.filled_steps = 3
+        buffer.decision_times[:, 0] = [0.0, 10.0, 10.0, 10.0]
+        buffer.decision_times[:, 1] = [0.0, 10.0, 20.0, 30.0]
+        buffer.potential_values[:, 0] = [-10.0, -4.0, -4.0, -4.0]
+        buffer.potential_values[:, 1] = [-30.0, -20.0, -10.0, -2.0]
+        buffer.active_masks[0, :, 0, 0] = 1.0
+        buffer.active_masks[1:3, 1, 0, 0] = 1.0
+        buffer.policy_masks[:3] = buffer.active_masks[:3]
+        buffer.masks[1:, 0, 0, 0] = 0.0
+
+        diagnostics = buffer.compute_team_time_potential_returns(
+            np.array([-10.0, -30.0], dtype=np.float32),
+            np.array([10.0, 30.0], dtype=np.float32),
+            1.0,
+            1.0,
+            np.zeros((2, 1, 1), dtype=np.float32),
+        )
+
+        self.assertAlmostEqual(buffer.rewards[0, 0, 0, 0], 0.0)
+        self.assertEqual(diagnostics['terminal_step_min'], 1)
+        self.assertEqual(diagnostics['terminal_step_max'], 3)
+        self.assertLess(diagnostics['telescoping_max_abs_error'], 1e-8)
 
     def test_team_returns_and_case_balancing_are_decision_count_invariant(self):
         args = get_config().parse_args([])
@@ -669,6 +736,39 @@ class JointTrainingRegressionTest(unittest.TestCase):
         np.testing.assert_array_equal(labels[:, 0], [[5, 6], [7, 8]])
         self.assertEqual(stats["teacher_executed_envs"], 1)
         self.assertEqual(stats["student_executed_envs"], 1)
+
+    def test_per_agent_dagger_repairs_crossed_site_preferences(self):
+        runner = HKBZ_Runner.__new__(HKBZ_Runner)
+        runner.policy = SimpleNamespace(
+            ac=SimpleNamespace(max_plane_agents=2, plane_order_actor=None)
+        )
+        policy_actions = np.asarray(
+            [[[10, 1], [11, 2], [-1, -1]]], dtype=np.int64
+        )
+        teacher_results = [{
+            'actions': np.asarray(
+                [[20, 2], [21, 1], [-1, -1]], dtype=np.int64
+            ),
+            'info': {'available': True},
+        }]
+
+        actions, labels, stats = runner._merge_plane_bc_actions(
+            policy_actions,
+            teacher_results,
+            teacher_execution_mask=np.asarray([[True, False]]),
+        )
+
+        self.assertEqual(len(set(actions[0, :2, 1].tolist())), 2)
+        for plane_idx in range(2):
+            candidates = {
+                tuple(policy_actions[0, plane_idx]),
+                tuple(teacher_results[0]['actions'][plane_idx]),
+            }
+            self.assertIn(tuple(actions[0, plane_idx]), candidates)
+        np.testing.assert_array_equal(
+            labels[0, :2], teacher_results[0]['actions'][:2]
+        )
+        self.assertEqual(stats['dagger_conflict_repairs'], 1)
 
     def test_composite_validation_selection_is_split_safe(self):
         runner = HKBZ_Runner.__new__(HKBZ_Runner)

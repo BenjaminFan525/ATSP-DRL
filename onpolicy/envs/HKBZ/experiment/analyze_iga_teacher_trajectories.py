@@ -157,6 +157,11 @@ def action_diagnostics(env: AircraftScheduleEnv, actions: np.ndarray) -> dict:
     active = 0
     relocation = 0
     same_site = 0
+    service_actions = 0
+    staging_hold_actions = 0
+    staging_move_actions = 0
+    forced_departure_actions = 0
+    trainable_pair_actions = 0
     legal_pairs = []
     for plane in env.planes.values():
         pid = int(plane.code.split('_')[-1])
@@ -164,20 +169,49 @@ def action_diagnostics(env: AircraftScheduleEnv, actions: np.ndarray) -> dict:
             pid >= env.n_plane_agents
             or not plane.is_idle()
             or plane.is_completed_all_jobs()
+            or int(actions[pid, 0]) < 0
+            or int(actions[pid, 1]) < 0
         ):
             continue
         active += 1
         site_idx = int(actions[pid, 1])
+        job_idx = int(actions[pid, 0])
+        local_job_idx = (
+            job_idx % len(env.job_code_list)
+            if job_idx >= 0 and env.job_code_list else -1
+        )
+        job_code = (
+            env.job_code_list[local_job_idx]
+            if local_job_idx >= 0 else ''
+        )
         current_idx = env.site_code_list.index(plane.site.code)
         if site_idx == current_idx:
             same_site += 1
         else:
             relocation += 1
-        legal_pairs.append(int(np.asarray(env.agent_job_site_mask_matrix[pid]).sum()))
+        pair_count = int(
+            np.asarray(env.agent_job_site_mask_matrix[pid]).sum()
+        )
+        legal_pairs.append(pair_count)
+        trainable_pair_actions += int(pair_count > 1)
+        if job_code == env.TRANSFER_JOB_CODE:
+            if site_idx == current_idx:
+                staging_hold_actions += 1
+            else:
+                staging_move_actions += 1
+        elif job_code in set(env.departure_job_code_list):
+            forced_departure_actions += 1
+        else:
+            service_actions += 1
     return {
         'active_actions': active,
         'relocations': relocation,
         'same_site_actions': same_site,
+        'service_actions': service_actions,
+        'staging_hold_actions': staging_hold_actions,
+        'staging_move_actions': staging_move_actions,
+        'forced_departure_actions': forced_departure_actions,
+        'trainable_pair_actions': trainable_pair_actions,
         'mean_legal_pairs': float(np.mean(legal_pairs)) if legal_pairs else 0.0,
     }
 
@@ -448,6 +482,37 @@ def phase_regression_metrics(
     }
 
 
+def departure_phase_regression_metrics(
+    y: np.ndarray,
+    prediction: np.ndarray,
+    rows: list[dict],
+) -> dict:
+    service_remaining = np.asarray([
+        float(row.get('before', {}).get('remaining_service_jobs', 0.0))
+        for row in rows
+    ])
+    departure_remaining = np.asarray([
+        float(row.get('before', {}).get('remaining_departure_jobs', 0.0))
+        for row in rows
+    ])
+    ready_count = np.asarray([
+        float(row.get('before', {}).get('departure_ready_count', 0.0))
+        for row in rows
+    ])
+    phases = {
+        'service_active': service_remaining > 0.0,
+        'departure_only': (
+            (service_remaining <= 0.0) & (departure_remaining > 0.0)
+        ),
+        'departure_queue_nonempty': ready_count > 0.0,
+    }
+    return {
+        name: regression_metrics(y[mask], prediction[mask])
+        for name, mask in phases.items()
+        if np.any(mask)
+    }
+
+
 def case_level_cross_validation(
     rows: list[dict],
     x: np.ndarray,
@@ -499,6 +564,9 @@ def case_level_cross_validation(
         'case_disjoint': True,
         'metrics': regression_metrics(y, predictions),
         'phase_metrics': phase_regression_metrics(y, predictions, progress),
+        'departure_phase_metrics': departure_phase_regression_metrics(
+            y, predictions, rows
+        ),
         'fold_records': fold_records,
     }
 
@@ -533,6 +601,15 @@ def main() -> int:
         source_payload = json.loads(source_path.read_text(encoding='utf-8'))
         if source_payload.get('status') != 'completed':
             raise RuntimeError(f'Incomplete source analysis: {source_path}.')
+        if (
+            tuple(source_payload.get('feature_names', ())) != FEATURES
+            or source_payload.get('environment_semantics_version')
+            != AircraftScheduleEnv.SEMANTICS_VERSION
+        ):
+            raise RuntimeError(
+                'Reused trajectories do not match the current departure-aware '
+                'feature schema and environment semantics; replay is required.'
+            )
         rows = [
             json.loads(line)
             for line in trajectory_path.read_text(encoding='utf-8').splitlines()
@@ -638,6 +715,13 @@ def main() -> int:
         active_actions = sum(int(row['active_actions']) for row in rows)
         relocations = sum(int(row['relocations']) for row in rows)
         same_site = sum(int(row['same_site_actions']) for row in rows)
+        phase_count_keys = (
+            'service_actions',
+            'staging_hold_actions',
+            'staging_move_actions',
+            'forced_departure_actions',
+            'trainable_pair_actions',
+        )
         action_payload = {
             'active_actions': active_actions,
             'relocations': relocations,
@@ -647,6 +731,10 @@ def main() -> int:
             'mean_legal_pairs_per_transition': float(
                 np.mean([row['mean_legal_pairs'] for row in rows])
             ),
+            **{
+                key: sum(int(row.get(key, 0)) for row in rows)
+                for key in phase_count_keys
+            },
         }
     x = np.asarray(
         [[float(row['before'][name]) for name in FEATURES] for row in rows],
@@ -704,7 +792,13 @@ def main() -> int:
         os.replace(temporary_trajectory, trajectory_path)
 
     payload = {
-        'schema_version': 2,
+        'schema_version': 3,
+        'potential_schema_version': (
+            AircraftScheduleEnv.IGA_POTENTIAL_SCHEMA_VERSION
+        ),
+        'environment_semantics_version': (
+            AircraftScheduleEnv.SEMANTICS_VERSION
+        ),
         'status': 'completed',
         'dataset_dir': str(dataset_dir),
         'teacher_dir': str(teacher_dir),
@@ -729,6 +823,9 @@ def main() -> int:
             },
             'unweighted_metrics': regression_metrics(y, prediction),
             'phase_metrics': phase_regression_metrics(y, prediction, progress),
+            'departure_phase_metrics': departure_phase_regression_metrics(
+                y, prediction, rows
+            ),
             'case_level_cross_validation': cross_validation,
         },
         'replay': replay_payload,

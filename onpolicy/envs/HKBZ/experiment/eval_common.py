@@ -211,7 +211,20 @@ def completion_details(env, step_count: int, max_steps: int) -> dict:
         )),
         "total_relocations": int(sum(
             getattr(plane, "total_relocations", 0) for plane in planes
+        ) + int(getattr(env, "departed_total_relocations", 0))),
+        "departed_plane_count": int(len(
+            getattr(env, "departed_agent_ids", set())
         )),
+        "departure_barrier_open": bool(
+            getattr(env, "departure_barrier_open", False)
+        ),
+        "departure_mode": "progressive_per_aircraft",
+        "departure_reserved_r014_count": int(len(
+            getattr(env, "departure_transporter_by_plane", {})
+        )),
+        "environment_semantics_version": str(
+            getattr(env, "SEMANTICS_VERSION", "unknown")
+        ),
     }
 
 

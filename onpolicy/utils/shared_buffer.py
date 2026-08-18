@@ -92,6 +92,10 @@ class SharedReplayBuffer(object):
         self.decision_times = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads), dtype=np.float32
         )
+        self.potential_values = np.zeros(
+            (self.episode_length + 1, self.n_rollout_threads), dtype=np.float32
+        )
+        self.last_team_time_potential_diagnostics = {}
 
         self.masks = np.ones((self.episode_length + 1, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
         self.bad_masks = np.ones_like(self.masks)
@@ -121,6 +125,8 @@ class SharedReplayBuffer(object):
         self.action_dists.fill(0.0)
         self.rewards.fill(0.0)
         self.decision_times.fill(0.0)
+        self.potential_values.fill(0.0)
+        self.last_team_time_potential_diagnostics = {}
         self.policy_sample_weights.fill(0.0)
         self.value_sample_weights.fill(0.0)
         self.team_returns.fill(0.0)
@@ -133,7 +139,7 @@ class SharedReplayBuffer(object):
 
     def graph_insert(self, obs, rnn_states, actions, action_log_probs,
                    value_preds, rewards, masks, active_masks, policy_masks=None,
-                   decision_times=None):
+                   decision_times=None, potential_values=None):
         """
         Insert data into the buffer. This insert function is used specifically for PyG graph data observations.
         :param obs: (list of HeteroData) local agent observations, length equals n_rollout_threads.
@@ -204,6 +210,13 @@ class SharedReplayBuffer(object):
             if np.any(decision_times + 1e-6 < previous_times):
                 raise ValueError('Environment time moved backwards in rollout.')
             self.decision_times[self.step + 1] = decision_times
+        if potential_values is not None:
+            potential_values = np.asarray(
+                potential_values, dtype=np.float32
+            ).reshape(self.n_rollout_threads)
+            if not np.isfinite(potential_values).all():
+                raise ValueError('potential_values contains NaN or Inf.')
+            self.potential_values[self.step + 1] = potential_values
 
         self.step += 1
         self.filled_steps = max(self.filled_steps, self.step)
@@ -417,6 +430,144 @@ class SharedReplayBuffer(object):
         self.value_preds[T] = np.nan_to_num(
             next_value, nan=0.0, posinf=1e4, neginf=-1e4
         )
+
+    def compute_team_time_potential_returns(
+        self,
+        team_returns,
+        cmax_values,
+        cmax_coef,
+        potential_coef,
+        next_value,
+    ):
+        """Combine exact team-time targets with a telescoping state potential.
+
+        The environment stores ``Phi(s) <= 0`` as the negative calibrated
+        time-to-go cost.  With gamma=1 the shaped state target is
+        ``terminal + cmax_coef*time - potential_coef*Phi(s)`` and each logged
+        transition receives ``potential_coef*(Phi(next)-Phi(current))``.
+        The absorbing terminal potential is defined as zero, so the sum is a
+        policy-invariant constant determined by the initial case state.
+        """
+        T = int(getattr(self, 'filled_steps', self.episode_length))
+        if T <= 0:
+            raise RuntimeError(
+                'Cannot compute team-time potential returns for an empty rollout.'
+            )
+        team_returns = np.asarray(team_returns, dtype=np.float32).reshape(-1)
+        cmax_values = np.asarray(cmax_values, dtype=np.float32).reshape(-1)
+        expected = (self.n_rollout_threads,)
+        if team_returns.shape != expected or cmax_values.shape != expected:
+            raise ValueError(
+                f'team_returns and cmax_values must have shape {expected}.'
+            )
+        if (
+            not np.isfinite(team_returns).all()
+            or not np.isfinite(cmax_values).all()
+            or np.any(cmax_values <= 0.0)
+        ):
+            raise ValueError('Team-time potential objective contains NaN or Inf.')
+        if np.any(self.decision_times[:T] > cmax_values[None, :] + 1e-4):
+            raise ValueError('A recorded decision time exceeds final Cmax.')
+        potentials = np.asarray(
+            self.potential_values[:T + 1], dtype=np.float64
+        ).copy()
+        if not np.isfinite(potentials).all():
+            raise ValueError('Team-time potential contains NaN or Inf.')
+        if np.any(potentials > 1e-4):
+            raise ValueError(
+                'IGA potential must be non-positive because it is the '
+                'negative of a non-negative calibrated state cost.'
+            )
+        raw_terminal_potential = np.zeros(
+            self.n_rollout_threads, dtype=np.float64
+        )
+        terminal_steps = np.full(
+            self.n_rollout_threads, T, dtype=np.int64
+        )
+        for env_idx in range(self.n_rollout_threads):
+            terminal_candidates = np.flatnonzero(np.all(
+                self.masks[1:T + 1, env_idx, :, 0] <= 0.0,
+                axis=1,
+            ))
+            terminal_step = (
+                int(terminal_candidates[0]) + 1
+                if terminal_candidates.size else T
+            )
+            terminal_steps[env_idx] = terminal_step
+            raw_terminal_potential[env_idx] = potentials[
+                terminal_step, env_idx
+            ]
+            potentials[terminal_step:, env_idx] = 0.0
+
+        self.team_returns[:] = team_returns
+        self.returns.fill(0.0)
+        self.rewards.fill(0.0)
+        cmax_coef = float(cmax_coef)
+        potential_coef = float(potential_coef)
+        if not np.isfinite(cmax_coef) or not np.isfinite(potential_coef):
+            raise ValueError('Team-time coefficients must be finite.')
+        if cmax_coef <= 0.0 or potential_coef < 0.0:
+            raise ValueError(
+                'cmax_coef must be positive and potential_coef non-negative.'
+            )
+
+        for env_idx, terminal_return in enumerate(team_returns):
+            state_returns = (
+                terminal_return
+                + cmax_coef * self.decision_times[:T, env_idx]
+                - potential_coef * potentials[:T, env_idx]
+            )
+            active = self.active_masks[:T, env_idx, :, 0] > 0.0
+            self.returns[:T, env_idx, :, 0] = np.where(
+                active, state_returns[:, None], 0.0
+            )
+            trainable = active & (
+                self.policy_masks[:T, env_idx, :, 0] > 0.0
+            )
+            for step in range(T):
+                count = int(trainable[step].sum())
+                if count <= 0:
+                    continue
+                elapsed = (
+                    self.decision_times[step + 1, env_idx]
+                    - self.decision_times[step, env_idx]
+                )
+                shaping = potential_coef * (
+                    potentials[step + 1, env_idx]
+                    - potentials[step, env_idx]
+                )
+                self.rewards[step, env_idx, :, 0][trainable[step]] = (
+                    (-cmax_coef * elapsed + shaping) / float(count)
+                )
+
+        expected_telescoping = -potential_coef * potentials[0]
+        observed_telescoping = potential_coef * np.sum(
+            potentials[1:] - potentials[:-1], axis=0
+        )
+        telescoping_error = observed_telescoping - expected_telescoping
+        self.last_team_time_potential_diagnostics = {
+            'potential_coef': potential_coef,
+            'initial_potential_mean': float(np.mean(potentials[0])),
+            'raw_terminal_potential_abs_max': float(
+                np.max(np.abs(raw_terminal_potential))
+            ),
+            'terminal_step_min': int(np.min(terminal_steps)),
+            'terminal_step_max': int(np.max(terminal_steps)),
+            'telescoping_max_abs_error': float(
+                np.max(np.abs(telescoping_error))
+            ),
+        }
+        if self.last_team_time_potential_diagnostics[
+            'telescoping_max_abs_error'
+        ] > 1e-5:
+            raise RuntimeError(
+                'Team-time potential failed its telescoping invariant: '
+                f'{self.last_team_time_potential_diagnostics}'
+            )
+        self.value_preds[T] = np.nan_to_num(
+            next_value, nan=0.0, posinf=1e4, neginf=-1e4
+        )
+        return dict(self.last_team_time_potential_diagnostics)
 
 
     def build_case_balanced_weights(self, role_loss_coef):

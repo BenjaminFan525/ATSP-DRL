@@ -36,6 +36,7 @@ from onpolicy.utils.shared_eval import (
     set_affinity,
     set_process_affinity,
 )
+from onpolicy.utils.checkpoint_contract import stage1_observation_metadata
 
 
 def atomic_json(path: Path, payload: dict) -> None:
@@ -57,7 +58,7 @@ def remove_option(command: list[str], flag: str, has_value: bool = True) -> None
 
 def source_training_args(path: Path) -> list[str]:
     payload = json.loads(path.read_text(encoding='utf-8'))
-    command = list(payload['command'])
+    command = list(payload.get('command') or payload.get('evaluator_command') or ())
     if len(command) < 2:
         raise ValueError(f'Invalid source training command: {path}')
     args = command[2:]
@@ -67,7 +68,11 @@ def source_training_args(path: Path) -> list[str]:
         '--shared_eval_timeout_seconds',
     ):
         remove_option(args, flag, has_value=True)
-    for flag in ('--resume_stage1', '--reset_optimizers_on_resume'):
+    for flag in (
+        '--resume_stage1',
+        '--reset_optimizers_on_resume',
+        '--reset_value_normalizer_on_resume',
+    ):
         remove_option(args, flag, has_value=False)
     return args
 
@@ -135,6 +140,7 @@ def configure_runner(cli: argparse.Namespace):
     all_args.selection_checkpoint_dir = None
     all_args.resume_stage1 = False
     all_args.reset_optimizers_on_resume = False
+    all_args.reset_value_normalizer_on_resume = False
     all_args.plane_bc_pretrain_epochs = 0
     all_args.n_rollout_threads = all_args.n_eval_rollout_threads
 
@@ -227,6 +233,27 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
             f'Shared evaluator architecture mismatch: '
             f'requested={requested_arch}, service={configured_arch}'
         )
+    requested_global_mode = str(request.get('global_feature_mode', ''))
+    expected_observation = stage1_observation_metadata(
+        requested_global_mode
+    )
+    if request.get('observation_schema_id') != expected_observation[
+        'observation_schema_id'
+    ]:
+        raise ValueError('Shared-evaluator observation schema mismatch.')
+    if request.get('environment_semantics_version') != expected_observation[
+        'environment_semantics_version'
+    ]:
+        raise ValueError('Shared-evaluator environment semantics mismatch.')
+    supported_global_modes = set(
+        runner.envs.call('set_global_feature_mode', requested_global_mode)
+    )
+    if supported_global_modes != {requested_global_mode}:
+        raise RuntimeError(
+            'Validation workers rejected global feature mode: '
+            f'requested={requested_global_mode!r}, '
+            f'observed={sorted(supported_global_modes)!r}'
+        )
     bind_evaluator(eval_envs, request['cpu_set'], pool)
 
     seed = int(request['seed'])
@@ -243,6 +270,16 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
     if checkpoint.get('request_id') != request.get('request_id'):
         raise ValueError('Shared-evaluator checkpoint request ID mismatch.')
+    if checkpoint.get('global_feature_mode') != requested_global_mode:
+        raise ValueError('Shared-evaluator global feature metadata mismatch.')
+    if checkpoint.get('observation_schema_id') != expected_observation[
+        'observation_schema_id'
+    ]:
+        raise ValueError('Shared-evaluator checkpoint schema mismatch.')
+    if checkpoint.get(
+        'environment_semantics_version'
+    ) != expected_observation['environment_semantics_version']:
+        raise ValueError('Shared-evaluator checkpoint semantics mismatch.')
     runner.policy.load_model_state(checkpoint['model'])
     runner.trainer.policy = runner.policy
     runner.policy.ac.tau = float(request['evaluation_tau'])
