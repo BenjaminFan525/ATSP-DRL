@@ -19,6 +19,12 @@ class Device:
         # stand).  A reserved device is physically idle after arrival, but it
         # must not be consumed by another waiting aircraft.
         self.reserved_for_plane = None
+        # Ordinary mobile resources may be pre-positioned for a future job.
+        # Keep this separate from ``reserved_for_plane`` because the latter is
+        # the physical R014/aircraft departure handshake.  The environment
+        # owns the lease lifecycle and stores only JSON-like scalar metadata
+        # here so reset/deepcopy remain deterministic.
+        self.lookahead_reservation = None
         # 将设备注册到站点设备列表中
         self.site.devices.append(self)
 
@@ -148,3 +154,4 @@ class Device:
         self.is_disable = False
         self.left_rec_time = 0
         self.reserved_for_plane = None
+        self.lookahead_reservation = None

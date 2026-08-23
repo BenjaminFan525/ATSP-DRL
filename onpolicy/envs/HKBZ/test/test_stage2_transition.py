@@ -62,6 +62,23 @@ class ResourceJointTransitionTest(unittest.TestCase):
             for parameter in policy.ac.critic_param.parameters()
         ))
 
+        policy.set_resource_joint_training_stage(
+            train_device=False,
+            train_transporter=True,
+        )
+        self.assertFalse(any(
+            parameter.requires_grad
+            for parameter in policy.ac.device_actor_param.parameters()
+        ))
+        self.assertTrue(all(
+            parameter.requires_grad
+            for parameter in policy.ac.transporter_actor_param.parameters()
+        ))
+        self.assertTrue(all(
+            parameter.requires_grad
+            for parameter in policy.ac.critic_param.parameters()
+        ))
+
     def test_deprecated_stage_aliases_normalize_to_resource_joint(self):
         for alias in ("device_bc", "frozen_joint"):
             with self.subTest(alias=alias):

@@ -54,12 +54,29 @@ from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import (  # noqa: E402
 )
 from onpolicy.config.config import get_config  # noqa: E402
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv  # noqa: E402
+from onpolicy.envs.HKBZ.resource_teacher import (  # noqa: E402
+    DecodedResourceGenome as ProductionDecodedGenome,
+    ResourceGenomeLayout as ProductionGenomeLayout,
+    iga_preferences as production_iga_preferences,
+    mixed_resource_actions as production_mixed_resource_actions,
+    resource_role as production_resource_role,
+)
 from onpolicy.envs.env_wrappers import GraphSubprocVecEnv  # noqa: E402
 from onpolicy.envs.HKBZ.experiment.eval_common import (  # noqa: E402
     build_case_env_config,
     completion_details,
     list_case_folders,
     write_json,
+)
+from onpolicy.envs.HKBZ.experiment.resource_wait_metrics import (  # noqa: E402
+    summarize_aircraft_resource_wait,
+)
+from onpolicy.utils.checkpoint_contract import (  # noqa: E402
+    validate_stage1_checkpoint_contract,
+)
+from onpolicy.utils.training_stage import (  # noqa: E402
+    protected_parameter_summary,
+    validate_stage1_m2_checkpoint,
 )
 
 
@@ -103,6 +120,7 @@ def _validate_stage1_handoff(
     handoff_path: Path,
     checkpoint_path: Path,
     command_path: Path,
+    command_key: str | None = None,
 ) -> dict:
     """Require the frozen policy to be an authoritative closed-Stage1 M2."""
 
@@ -119,6 +137,12 @@ def _validate_stage1_handoff(
             or command_path != expected_command
         ):
             continue
+        expected_command_key = record.get("source_command_key")
+        if command_key is not None and command_key != expected_command_key:
+            raise ValueError(
+                f"Stage1 source-command key mismatch for seed {seed}: "
+                f"{command_key!r} != {expected_command_key!r}"
+            )
         actual_checkpoint_sha = _sha256_file(checkpoint_path)
         actual_command_sha = _sha256_file(command_path)
         if actual_checkpoint_sha != record.get("sha256"):
@@ -140,6 +164,7 @@ def _validate_stage1_handoff(
             "handoff_sha256": _sha256_file(handoff_path),
             "checkpoint_sha256": actual_checkpoint_sha,
             "source_command_sha256": actual_command_sha,
+            "source_command_key": expected_command_key,
         }
     raise ValueError(
         "Checkpoint/source-command pair is not present in the authoritative "
@@ -484,6 +509,16 @@ def mixed_resource_actions(
     return actions, decisions
 
 
+# Search and training deliberately execute the same production decoder.  The
+# definitions above remain temporarily as source-compatible documentation for
+# old serialized experiment imports, but no live path below uses them.
+GenomeLayout = ProductionGenomeLayout
+DecodedGenome = ProductionDecodedGenome
+_iga_preferences = production_iga_preferences
+mixed_resource_actions = production_mixed_resource_actions
+_role = production_resource_role
+
+
 class ResourceAblationEnv(AircraftScheduleEnv):
     """Subprocess-friendly environment with configured hybrid dispatch.
 
@@ -605,6 +640,17 @@ class ResourceAblationEnv(AircraftScheduleEnv):
             "makespan": float(self.total_time),
             "error": None,
             "completion": details,
+            "aircraft_resource_wait": summarize_aircraft_resource_wait(
+                self.trajectory_log,
+                self.device_trajectory_log,
+                {
+                    code: self._needed_mobile_types(code)
+                    for code in self.job_code_list
+                },
+                transporter_type=self.TRANSPORTER_RESOURCE_TYPE,
+                aircraft_count=len(self.flights_data),
+                include_events=self._ablation_record,
+            ),
         }
         if self._ablation_record:
             result.update(
@@ -739,6 +785,182 @@ class BatchedCaseEvaluator:
             if step_count >= self.frozen_evaluator.max_steps and not result["completed"]:
                 result["error"] = "max_steps_exceeded"
                 result["completion"]["max_steps"] = self.frozen_evaluator.max_steps
+            selected.append(result)
+        return selected
+
+
+class CrossCaseBatchedEvaluator:
+    """Evaluate one candidate for many *different* cases in one GPU batch.
+
+    The Stage-1 IGA runner parallelizes independent cases, not candidates from
+    one case.  Stage-2 still needs the frozen plane network at every simulator
+    step, so this class keeps that case-level parallelism while collecting all
+    currently active plane observations into one policy forward pass.  Each
+    environment process owns exactly one case and one candidate at a time.
+
+    A deadline may interrupt an unfinished candidate between environment
+    steps.  Already completed rows remain valid, and the caller can retain its
+    explicit anytime incumbent exactly as the Stage-1 optimizer does.
+    """
+
+    def __init__(
+        self,
+        frozen_evaluator: "FrozenPlaneEvaluator",
+        case_paths: Sequence[Path],
+        *,
+        async_graph_clone_workers: int = 4,
+    ):
+        self.frozen_evaluator = frozen_evaluator
+        self.case_paths = tuple(Path(path) for path in case_paths)
+        if not self.case_paths:
+            raise ValueError("Cross-case evaluator requires at least one case.")
+        env_fns = []
+        for case_path in self.case_paths:
+            config = frozen_evaluator._env_config(case_path)
+
+            def make_env(config=config):
+                return ResourceAblationEnv(copy.deepcopy(config))
+
+            env_fns.append(make_env)
+        self.envs = GraphSubprocVecEnv(
+            env_fns,
+            ipc_timeout_seconds=1800.0,
+            async_graph_clone_workers=min(
+                int(async_graph_clone_workers), len(env_fns)
+            ),
+        )
+
+    def close(self):
+        self.envs.close()
+
+    def run(
+        self,
+        specs: Sequence[Mapping],
+        *,
+        deadline: float | None = None,
+        abort_at_deadline: bool = True,
+    ) -> list[dict]:
+        if len(specs) != len(self.case_paths):
+            raise ValueError(
+                f"Cross-case batch has {len(specs)} specs for "
+                f"{len(self.case_paths)} cases."
+            )
+        self.envs.call_each(
+            "configure_resource_ablation",
+            [
+                (
+                    spec["backends"],
+                    spec.get("layout"),
+                    spec.get("chromosome"),
+                    bool(spec.get("record_trace", False)),
+                )
+                for spec in specs
+            ],
+        )
+        obs, dones, infos = self.envs.reset()
+        policy = self.frozen_evaluator.policy
+        policy_args = self.frozen_evaluator.policy_args
+        pool_size = len(self.case_paths)
+        env_n_agents = int(infos["active_agents"].shape[1])
+        n_plane_agents = 24
+        rnn_states = np.zeros(
+            (
+                pool_size,
+                n_plane_agents,
+                int(policy_args.recurrent_N),
+                int(policy_args.hidden_size),
+            ),
+            dtype=np.float32,
+        )
+        done_flags = np.all(dones, axis=1)
+        step_count = 0
+        policy_batches = 0
+        policy_rows = 0
+        deadline_interrupted = False
+        started = time.perf_counter()
+        while (
+            not np.all(done_flags)
+            and step_count < self.frozen_evaluator.max_steps
+        ):
+            if (
+                abort_at_deadline
+                and deadline is not None
+                and time.monotonic() >= float(deadline)
+            ):
+                deadline_interrupted = True
+                break
+            active = np.asarray(infos["active_agents"], dtype=bool).copy()
+            active[done_flags, :] = False
+            active[:, n_plane_agents:] = False
+            active_rows = np.flatnonzero(
+                active[:, :n_plane_agents].any(axis=1)
+            )
+            actions = np.zeros(
+                (pool_size, env_n_agents, 2), dtype=np.int64
+            )
+            if active_rows.size:
+                with torch.inference_mode():
+                    plane_actions, next_rnn = policy.act(
+                        graph_obs=[
+                            _plane_only_graph(obs[int(index)], n_plane_agents)
+                            for index in active_rows
+                        ],
+                        rnn_states=rnn_states[active_rows],
+                        active_agents=active[
+                            active_rows, :n_plane_agents, None
+                        ],
+                        last_op_indices=np.asarray(
+                            infos["last_op_indices"]
+                        )[active_rows, :n_plane_agents],
+                        last_site_indices=np.asarray(
+                            infos["last_site_indices"]
+                        )[active_rows, :n_plane_agents],
+                        deterministic=True,
+                        agent_types=np.asarray(infos["agent_types"])[
+                            active_rows, :n_plane_agents
+                        ],
+                    )
+                actions[active_rows, :n_plane_agents] = (
+                    plane_actions.detach().cpu().numpy()
+                )
+                rnn_states[active_rows] = next_rnn.detach().cpu().numpy()
+                policy_batches += 1
+                policy_rows += int(active_rows.size)
+            resource_actions = self.envs.call("ablation_resource_actions")
+            for index, resource_action in enumerate(resource_actions):
+                if not done_flags[index]:
+                    actions[index, n_plane_agents:, :2] = np.asarray(
+                        resource_action
+                    )[n_plane_agents:, :2]
+            obs, _, dones, infos = self.envs.step(actions)
+            newly_done = np.all(dones, axis=1)
+            rnn_states[newly_done] = 0.0
+            done_flags |= newly_done
+            step_count += 1
+
+        results = self.envs.call("ablation_result")
+        wall_seconds = float(time.perf_counter() - started)
+        selected = []
+        for index, result in enumerate(results):
+            result = dict(result)
+            result["wall_seconds"] = wall_seconds
+            result["batch_step_count"] = int(step_count)
+            result["batch_policy_forwards"] = int(policy_batches)
+            result["batch_policy_rows"] = int(policy_rows)
+            result["deadline_interrupted"] = bool(
+                deadline_interrupted and not result["completed"]
+            )
+            if result["deadline_interrupted"]:
+                result["error"] = "search_deadline_exceeded"
+            elif (
+                step_count >= self.frozen_evaluator.max_steps
+                and not result["completed"]
+            ):
+                result["error"] = "max_steps_exceeded"
+                result["completion"]["max_steps"] = (
+                    self.frozen_evaluator.max_steps
+                )
+            result["case"] = self.case_paths[index].name
             selected.append(result)
         return selected
 
@@ -980,14 +1202,45 @@ def optimize_all_arms_batched(
     return searches, finals
 
 
-def _load_policy_args(command_path: Path):
+def _resolve_source_command(
+    command_path: Path,
+    command_key: str | None = None,
+) -> list[str]:
     payload = json.loads(command_path.read_text(encoding="utf-8"))
-    command = payload.get("command")
+    command_payload = payload
+    if command_key is not None:
+        commands = payload.get("commands")
+        if not isinstance(commands, Mapping) or command_key not in commands:
+            raise ValueError(
+                f"No command key {command_key!r} in {command_path}"
+            )
+        command_payload = commands[command_key]
+        if not isinstance(command_payload, Mapping):
+            raise ValueError(
+                f"Command entry {command_key!r} is not a mapping in "
+                f"{command_path}"
+            )
+    command = command_payload.get("command")
     if not isinstance(command, list):
-        shell_command = payload.get("shell_command")
+        command = command_payload.get("argv")
+    if not isinstance(command, list):
+        shell_command = command_payload.get("shell_command")
         if not shell_command:
-            raise ValueError(f"No command in {command_path}")
+            shell_command = command_payload.get("shell")
+        if not shell_command:
+            suffix = f" key={command_key!r}" if command_key else ""
+            raise ValueError(f"No command in {command_path}{suffix}")
         command = shlex.split(shell_command)
+    if len(command) < 2:
+        raise ValueError(f"Malformed source command in {command_path}")
+    return [str(value) for value in command]
+
+
+def _load_policy_args(
+    command_path: Path,
+    command_key: str | None = None,
+):
+    command = _resolve_source_command(command_path, command_key)
     parser = get_config()
     parser.add_argument("--scenario_name", default="simple")
     parser.add_argument("--ac_config", default=str(ROOT / "onpolicy/config/ac.yaml"))
@@ -1007,14 +1260,39 @@ def load_frozen_policy(
     command_path: Path,
     device: torch.device,
     evaluation_tau: float,
+    command_key: str | None = None,
 ) -> tuple[GNN_MAPPOPolicy, object, dict]:
-    args = _load_policy_args(command_path)
+    args = _load_policy_args(command_path, command_key)
     ac_config = yaml.safe_load(
         Path(args.ac_config).read_text(encoding="utf-8")
     )
     policy = GNN_MAPPOPolicy(args, ac_config, device=device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
+    observation_contract = validate_stage1_checkpoint_contract(
+        checkpoint,
+        global_feature_mode=args.global_feature_mode,
+        plane_order_mode=args.plane_order_mode,
+        plane_pair_decoder=args.plane_pair_decoder,
+        strict_metadata=True,
+    )
+    handoff_contract = validate_stage1_m2_checkpoint(
+        checkpoint,
+        policy.ac.state_dict(),
+        plane_order_mode=args.plane_order_mode,
+        plane_pair_decoder=args.plane_pair_decoder,
+        global_feature_mode=args.global_feature_mode,
+    )
     policy.load_model_state(checkpoint["model"])
+    loaded_summary = protected_parameter_summary(policy.ac.state_dict())
+    if loaded_summary != handoff_contract["source_summary"]:
+        raise ValueError(
+            "Frozen Stage1 protected tensors were not loaded bit-for-bit."
+        )
+    checkpoint["_resource_iga_validation"] = {
+        "observation_contract": observation_contract,
+        "handoff_contract": handoff_contract,
+        "loaded_protected_summary": loaded_summary,
+    }
     policy.ac.tau = float(evaluation_tau)
     policy.ac.eval()
     for parameter in policy.ac.parameters():
@@ -1379,7 +1657,10 @@ def run_shard(args) -> None:
     checkpoint_path = args.checkpoint.resolve()
     command_path = args.source_command.resolve()
     handoff = _validate_stage1_handoff(
-        args.handoff.resolve(), checkpoint_path, command_path
+        args.handoff.resolve(),
+        checkpoint_path,
+        command_path,
+        args.source_command_key,
     )
     output_dir = args.output_dir.resolve()
     cases = list_case_folders(str(args.dataset_dir), args.max_cases)
@@ -1394,6 +1675,7 @@ def run_shard(args) -> None:
         command_path,
         device,
         args.evaluation_tau,
+        handoff.get("source_command_key"),
     )
     evaluator = FrozenPlaneEvaluator(
         policy,
@@ -1781,6 +2063,7 @@ def parse_args(argv: Sequence[str] | None = None):
         / "result/hkbz_train_logs/stage1_next_round_20260808_r1/commands/"
         "formal_M2_bc_kl_anneal_seed1.json",
     )
+    parser.add_argument("--source-command-key", default=None)
     parser.add_argument(
         "--handoff",
         type=Path,

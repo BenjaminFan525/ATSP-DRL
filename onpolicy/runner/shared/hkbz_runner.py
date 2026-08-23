@@ -28,10 +28,12 @@ from onpolicy.utils.shared_eval import (
 )
 from onpolicy.utils.training_stage import (
     CANONICAL_RESOURCE_JOINT,
+    PROTECTED_RESOURCE_JOINT_PREFIXES,
     normalize_training_stage,
     protected_parameter_summary,
     source_checkpoint_metadata,
     validate_stage1_m2_checkpoint,
+    validate_stage2_recovery_checkpoint,
 )
 from onpolicy.utils.checkpoint_contract import (
     stage1_observation_metadata,
@@ -171,14 +173,16 @@ class HKBZ_Runner(Runner):
             getattr(self.all_args, 'hindsight_reward_mode', '')
         )
         self.team_return_mode = self.hindsight_reward_mode in {
-            'team_cmax', 'team_time', 'team_time_potential'
+            'team_cmax', 'team_time', 'team_time_potential',
+            'team_time_resource_potential',
         }
         self.team_time_return_mode = self.hindsight_reward_mode in {
-            'team_time', 'team_time_potential'
+            'team_time', 'team_time_potential',
+            'team_time_resource_potential',
         }
-        self.team_time_potential_mode = (
-            self.hindsight_reward_mode == 'team_time_potential'
-        )
+        self.team_time_potential_mode = self.hindsight_reward_mode in {
+            'team_time_potential', 'team_time_resource_potential'
+        }
         self.recovery_checkpoint_interval_shards = max(
             0,
             int(getattr(self.all_args, 'recovery_checkpoint_interval_shards', 1)),
@@ -188,7 +192,37 @@ class HKBZ_Runner(Runner):
         self.current_shard = -1
         self.last_team_cmax_mean = 0.0
         self.last_team_return_mean_raw = 0.0
+        self.last_resource_wait_mean = 0.0
+        self.last_resource_critical_wait_mean = 0.0
+        self.last_resource_early_arrival_mean = 0.0
+        self.last_resource_predicted_lateness_mean = 0.0
         self.last_team_cycle_count = 0
+        self.resource_wait_constraint_target = float(getattr(
+            self.all_args, 'resource_wait_constraint_target', 0.0
+        ))
+        self.resource_wait_dual_lr = float(getattr(
+            self.all_args, 'resource_wait_dual_lr', 0.0
+        ))
+        self.resource_wait_dual_max = float(getattr(
+            self.all_args, 'resource_wait_dual_max', 0.05
+        ))
+        self.resource_wait_dual_value = float(getattr(
+            self.all_args, 'resource_lateness_coef', 0.0
+        ))
+        if any(
+            not np.isfinite(value) or value < 0.0
+            for value in (
+                self.resource_wait_constraint_target,
+                self.resource_wait_dual_lr,
+                self.resource_wait_dual_max,
+                self.resource_wait_dual_value,
+            )
+        ):
+            raise ValueError('Resource-wait dual settings must be finite and non-negative.')
+        self.resource_wait_dual_enabled = bool(
+            self.resource_wait_constraint_target > 0.0
+            and self.resource_wait_dual_lr > 0.0
+        )
         self.plane_bc_pretrain_epochs = int(
             getattr(self.all_args, 'plane_bc_pretrain_epochs', 0)
         )
@@ -350,7 +384,25 @@ class HKBZ_Runner(Runner):
             )
         )
         self.device_bc_pretrain_epochs = int(getattr(self.all_args, 'device_bc_pretrain_epochs', 0))
+        self.resource_bc_checkpoint = str(
+            getattr(self.all_args, 'resource_bc_checkpoint', '') or ''
+        )
+        self.resource_bc_checkpoint_source = None
         self.device_bc_lr = float(getattr(self.all_args, 'device_bc_lr', 0.0))
+        self.device_bc_teacher = str(
+            getattr(self.all_args, 'device_bc_teacher', 'heuristic')
+        )
+        self.device_bc_role_balanced = bool(
+            getattr(self.all_args, 'device_bc_role_balanced', False)
+        )
+        self.device_bc_dagger_schedule = self._parse_epoch_schedule(
+            getattr(self.all_args, 'device_bc_dagger_schedule', '1.0'),
+            'device_bc_dagger_schedule',
+        ) or (1.0,)
+        self.device_bc_dagger_rng = np.random.default_rng(
+            int(getattr(self.all_args, 'device_bc_dagger_seed', 0))
+            or (int(self.all_args.seed) + 97001)
+        )
         self.device_bc_min_labels_per_epoch = int(getattr(self.all_args, 'device_bc_min_labels_per_epoch', 0))
         self.device_bc_min_rollouts_per_epoch = int(getattr(self.all_args, 'device_bc_min_rollouts_per_epoch', 1))
         self.device_bc_max_rollouts_per_epoch = int(getattr(self.all_args, 'device_bc_max_rollouts_per_epoch', 0))
@@ -358,8 +410,17 @@ class HKBZ_Runner(Runner):
         self.device_bc_plane_deterministic = bool(getattr(self.all_args, 'device_bc_plane_deterministic', True))
         self.device_bc_reset_optim = bool(getattr(self.all_args, 'device_bc_reset_optim', True))
         self.device_bc_save = bool(getattr(self.all_args, 'device_bc_save', True))
+        self.resource_ppo_update_schedule = str(getattr(
+            self.all_args, 'resource_ppo_update_schedule', 'joint'
+        ))
+        self.resource_ppo_warmup_epochs = max(0, int(getattr(
+            self.all_args, 'resource_ppo_warmup_epochs', 1
+        )))
         self.gnn_freeze_epochs = max(0, int(getattr(self.all_args, 'gnn_freeze_epochs', 0)))
         self.plane_freeze_epochs = max(0, int(getattr(self.all_args, 'plane_freeze_epochs', 0)))
+        self.stage2_allow_shared_unfreeze = bool(getattr(
+            self.all_args, 'stage2_allow_shared_unfreeze', False
+        ))
         self.plane_order_freeze_epochs = max(
             0, int(getattr(self.all_args, 'plane_order_freeze_epochs', 0))
         )
@@ -397,9 +458,15 @@ class HKBZ_Runner(Runner):
                 self.all_args, 'selection_ood_scale_weight', 0.05
             )),
         }
+        self.selection_tail_fraction = float(getattr(
+            self.all_args, 'selection_tail_fraction', 0.10
+        ))
+        self.selection_tail_weight = float(getattr(
+            self.all_args, 'selection_tail_weight', 0.25
+        ))
         if self.evaluation_tau <= 0.0:
             raise ValueError("--evaluation_tau must be positive.")
-        if self.selection_metric not in {'iid', 'composite'}:
+        if self.selection_metric not in {'iid', 'composite', 'composite_tail'}:
             raise ValueError(
                 f"Unsupported checkpoint selection metric: {self.selection_metric}"
             )
@@ -410,11 +477,16 @@ class HKBZ_Runner(Runner):
                 "Composite selection weights must sum to 1.0, got "
                 f"{self.selection_weights}."
             )
+        if not 0.0 < self.selection_tail_fraction <= 1.0:
+            raise ValueError('--selection_tail_fraction must be in (0, 1].')
+        if not 0.0 <= self.selection_tail_weight <= 1.0:
+            raise ValueError('--selection_tail_weight must be in [0, 1].')
         self.best_eval_makespan = np.inf
         self.best_eval_iid_makespan = np.inf
         self.best_eval_composite_makespan = np.inf
         self.eval_epochs_without_improvement = 0
         self.exact_resume_stage1 = False
+        self.exact_resume_stage2 = False
         self.resume_epoch = 0
         self.resume_completed_shards = 0
         self.resume_total_shards = 0
@@ -447,6 +519,7 @@ class HKBZ_Runner(Runner):
         self.last_eval_raw_makespan = np.inf
         self.last_eval_iid_makespan = np.inf
         self.last_eval_composite_makespan = np.inf
+        self.last_eval_tail_makespan = np.inf
         self.last_eval_selection_score = np.inf
         self.eval_canary_rounds = max(
             1,
@@ -456,6 +529,12 @@ class HKBZ_Runner(Runner):
         # interval
         self.save_interval = self.all_args.save_interval
         self.use_eval = self.all_args.use_eval
+        self.skip_pre_ppo_eval = bool(
+            getattr(self.all_args, 'skip_pre_ppo_eval', False)
+        )
+        self.skip_epoch_eval = bool(
+            getattr(self.all_args, 'skip_epoch_eval', False)
+        )
         self.eval_interval = max(1, int(self.all_args.eval_interval))
         self.log_interval = self.all_args.log_interval
 
@@ -499,6 +578,12 @@ class HKBZ_Runner(Runner):
 
         if self.checkpoint_dir is not None:
             self.restore(self.checkpoint_dir)
+        if (
+            self.resource_bc_checkpoint
+            and not self.evaluation_only
+            and not self.exact_resume_stage2
+        ):
+            self._restore_shared_resource_bc(self.resource_bc_checkpoint)
 
         self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
         if self._pending_value_normalizer_state is not None and self.trainer.value_normalizer is not None:
@@ -535,19 +620,25 @@ class HKBZ_Runner(Runner):
         stage = normalize_training_stage(self.training_stage)
         self.training_stage = stage
         self.all_args.training_stage = stage
+        resume_stage1 = bool(getattr(self.all_args, 'resume_stage1', False))
+        resume_stage2 = bool(getattr(self.all_args, 'resume_stage2', False))
+        if resume_stage1 and resume_stage2:
+            raise ValueError(
+                "--resume_stage1 and --resume_stage2 are mutually exclusive."
+            )
         if (
             self.reset_optimizers_on_resume
-            and not bool(getattr(self.all_args, 'resume_stage1', False))
+            and not (resume_stage1 or resume_stage2)
         ):
             raise ValueError(
-                "--reset_optimizers_on_resume requires --resume_stage1."
+                "--reset_optimizers_on_resume requires an explicit resume flag."
             )
         if (
             self.reset_value_normalizer_on_resume
-            and not bool(getattr(self.all_args, 'resume_stage1', False))
+            and not (resume_stage1 or resume_stage2)
         ):
             raise ValueError(
-                "--reset_value_normalizer_on_resume requires --resume_stage1."
+                "--reset_value_normalizer_on_resume requires an explicit resume flag."
             )
         if self.plane_bc_pretrain_epochs < 0:
             raise ValueError("--plane_bc_pretrain_epochs must be non-negative.")
@@ -566,6 +657,25 @@ class HKBZ_Runner(Runner):
         if self.device_bc_max_rollouts_per_epoch < 0:
             raise ValueError(
                 "--device_bc_max_rollouts_per_epoch must be non-negative."
+            )
+        if self.device_bc_teacher not in {'heuristic', 'iga'}:
+            raise ValueError(
+                "--device_bc_teacher must be either 'heuristic' or 'iga'."
+            )
+        if any(rate > 1.0 for rate in self.device_bc_dagger_schedule):
+            raise ValueError(
+                'Every --device_bc_dagger_schedule rate must be in [0, 1].'
+            )
+        if self.resource_ppo_update_schedule not in {
+            'joint', 'ordinary_then_joint', 'r014_then_joint'
+        }:
+            raise ValueError('Invalid --resource_ppo_update_schedule.')
+        if (
+            self.resource_ppo_update_schedule != 'joint'
+            and self.resource_ppo_warmup_epochs >= self.num_episodes
+        ):
+            raise ValueError(
+                'Role-specific resource PPO warmup must leave a joint epoch.'
             )
         if self.plane_bc_shared_lr_scale < 0.0:
             raise ValueError("--plane_bc_shared_lr_scale must be non-negative.")
@@ -674,6 +784,8 @@ class HKBZ_Runner(Runner):
             raise ValueError("--canary_max_regression must be non-negative.")
         if self.canary_eval_interval_shards > 0 and not self.use_eval:
             raise ValueError("shard canary evaluation requires --use_eval.")
+        if self.skip_pre_ppo_eval and not self.use_eval:
+            raise ValueError("--skip_pre_ppo_eval requires --use_eval.")
         if self.canary_stop_on_regression and self.canary_eval_interval_shards <= 0:
             raise ValueError(
                 "--canary_stop_on_regression requires "
@@ -695,7 +807,10 @@ class HKBZ_Runner(Runner):
         if stage == 'plane_pretrain':
             if resource_policy != 'heuristic':
                 raise ValueError("plane_pretrain requires resource_policy='heuristic'.")
-            resume_stage1 = bool(getattr(self.all_args, 'resume_stage1', False))
+            if resume_stage2:
+                raise ValueError(
+                    "--resume_stage2 is only valid for resource_joint recovery."
+                )
             if self.checkpoint_dir is not None and not resume_stage1:
                 raise ValueError(
                     "plane_pretrain checkpoint restore requires explicit --resume_stage1."
@@ -756,10 +871,15 @@ class HKBZ_Runner(Runner):
                     "resource_joint requires the Stage-1 M2 checkpoint "
                     "via --checkpoint_dir."
                 )
-            if self.device_bc_pretrain_epochs <= 0:
+            if self.device_bc_pretrain_epochs <= 0 and not self.resource_bc_checkpoint:
                 raise ValueError(
-                    "resource_joint requires --device_bc_pretrain_epochs > 0 "
-                    "for the in-run resource BC warm-up."
+                    "resource_joint requires either in-run DeviceBC or a "
+                    "completed --resource_bc_checkpoint."
+                )
+            if self.device_bc_pretrain_epochs > 0 and self.resource_bc_checkpoint:
+                raise ValueError(
+                    '--resource_bc_checkpoint is mutually exclusive with '
+                    '--device_bc_pretrain_epochs > 0.'
                 )
             if self.num_episodes <= 0:
                 raise ValueError(
@@ -771,40 +891,59 @@ class HKBZ_Runner(Runner):
                     "resource_joint resource BC must not train the shared GNN; "
                     "remove --device_bc_train_gnn."
                 )
-            if not self.device_bc_reset_optim:
+            if self.device_bc_pretrain_epochs > 0 and not self.device_bc_reset_optim:
                 raise ValueError(
                     "resource_joint requires fresh PPO optimizers after resource BC; "
                     "--no_device_bc_reset_optim is rejected."
                 )
-            if not self.device_bc_save:
+            if self.device_bc_pretrain_epochs > 0 and not self.device_bc_save:
                 raise ValueError(
                     "resource_joint requires the resource_bc_warmup checkpoint; "
                     "--no_device_bc_save is rejected."
                 )
-            if self.device_bc_min_labels_per_epoch <= 0:
+            if (
+                self.device_bc_pretrain_epochs > 0
+                and self.device_bc_min_labels_per_epoch <= 0
+            ):
                 raise ValueError(
                     "resource_joint requires a positive "
                     "--device_bc_min_labels_per_epoch; insufficient BC labels "
                     "must fail closed."
                 )
-            if self.device_bc_max_rollouts_per_epoch <= 0:
+            if (
+                self.device_bc_pretrain_epochs > 0
+                and self.device_bc_max_rollouts_per_epoch <= 0
+            ):
                 raise ValueError(
                     "resource_joint requires --device_bc_max_rollouts_per_epoch > 0."
                 )
+            if self.plane_freeze_epochs < self.num_episodes:
+                raise ValueError(
+                    'resource_joint must freeze the plane decoder for every '
+                    'Stage-2 PPO epoch: --plane_freeze_epochs must be at '
+                    'least --num_episodes.'
+                )
             if (
                 self.gnn_freeze_epochs < self.num_episodes
-                or self.plane_freeze_epochs < self.num_episodes
+                and not self.stage2_allow_shared_unfreeze
             ):
                 raise ValueError(
-                    "resource_joint must freeze the shared encoder and plane "
-                    "actor for every Stage-2 PPO epoch: both "
-                    "--gnn_freeze_epochs and --plane_freeze_epochs must be "
-                    "at least --num_episodes."
+                    'resource_joint must freeze the shared encoder for every '
+                    'Stage-2 PPO epoch unless the explicit experimental '
+                    '--stage2_allow_shared_unfreeze arm is selected.'
                 )
-            if bool(getattr(self.all_args, 'resume_stage1', False)):
+            if resume_stage1:
                 raise ValueError(
                     "resource_joint consumes an immutable Stage-1 M2 source; "
                     "--resume_stage1 is only valid for plane_pretrain recovery."
+                )
+            if resume_stage2 and (
+                self.reset_optimizers_on_resume
+                or self.reset_value_normalizer_on_resume
+            ):
+                raise ValueError(
+                    "Exact resource_joint recovery must restore optimizer and "
+                    "ValueNorm state; reset-on-resume flags are not allowed."
                 )
             if self.selection_checkpoint_dir is not None:
                 raise ValueError(
@@ -1151,12 +1290,13 @@ class HKBZ_Runner(Runner):
         raw_makespan,
         evaluation_label=None,
     ):
-        """Derive IID/composite scores without allowing test cases to select."""
+        """Derive IID/composite/tail scores without letting test select."""
         raw_makespan = float(raw_makespan)
         self.last_eval_raw_makespan = raw_makespan
         if not np.isfinite(raw_makespan):
             self.last_eval_iid_makespan = np.inf
             self.last_eval_composite_makespan = np.inf
+            self.last_eval_tail_makespan = np.inf
             self.last_eval_selection_score = np.inf
             return np.inf
 
@@ -1203,7 +1343,23 @@ class HKBZ_Runner(Runner):
         else:
             self.last_eval_composite_makespan = np.inf
 
-        if self.selection_metric == 'composite':
+        finite_makespans = sorted((
+            float(record['makespan'])
+            for record in self.last_eval_records
+            if np.isfinite(record.get('makespan', np.inf))
+        ), reverse=True)
+        if finite_makespans:
+            tail_count = max(1, int(math.ceil(
+                float(getattr(self, 'selection_tail_fraction', 0.10))
+                * len(finite_makespans)
+            )))
+            self.last_eval_tail_makespan = float(np.mean(
+                finite_makespans[:tail_count]
+            ))
+        else:
+            self.last_eval_tail_makespan = np.inf
+
+        if self.selection_metric in {'composite', 'composite_tail'}:
             if not np.isfinite(self.last_eval_composite_makespan):
                 missing = [
                     name
@@ -1214,7 +1370,24 @@ class HKBZ_Runner(Runner):
                     "Composite checkpoint selection requires IID, OOD-stress, "
                     f"and OOD-scale validation cases; missing={missing}."
                 )
-            score = self.last_eval_composite_makespan
+            if self.selection_metric == 'composite_tail':
+                if not np.isfinite(self.last_eval_tail_makespan):
+                    raise RuntimeError(
+                        'composite_tail selection requires finite validation '
+                        'case makespans.'
+                    )
+                score = (
+                    (1.0 - float(getattr(
+                        self, 'selection_tail_weight', 0.25
+                    )))
+                    * self.last_eval_composite_makespan
+                    + float(getattr(
+                        self, 'selection_tail_weight', 0.25
+                    ))
+                    * self.last_eval_tail_makespan
+                )
+            else:
+                score = self.last_eval_composite_makespan
         else:
             score = self.last_eval_iid_makespan
         self.last_eval_selection_score = float(score)
@@ -1231,6 +1404,7 @@ class HKBZ_Runner(Runner):
             'eval_composite_makespan': float(
                 self.last_eval_composite_makespan
             ),
+            'eval_tail_makespan': float(self.last_eval_tail_makespan),
             'evaluation_tau': float(self.evaluation_tau),
             'stage': str(stage),
         }
@@ -1326,6 +1500,7 @@ class HKBZ_Runner(Runner):
             'eval_raw_makespan': self.last_eval_raw_makespan,
             'eval_iid_makespan': self.last_eval_iid_makespan,
             'eval_composite_makespan': self.last_eval_composite_makespan,
+            'eval_tail_makespan': self.last_eval_tail_makespan,
             'eval_selection_score': self.last_eval_selection_score,
             'best_eval_iid_makespan': self.best_eval_iid_makespan,
             'best_eval_composite_makespan': (
@@ -1336,10 +1511,30 @@ class HKBZ_Runner(Runner):
         return info
 
     def _protected_resource_joint_summary(self):
-        """Return the current bitwise identity of Stage-2 protected state."""
+        """Return the immutable subset for the configured Stage-2 arm."""
         if not hasattr(self, 'policy') or self.policy is None:
             return None
-        return protected_parameter_summary(self.policy.ac.state_dict())
+        return protected_parameter_summary(
+            self.policy.ac.state_dict(),
+            prefixes=self._resource_joint_protected_prefixes(),
+        )
+
+    def _resource_joint_protected_prefixes(self):
+        """Plane-only protection is explicit for shared-encoder adaptation."""
+        return (
+            ('plane_sel_enc.', 'actor.', 'plane_order_actor.')
+            if self.stage2_allow_shared_unfreeze
+            else PROTECTED_RESOURCE_JOINT_PREFIXES
+        )
+
+    def _stage1_handoff_summary(self):
+        """Always validate the complete immutable Stage-1 hand-off."""
+        if not hasattr(self, 'policy') or self.policy is None:
+            return None
+        return protected_parameter_summary(
+            self.policy.ac.state_dict(),
+            prefixes=PROTECTED_RESOURCE_JOINT_PREFIXES,
+        )
 
     def _resource_actor_summary(self):
         """Return a bitwise digest for the Stage-2 trainable actor scope."""
@@ -1690,19 +1885,67 @@ class HKBZ_Runner(Runner):
         if any(not np.isclose(float(value), potential_beta) for value in observed):
             raise RuntimeError('Training workers rejected potential-beta schedule.')
         self.current_iga_potential_beta = float(potential_beta)
+        wait_coefficients = self.envs.call(
+            'set_resource_lateness_coef', self.resource_wait_dual_value
+        )
+        if any(
+            not np.isclose(float(value), self.resource_wait_dual_value)
+            for value in wait_coefficients
+        ):
+            raise RuntimeError(
+                'Training workers rejected resource-wait dual coefficient.'
+            )
+        self.all_args.resource_lateness_coef = float(
+            self.resource_wait_dual_value
+        )
         self.bc_reference_kl_coef = bc_kl_coef
         self.trainer.bc_reference_kl_coef = bc_kl_coef
         self._report_progress(
             'epoch_method_schedule_applied',
             iga_potential_beta=float(potential_beta),
             bc_reference_kl_coef=float(bc_kl_coef),
+            resource_wait_dual_value=float(self.resource_wait_dual_value),
         )
         print(
             f'[MethodSchedule] epoch={episode + 1} '
             f'iga_potential_beta={potential_beta:.6g} '
-            f'bc_reference_kl_coef={bc_kl_coef:.6g}.',
+            f'bc_reference_kl_coef={bc_kl_coef:.6g} '
+            f'resource_wait_dual={self.resource_wait_dual_value:.6g}.',
             flush=True,
         )
+
+    def _update_resource_wait_dual(self, observed_wait, episode):
+        if not self.resource_wait_dual_enabled:
+            return self.resource_wait_dual_value
+        observed_wait = float(observed_wait)
+        if not np.isfinite(observed_wait):
+            raise RuntimeError('Observed resource wait for dual update is non-finite.')
+        violation = (
+            observed_wait - self.resource_wait_constraint_target
+        ) / self.resource_wait_constraint_target
+        previous = float(self.resource_wait_dual_value)
+        self.resource_wait_dual_value = float(np.clip(
+            previous + self.resource_wait_dual_lr * violation,
+            0.0,
+            self.resource_wait_dual_max,
+        ))
+        self._report_progress(
+            'resource_wait_dual_updated',
+            resource_wait_observed=float(observed_wait),
+            resource_wait_target=float(self.resource_wait_constraint_target),
+            resource_wait_normalized_violation=float(violation),
+            resource_wait_dual_previous=previous,
+            resource_wait_dual_value=float(self.resource_wait_dual_value),
+            epoch=int(episode + 1),
+        )
+        print(
+            f'[ResourceWaitDual] epoch={episode + 1} '
+            f'observed={observed_wait:.3f} '
+            f'target={self.resource_wait_constraint_target:.3f} '
+            f'lambda={previous:.6g}->{self.resource_wait_dual_value:.6g}.',
+            flush=True,
+        )
+        return self.resource_wait_dual_value
 
     def run(self):   
         
@@ -1714,12 +1957,14 @@ class HKBZ_Runner(Runner):
             # attach its run_status callback.  Publish the completed hand-off
             # as the first runtime event and carry its immutable digest into
             # every later status/checkpoint.
-            self.resource_joint_phase = 'stage1_m2_restored'
+            if not self.exact_resume_stage2:
+                self.resource_joint_phase = 'stage1_m2_restored'
             if self.protected_parameter_summary_before_bc is None:
                 self.protected_parameter_summary_before_bc = (
                     self._protected_resource_joint_summary()
                 )
-        if self.exact_resume_stage1:
+        exact_resume = self.exact_resume_stage1 or self.exact_resume_stage2
+        if exact_resume:
             self._copy_resume_artifacts()
             self._report_progress(
                 'training_resumed',
@@ -1727,6 +1972,7 @@ class HKBZ_Runner(Runner):
                 resume_epoch=int(self.resume_epoch),
                 resume_completed_shards=int(self.resume_completed_shards),
                 total_num_steps=int(self.total_num_steps),
+                exact_resume_stage2=bool(self.exact_resume_stage2),
             )
         else:
             self._report_progress(
@@ -1739,10 +1985,10 @@ class HKBZ_Runner(Runner):
                 ),
             )
 
-        if self.plane_bc_pretrain_epochs > 0:
+        if self.plane_bc_pretrain_epochs > 0 and not self.exact_resume_stage2:
             self.plane_bc_pretrain()
 
-        if self.device_bc_pretrain_epochs > 0:
+        if self.device_bc_pretrain_epochs > 0 and not self.exact_resume_stage2:
             if self.training_stage == CANONICAL_RESOURCE_JOINT:
                 self._set_resource_joint_phase(
                     'resource_bc_warmup',
@@ -1757,13 +2003,18 @@ class HKBZ_Runner(Runner):
                 'resource_joint_ppo',
                 event='resource_joint_ppo_started',
             )
-            self.resource_actor_summary_before_ppo = (
-                self._resource_actor_summary()
-            )
+            if self.resource_actor_summary_before_ppo is None:
+                self.resource_actor_summary_before_ppo = (
+                    self._resource_actor_summary()
+                )
 
         # Establish a pre-PPO baseline so checkpoint selection cannot silently
         # discard a stronger loaded/BC-warmed policy after the first update.
-        if self.use_eval and not self.exact_resume_stage1:
+        if (
+            self.use_eval
+            and not exact_resume
+            and not self.skip_pre_ppo_eval
+        ):
             baseline_makespan = float(self.eval(evaluation_label='pre_ppo'))
             self.log_train(
                 self._evaluation_log_info(baseline_makespan),
@@ -1827,7 +2078,7 @@ class HKBZ_Runner(Runner):
             )
             return
 
-        first_episode = int(self.resume_epoch) if self.exact_resume_stage1 else 0
+        first_episode = int(self.resume_epoch) if exact_resume else 0
         pbar = tqdm(range(first_episode, episodes),
               desc="Training",    
               unit="episode",     
@@ -1842,9 +2093,10 @@ class HKBZ_Runner(Runner):
             self.current_epoch = episode
             self.current_shard = -1
             self._apply_epoch_method_schedules(episode)
+            epoch_resource_wait_values = []
             first_shard = (
                 int(self.resume_completed_shards)
-                if self.exact_resume_stage1 and episode == first_episode
+                if exact_resume and episode == first_episode
                 else 0
             )
             self._report_progress(
@@ -1862,9 +2114,29 @@ class HKBZ_Runner(Runner):
                     freeze_order=freeze_order,
                 )
             elif self.training_stage == CANONICAL_RESOURCE_JOINT:
+                train_device = True
+                train_transporter = True
+                if episode < self.resource_ppo_warmup_epochs:
+                    if self.resource_ppo_update_schedule == 'ordinary_then_joint':
+                        train_transporter = False
+                    elif self.resource_ppo_update_schedule == 'r014_then_joint':
+                        train_device = False
                 self.policy.set_resource_joint_training_stage(
                     freeze_plane=freeze_plane,
                     freeze_shared=freeze_shared,
+                    train_device=train_device,
+                    train_transporter=train_transporter,
+                )
+                self._report_progress(
+                    'resource_ppo_trainability_configured',
+                    resource_ppo_update_schedule=(
+                        self.resource_ppo_update_schedule
+                    ),
+                    resource_ppo_warmup_epochs=int(
+                        self.resource_ppo_warmup_epochs
+                    ),
+                    train_device_actor=bool(train_device),
+                    train_transporter_actor=bool(train_transporter),
                 )
             else:
                 self.policy.set_joint_training_stage(
@@ -1961,6 +2233,10 @@ class HKBZ_Runner(Runner):
                 update_started_at = time.monotonic()
                 self._reset_cuda_peak_memory()
                 self.compute()
+                if self.team_return_mode:
+                    epoch_resource_wait_values.append(
+                        float(self.last_resource_wait_mean)
+                    )
 
                 global_shard_idx = episode * self.num_envs + shard_idx
                 actor_update_enabled = global_shard_idx >= self.actor_warmup_shards
@@ -2033,6 +2309,18 @@ class HKBZ_Runner(Runner):
                 if self.team_return_mode:
                     train_infos['team_cmax_mean'] = self.last_team_cmax_mean
                     train_infos['team_return_mean_raw'] = self.last_team_return_mean_raw
+                    train_infos['resource_wait_seconds_mean'] = (
+                        self.last_resource_wait_mean
+                    )
+                    train_infos['resource_critical_wait_seconds_mean'] = (
+                        self.last_resource_critical_wait_mean
+                    )
+                    train_infos['resource_early_arrival_seconds_mean'] = (
+                        self.last_resource_early_arrival_mean
+                    )
+                    train_infos[
+                        'resource_predicted_lateness_seconds_mean'
+                    ] = self.last_resource_predicted_lateness_mean
                     train_infos['team_cycle_count'] = float(self.last_team_cycle_count)
                 
                 self.total_num_steps += self.n_rollout_threads * rollout_steps
@@ -2090,6 +2378,36 @@ class HKBZ_Runner(Runner):
                     actor_step_completion_rate=float(
                         train_infos.get('actor_step_completion_rate', 1.0)
                     ),
+                    actor_accumulation_graphs_mean=float(
+                        train_infos.get(
+                            'actor_accumulation_graphs_mean', 0.0
+                        )
+                    ),
+                    actor_accumulation_graphs_min=float(
+                        train_infos.get(
+                            'actor_accumulation_graphs_min', 0.0
+                        )
+                    ),
+                    actor_accumulation_graphs_max=float(
+                        train_infos.get(
+                            'actor_accumulation_graphs_max', 0.0
+                        )
+                    ),
+                    critic_accumulation_graphs_mean=float(
+                        train_infos.get(
+                            'critic_accumulation_graphs_mean', 0.0
+                        )
+                    ),
+                    critic_accumulation_graphs_min=float(
+                        train_infos.get(
+                            'critic_accumulation_graphs_min', 0.0
+                        )
+                    ),
+                    critic_accumulation_graphs_max=float(
+                        train_infos.get(
+                            'critic_accumulation_graphs_max', 0.0
+                        )
+                    ),
                     actor_kl_stop_reason_code=int(
                         train_infos.get('actor_kl_stop_reason_code', 0.0)
                     ),
@@ -2146,6 +2464,11 @@ class HKBZ_Runner(Runner):
                     if canary_requested_stop:
                         break
 
+            if epoch_resource_wait_values:
+                self._update_resource_wait_dual(
+                    float(np.mean(epoch_resource_wait_values)), episode
+                )
+
             if self.training_stage == CANONICAL_RESOURCE_JOINT:
                 # Bind the checkpoint written below to the protected-state
                 # evidence from this PPO epoch, not to a stale pre-update
@@ -2174,6 +2497,7 @@ class HKBZ_Runner(Runner):
             }
             should_eval = (
                 self.use_eval
+                and not self.skip_epoch_eval
                 and not canary_requested_stop
                 and (
                     episode == 0
@@ -2212,6 +2536,9 @@ class HKBZ_Runner(Runner):
                     ),
                     'eval_composite_makespan': float(
                         self.last_eval_composite_makespan
+                    ),
+                    'eval_tail_makespan': float(
+                        self.last_eval_tail_makespan
                     ),
                     'evaluation_tau': float(self.evaluation_tau),
                     'selection_metric': self.selection_metric,
@@ -2317,6 +2644,22 @@ class HKBZ_Runner(Runner):
                 raise RuntimeError("Non-finite team Cmax objective returned by environment.")
             self.last_team_cmax_mean = float(cmax_values.mean())
             self.last_team_return_mean_raw = float(team_returns_raw.mean())
+            self.last_resource_wait_mean = float(np.mean([
+                objective.get('resource_wait_seconds', 0.0)
+                for objective in objectives
+            ]))
+            self.last_resource_critical_wait_mean = float(np.mean([
+                objective.get('resource_critical_wait_seconds', 0.0)
+                for objective in objectives
+            ]))
+            self.last_resource_early_arrival_mean = float(np.mean([
+                objective.get('resource_early_arrival_seconds', 0.0)
+                for objective in objectives
+            ]))
+            self.last_resource_predicted_lateness_mean = float(np.mean([
+                objective.get('resource_predicted_lateness_seconds', 0.0)
+                for objective in objectives
+            ]))
             self.last_team_cycle_count = int(
                 sum(bool(objective['cycle_terminated']) for objective in objectives)
             )
@@ -3642,9 +3985,23 @@ class HKBZ_Runner(Runner):
         for param, requires_grad in previous:
             param.requires_grad_(requires_grad)
 
-    def _merge_device_bc_actions(self, policy_actions, label_results):
+    def _merge_device_bc_actions(
+        self,
+        policy_actions,
+        label_results,
+        teacher_execution_mask=None,
+    ):
         actions = policy_actions.astype(np.int64, copy=True)
         label_actions = policy_actions.astype(np.int64, copy=True)
+        if teacher_execution_mask is None:
+            teacher_execution_mask = np.ones(len(label_results), dtype=bool)
+        teacher_execution_mask = np.asarray(
+            teacher_execution_mask, dtype=bool
+        ).reshape(-1)
+        if teacher_execution_mask.size != len(label_results):
+            raise ValueError(
+                'Stage2 DAgger execution mask must have one value per env.'
+            )
         stats = {
             'preferred_assignments': 0,
             'greedy_legal_fills': 0,
@@ -3652,19 +4009,53 @@ class HKBZ_Runner(Runner):
             'noop_after_claimed': 0,
             'deferred_noop': 0,
             'non_unique_candidate_masks': 0,
+            'ordinary_labels': 0,
+            'transporter_labels': 0,
+            'teacher_executed_envs': int(teacher_execution_mask.sum()),
+            'student_executed_envs': int(
+                teacher_execution_mask.size - teacher_execution_mask.sum()
+            ),
         }
         for env_idx, result in enumerate(label_results):
             env_actions = result['actions'] if isinstance(result, dict) else result
             env_info = result.get('info', {}) if isinstance(result, dict) else {}
             env_actions = np.asarray(env_actions, dtype=np.int64)
             device_slice = slice(self.policy.ac.max_plane_agents, self.num_agents)
-            actions[env_idx, device_slice, :2] = env_actions[device_slice, :2]
+            # DAgger mixes complete resource joint actions per environment.
+            # Per-device mixing could duplicate request claims and create an
+            # action that neither teacher nor student actually produced.
+            if teacher_execution_mask[env_idx]:
+                actions[env_idx, device_slice, :2] = env_actions[
+                    device_slice, :2
+                ]
+            # Labels are always queried on the state actually visited, even
+            # when the student joint action is executed.
             label_actions[env_idx, device_slice, :2] = env_actions[device_slice, :2]
-            for key in stats:
+            for key in (
+                'preferred_assignments',
+                'greedy_legal_fills',
+                'real_dispatches',
+                'noop_after_claimed',
+                'deferred_noop',
+                'non_unique_candidate_masks',
+                'ordinary_labels',
+                'transporter_labels',
+            ):
                 stats[key] += int(env_info.get(key, 0))
         return actions, label_actions, stats
 
-    def _device_bc_update(self, obs, rnn_states, active_masks, last_actions, label_actions, infos, optimizer):
+    def _device_bc_update(
+        self,
+        obs,
+        rnn_states,
+        active_masks,
+        last_actions,
+        label_actions,
+        infos,
+        optimizer,
+        encoder_cache=None,
+        return_rnn_states=False,
+    ):
         agent_types = infos.get(
             'agent_types',
             np.zeros((self.n_rollout_threads, self.num_agents), dtype=np.int64),
@@ -3675,18 +4066,131 @@ class HKBZ_Runner(Runner):
         )
         label_count = int(device_mask_np.sum())
         if label_count == 0:
-            return None
+            return (None, None) if return_rnn_states else None
 
-        action_log_probs, _, decision_mask = self.policy.evaluate_actions(
-            Batch.from_data_list(obs),
+        # Fail with an actionable teacher/network contract diff before the
+        # pointer actor raises a context-free replay-mask error.
+        mismatch_details = []
+        for env_idx, graph in enumerate(obs):
+            request_masks = np.asarray(
+                graph.request_mask_matrix.detach().cpu(), dtype=bool
+            ).copy()
+            initial_request_masks = request_masks.copy()
+            raw_lookahead = getattr(graph, 'request_is_lookahead', None)
+            request_is_lookahead = (
+                np.asarray(raw_lookahead.detach().cpu(), dtype=bool).reshape(-1)
+                if raw_lookahead is not None
+                else np.zeros(request_masks.shape[1], dtype=bool)
+            )
+            active_row = active_masks[env_idx, :, 0] > 0.0
+            for agent_idx in range(
+                self.policy.ac.max_plane_agents, self.num_agents
+            ):
+                if not active_row[agent_idx]:
+                    continue
+                current_real = request_masks[agent_idx, 1:].copy()
+                later_real = (
+                    request_masks[agent_idx + 1:, 1:].any(axis=0)
+                    if agent_idx + 1 < self.num_agents
+                    else np.zeros_like(current_real)
+                )
+                blocking_real = current_real & ~request_is_lookahead[1:]
+                last_chance = blocking_real & ~later_real
+                has_last_chance = bool(last_chance.any())
+                legal = np.zeros(request_masks.shape[1], dtype=bool)
+                legal[0] = not has_last_chance
+                legal[1:] = last_chance if has_last_chance else current_real
+                chosen = int(label_actions[env_idx, agent_idx, 0])
+                if chosen < 0 or chosen >= legal.size or not legal[chosen]:
+                    mismatch_details.append({
+                        'env': int(env_idx),
+                        'agent': int(agent_idx),
+                        'chosen': chosen,
+                        'legal': np.flatnonzero(legal).astype(int).tolist(),
+                        'prior_active_resource_labels': [
+                            {
+                                'agent': int(previous),
+                                'chosen': int(label_actions[
+                                    env_idx, previous, 0
+                                ]),
+                                'active': bool(active_row[previous]),
+                            }
+                            for previous in range(
+                                self.policy.ac.max_plane_agents, agent_idx
+                            )
+                            if int(label_actions[env_idx, previous, 0]) > 0
+                        ],
+                        'real_request_audit': {
+                            int(request_id): {
+                                'initial_eligible_agents': [
+                                    int(value) for value in np.flatnonzero(
+                                        initial_request_masks[:, request_id]
+                                    )
+                                    if value >= self.policy.ac.max_plane_agents
+                                ],
+                                'active_eligible_agents': [
+                                    int(value) for value in np.flatnonzero(
+                                        initial_request_masks[:, request_id]
+                                        & active_row
+                                    )
+                                    if value >= self.policy.ac.max_plane_agents
+                                ],
+                                'teacher_assigned_agents': [
+                                    int(value) for value in np.flatnonzero(
+                                        label_actions[env_idx, :, 0]
+                                        == request_id
+                                    )
+                                    if value >= self.policy.ac.max_plane_agents
+                                ],
+                            }
+                            for request_id in np.flatnonzero(legal[1:]) + 1
+                        },
+                    })
+                    continue
+                if chosen > 0:
+                    request_masks[:, chosen] = False
+        if mismatch_details:
+            raise RuntimeError(
+                'Stage2 BC teacher joint action diverges from the policy '
+                f'autoregressive mask: {mismatch_details[:8]}'
+            )
+
+        # Only resource log-probabilities contribute to DeviceBC.  Masking
+        # frozen plane agents here preserves every resource mask, recurrent
+        # input and label while avoiding the otherwise duplicated plane actor
+        # work in this second forward pass.
+        resource_active_masks = np.asarray(active_masks).copy()
+        resource_active_masks[:, :self.policy.ac.max_plane_agents, :] = 0.0
+        cached_graph = (
+            encoder_cache['graph']
+            if encoder_cache is not None
+            else Batch.from_data_list(obs)
+        )
+        evaluation_outputs = self.policy.evaluate_actions(
+            cached_graph,
             rnn_states,
-            active_masks,
+            resource_active_masks,
             last_actions[..., 0],
             last_actions[..., 1],
             label_actions,
             agent_types=agent_types,
             return_decision_mask=True,
+            encoded_graph=(
+                encoder_cache['encoded_graph']
+                if encoder_cache is not None else None
+            ),
+            return_rnn_states=return_rnn_states,
         )
+        if return_rnn_states:
+            (
+                action_log_probs,
+                _,
+                decision_mask,
+                evaluated_rnn_states,
+            ) = evaluation_outputs
+        else:
+            action_log_probs, _, decision_mask = evaluation_outputs
+            evaluated_rnn_states = None
         device_mask = torch.as_tensor(device_mask_np, dtype=torch.bool, device=self.device)
         # Forced no-op labels after another device claimed the request have a
         # single legal action and exactly zero gradient. Counting them in the
@@ -3694,9 +4198,74 @@ class HKBZ_Runner(Runner):
         device_mask &= decision_mask.bool()
         label_count = int(device_mask.sum().item())
         if label_count == 0:
-            return None
-        device_mask = device_mask.float()
-        loss = -(action_log_probs * device_mask).sum() / device_mask.sum().clamp_min(1.0)
+            return (
+                (None, evaluated_rnn_states)
+                if return_rnn_states else None
+            )
+        ordinary_count = 0
+        transporter_count = 0
+        ordinary_loss_value = 0.0
+        transporter_loss_value = 0.0
+        if self.device_bc_role_balanced:
+            agent_types_tensor = torch.as_tensor(
+                agent_types, dtype=torch.long, device=self.device
+            )
+            role_losses = []
+            for role_id, role_name in (
+                (self.policy.ac.AGENT_TYPE_DEVICE, 'ordinary'),
+                (self.policy.ac.AGENT_TYPE_TRANSPORTER, 'transporter'),
+            ):
+                role_mask = device_mask & (agent_types_tensor == role_id)
+                role_count = int(role_mask.sum().item())
+                if role_count == 0:
+                    continue
+                role_loss = -action_log_probs[role_mask].mean()
+                role_losses.append(role_loss)
+                if role_name == 'ordinary':
+                    ordinary_count = role_count
+                    ordinary_loss_value = float(role_loss.detach().cpu().item())
+                else:
+                    transporter_count = role_count
+                    transporter_loss_value = float(role_loss.detach().cpu().item())
+            if not role_losses:
+                return (
+                    (None, evaluated_rnn_states)
+                    if return_rnn_states else None
+                )
+            loss = torch.stack(role_losses).mean()
+        else:
+            float_mask = device_mask.float()
+            loss = -(
+                action_log_probs * float_mask
+            ).sum() / float_mask.sum().clamp_min(1.0)
+            agent_types_tensor = torch.as_tensor(
+                agent_types, dtype=torch.long, device=self.device
+            )
+            ordinary_count = int((
+                device_mask
+                & (agent_types_tensor == self.policy.ac.AGENT_TYPE_DEVICE)
+            ).sum().item())
+            transporter_count = int((
+                device_mask
+                & (agent_types_tensor == self.policy.ac.AGENT_TYPE_TRANSPORTER)
+            ).sum().item())
+            if ordinary_count:
+                ordinary_mask = device_mask & (
+                    agent_types_tensor == self.policy.ac.AGENT_TYPE_DEVICE
+                )
+                ordinary_loss_value = float(
+                    (-action_log_probs[ordinary_mask].mean())
+                    .detach().cpu().item()
+                )
+            if transporter_count:
+                transporter_mask = device_mask & (
+                    agent_types_tensor
+                    == self.policy.ac.AGENT_TYPE_TRANSPORTER
+                )
+                transporter_loss_value = float(
+                    (-action_log_probs[transporter_mask].mean())
+                    .detach().cpu().item()
+                )
         if not torch.isfinite(loss):
             raise RuntimeError(f"Device BC loss is not finite: {loss.item()}.")
 
@@ -3711,11 +4280,19 @@ class HKBZ_Runner(Runner):
             raise RuntimeError(f"Device BC grad norm is not finite: {grad_norm.item()}.")
         optimizer.step()
 
-        return {
+        update_info = {
             'device_bc_loss': float(loss.detach().cpu().item()),
             'device_bc_grad_norm': float(grad_norm.detach().cpu().item()),
             'device_bc_labels': label_count,
+            'device_bc_ordinary_labels': ordinary_count,
+            'device_bc_transporter_labels': transporter_count,
+            'device_bc_ordinary_loss': ordinary_loss_value,
+            'device_bc_transporter_loss': transporter_loss_value,
         }
+        return (
+            (update_info, evaluated_rnn_states)
+            if return_rnn_states else update_info
+        )
 
     def device_bc_pretrain(self):
         if getattr(self.all_args, 'resource_policy', 'heuristic') != 'drl':
@@ -3764,6 +4341,15 @@ class HKBZ_Runner(Runner):
             weight_decay=self.all_args.weight_decay,
         )
         bc_step = 0
+        progress_interval = max(
+            10.0,
+            min(
+                60.0,
+                float(getattr(
+                    self.all_args, 'status_heartbeat_seconds', 60.0
+                )),
+            ),
+        )
 
         try:
             self.policy.ac.eval()
@@ -3778,16 +4364,30 @@ class HKBZ_Runner(Runner):
                 ncols=160,
             )
             for epoch in pbar:
+                epoch_started_at = time.monotonic()
+                teacher_rate = float(
+                    self.device_bc_dagger_schedule[
+                        min(epoch, len(self.device_bc_dagger_schedule) - 1)
+                    ]
+                )
                 epoch_info = {
                     'device_bc_loss': 0.0,
                     'device_bc_grad_norm': 0.0,
                     'device_bc_labels': 0,
+                    'device_bc_ordinary_labels': 0,
+                    'device_bc_transporter_labels': 0,
+                    'device_bc_ordinary_loss': 0.0,
+                    'device_bc_transporter_loss': 0.0,
                     'preferred_assignments': 0,
                     'greedy_legal_fills': 0,
                     'real_dispatches': 0,
                     'noop_after_claimed': 0,
                     'deferred_noop': 0,
                     'non_unique_candidate_masks': 0,
+                    'ordinary_labels': 0,
+                    'transporter_labels': 0,
+                    'teacher_executed_envs': 0,
+                    'student_executed_envs': 0,
                 }
                 update_count = 0
                 rollout_count = 0
@@ -3798,8 +4398,22 @@ class HKBZ_Runner(Runner):
                     self.num_envs,
                 )
                 min_labels = max(0, self.device_bc_min_labels_per_epoch)
+                self._report_progress(
+                    'resource_bc_epoch_started',
+                    device_bc_epoch=int(epoch + 1),
+                    device_bc_total_epochs=int(
+                        self.device_bc_pretrain_epochs
+                    ),
+                    device_bc_rollout=0,
+                    device_bc_total_rollouts=int(max_rollouts),
+                    device_bc_env_step=0,
+                    device_bc_updates=0,
+                    device_bc_labels=0,
+                )
 
                 while rollout_count < max_rollouts:
+                    rollout_started_at = time.monotonic()
+                    last_progress_report = rollout_started_at
                     obs, dones, infos = self.envs.reset()
                     rnn_states = np.zeros(
                         (self.n_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size),
@@ -3810,26 +4424,87 @@ class HKBZ_Runner(Runner):
 
                     for step in range(self.episode_length):
                         active_masks = self._active_masks_from_info(infos)
-                        with torch.no_grad():
-                            _, policy_actions, _, next_rnn_states = self.policy.get_actions(
-                                Batch.from_data_list(obs),
-                                rnn_states,
-                                active_masks,
-                                last_actions[..., 0],
-                                last_actions[..., 1],
-                                deterministic=self.device_bc_plane_deterministic,
-                                agent_types=infos.get('agent_types', None),
+                        dedicated_teacher_forcing = bool(
+                            teacher_rate >= 1.0 - 1e-12
+                        )
+                        collection_active_masks = active_masks
+                        if dedicated_teacher_forcing:
+                            # Every live environment will execute the complete
+                            # teacher resource action.  The first forward only
+                            # needs frozen plane actions/RNN state; resource
+                            # RNN state is obtained from the supervised replay
+                            # below, before its optimizer step.  This removes a
+                            # redundant resource-pointer pass while preserving
+                            # the exact recurrent trajectory.
+                            collection_active_masks = np.asarray(
+                                active_masks
+                            ).copy()
+                            collection_active_masks[
+                                :,
+                                self.policy.ac.max_plane_agents:,
+                                :,
+                            ] = 0.0
+                        teacher_method = (
+                            'resource_iga_teacher_actions'
+                            if self.device_bc_teacher == 'iga'
+                            else 'heuristic_device_actions'
+                        )
+                        teacher_rpc_pending = False
+                        if self.safe_dagger_teacher_overlap:
+                            self.envs.call_async(
+                                teacher_method, return_info=True
                             )
+                            teacher_rpc_pending = True
+                        try:
+                            with torch.no_grad():
+                                (
+                                    policy_actions,
+                                    next_rnn_states,
+                                    encoder_cache,
+                                ) = self.policy.get_actor_actions(
+                                    Batch.from_data_list(obs),
+                                    rnn_states,
+                                    collection_active_masks,
+                                    last_actions[..., 0],
+                                    last_actions[..., 1],
+                                    deterministic=(
+                                        self.device_bc_plane_deterministic
+                                    ),
+                                    agent_types=infos.get(
+                                        'agent_types', None
+                                    ),
+                                    return_encoder_cache=True,
+                                )
+                        except BaseException:
+                            if teacher_rpc_pending:
+                                try:
+                                    self.envs.call_wait()
+                                except BaseException:
+                                    pass
+                            raise
                         policy_actions = _t2n(policy_actions)
                         next_rnn_states = _t2n(next_rnn_states)
 
-                        label_results = self.envs.call('heuristic_device_actions', return_info=True)
+                        label_results = (
+                            self.envs.call_wait()
+                            if teacher_rpc_pending
+                            else self.envs.call(
+                                teacher_method, return_info=True
+                            )
+                        )
+                        teacher_execution_mask = (
+                            self.device_bc_dagger_rng.random(
+                                self.n_rollout_threads
+                            ) < teacher_rate
+                        )
+                        teacher_execution_mask &= ~env_done_flags
                         actions, label_actions, label_stats = self._merge_device_bc_actions(
                             policy_actions,
                             label_results,
+                            teacher_execution_mask,
                         )
 
-                        update_info = self._device_bc_update(
+                        update_result = self._device_bc_update(
                             obs,
                             rnn_states,
                             active_masks,
@@ -3837,7 +4512,24 @@ class HKBZ_Runner(Runner):
                             label_actions,
                             infos,
                             optimizer,
+                            encoder_cache=encoder_cache,
+                            return_rnn_states=dedicated_teacher_forcing,
                         )
+                        if dedicated_teacher_forcing:
+                            update_info, resource_rnn_states = update_result
+                            if resource_rnn_states is not None:
+                                resource_rnn_states = _t2n(
+                                    resource_rnn_states
+                                )
+                                next_rnn_states[
+                                    :,
+                                    self.policy.ac.max_plane_agents:,
+                                ] = resource_rnn_states[
+                                    :,
+                                    self.policy.ac.max_plane_agents:,
+                                ]
+                        else:
+                            update_info = update_result
                         if update_info is not None:
                             update_count += 1
                             bc_step += 1
@@ -3860,6 +4552,24 @@ class HKBZ_Runner(Runner):
                         last_actions = actions
 
                         env_done_flags = np.all(dones, axis=1)
+                        now = time.monotonic()
+                        if now - last_progress_report >= progress_interval:
+                            self._report_progress(
+                                'resource_bc_progress',
+                                device_bc_epoch=int(epoch + 1),
+                                device_bc_total_epochs=int(
+                                    self.device_bc_pretrain_epochs
+                                ),
+                                device_bc_rollout=int(rollout_count + 1),
+                                device_bc_total_rollouts=int(max_rollouts),
+                                device_bc_env_step=int(step + 1),
+                                device_bc_updates=int(update_count),
+                                device_bc_labels=int(epoch_label_total),
+                                device_bc_elapsed_seconds=float(
+                                    now - epoch_started_at
+                                ),
+                            )
+                            last_progress_report = now
                         if self.rollout_until_done and np.all(env_done_flags):
                             break
 
@@ -3870,6 +4580,35 @@ class HKBZ_Runner(Runner):
                             f"{self.episode_length} decision steps; unfinished_envs={unfinished_envs.tolist()}."
                         )
                     rollout_count += 1
+                    rollout_seconds = max(
+                        time.monotonic() - rollout_started_at, 1e-9
+                    )
+                    self._report_progress(
+                        'resource_bc_rollout_completed',
+                        device_bc_epoch=int(epoch + 1),
+                        device_bc_total_epochs=int(
+                            self.device_bc_pretrain_epochs
+                        ),
+                        device_bc_rollout=int(rollout_count),
+                        device_bc_total_rollouts=int(max_rollouts),
+                        device_bc_env_step=int(step + 1),
+                        device_bc_updates=int(update_count),
+                        device_bc_labels=int(epoch_label_total),
+                        device_bc_rollout_seconds=float(rollout_seconds),
+                        device_bc_elapsed_seconds=float(
+                            time.monotonic() - epoch_started_at
+                        ),
+                    )
+                    print(
+                        '[DeviceBCTiming] '
+                        f'epoch={epoch + 1}/'
+                        f'{self.device_bc_pretrain_epochs}, '
+                        f'rollout={rollout_count}/{max_rollouts}, '
+                        f'steps={step + 1}, '
+                        f'seconds={rollout_seconds:.3f}, '
+                        f'labels={epoch_label_total}.',
+                        flush=True,
+                    )
                     if rollout_count >= min_rollouts and epoch_label_total >= min_labels:
                         break
 
@@ -3887,7 +4626,20 @@ class HKBZ_Runner(Runner):
                     epoch_info['device_bc_loss'] /= update_count
                     epoch_info['device_bc_grad_norm'] /= update_count
                     epoch_info['device_bc_labels'] /= update_count
+                    epoch_info['device_bc_ordinary_labels'] /= update_count
+                    epoch_info['device_bc_transporter_labels'] /= update_count
+                    epoch_info['device_bc_ordinary_loss'] /= update_count
+                    epoch_info['device_bc_transporter_loss'] /= update_count
                 epoch_info['device_bc_total_labels'] = epoch_label_total
+                execution_total = (
+                    epoch_info['teacher_executed_envs']
+                    + epoch_info['student_executed_envs']
+                )
+                epoch_info['device_bc_teacher_execution_target'] = teacher_rate
+                epoch_info['device_bc_teacher_execution_rate'] = (
+                    epoch_info['teacher_executed_envs']
+                    / max(1, execution_total)
+                )
                 if not self.use_wandb:
                     for key, value in epoch_info.items():
                         self.writter.add_scalar(f'device_bc_epoch/{key}', value, epoch + 1)
@@ -3897,6 +4649,9 @@ class HKBZ_Runner(Runner):
                     non_unique=epoch_info['non_unique_candidate_masks'],
                     dispatches=epoch_info['real_dispatches'],
                     rollouts=rollout_count,
+                    teacher_rate=epoch_info[
+                        'device_bc_teacher_execution_rate'
+                    ],
                 )
         finally:
             self._restore_requires_grad(previous_requires_grad)
@@ -3938,6 +4693,19 @@ class HKBZ_Runner(Runner):
                     self.protected_parameter_summary_after_bc
                 ),
             )
+        if (
+            self.bc_reference_kl_coef > 0.0
+            or self.bc_reference_target_kl > 0.0
+            or any(
+                value > 0.0
+                for value in self.bc_reference_kl_coef_schedule
+            )
+        ):
+            # Canonical Stage2 regularizes PPO against the resource policy
+            # produced by this run's BC/DAgger boundary.  Restoring the old
+            # Stage1 PlaneBC sibling would contain untrained resource heads.
+            self.policy.capture_bc_reference()
+            print('[Info] Captured frozen post-resource-BC reference policy.')
         if self.device_bc_save or self.training_stage == CANONICAL_RESOURCE_JOINT:
             self.save_device_bc_checkpoint()
 
@@ -4061,6 +4829,25 @@ class HKBZ_Runner(Runner):
         observation_metadata = stage1_observation_metadata(getattr(
             self.all_args, 'global_feature_mode', 'none'
         ))
+        resource_planning = {
+            'resource_release_aware_eta': bool(getattr(
+                self.all_args, 'resource_release_aware_eta', False
+            )),
+            'device_future_intent_mode': str(getattr(
+                self.all_args, 'device_future_intent_mode', 'legacy_one'
+            )),
+            'device_frontier_max_requests': int(getattr(
+                self.all_args, 'device_frontier_max_requests', 2
+            )),
+            'device_lookahead_reservation_mode': str(getattr(
+                self.all_args,
+                'device_lookahead_reservation_mode',
+                'none',
+            )),
+            'device_reservation_grace_seconds': float(getattr(
+                self.all_args, 'device_reservation_grace_seconds', 300.0
+            )),
+        }
         checkpoint = {
             'protocol_version': PROTOCOL_VERSION,
             'request_id': request_id,
@@ -4079,6 +4866,7 @@ class HKBZ_Runner(Runner):
             'environment_semantics_version': observation_metadata[
                 'environment_semantics_version'
             ],
+            'resource_planning_config': resource_planning,
         }
         self._atomic_torch_save(checkpoint, checkpoint_path)
         started = time.monotonic()
@@ -4108,6 +4896,7 @@ class HKBZ_Runner(Runner):
                 'environment_semantics_version': observation_metadata[
                     'environment_semantics_version'
                 ],
+                'resource_planning_config': resource_planning,
                 'n_eval_rollout_threads': int(self.n_eval_rollout_threads),
             })
             result = self._consume_raw_evaluation(
@@ -4188,6 +4977,33 @@ class HKBZ_Runner(Runner):
             round_finish_steps = np.zeros(self.n_eval_rollout_threads, dtype=np.int32)
             round_relocations = np.zeros(self.n_eval_rollout_threads, dtype=np.float64)
             round_max_no_progress = np.zeros(self.n_eval_rollout_threads, dtype=np.int32)
+            round_resource_wait = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_critical_wait = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_wait_p95 = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_predicted_lateness = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_early_arrival = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_wait_before_dispatch = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_wait_travel = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_wait_post_arrival = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.float64
+            )
+            round_resource_lookahead_dispatches = np.zeros(
+                self.n_eval_rollout_threads, dtype=np.int32
+            )
 
             for eval_step in range(self.episode_length):
                 self.trainer.prep_rollout()
@@ -4247,6 +5063,44 @@ class HKBZ_Runner(Runner):
                     dtype=np.int32,
                 ).reshape(-1)
                 round_max_no_progress = np.maximum(round_max_no_progress, round_no_progress)
+                for field, target in (
+                    ('resource_wait_seconds', round_resource_wait),
+                    (
+                        'resource_critical_wait_seconds',
+                        round_resource_critical_wait,
+                    ),
+                    ('resource_wait_p95_seconds', round_resource_wait_p95),
+                    (
+                        'resource_predicted_lateness_seconds',
+                        round_resource_predicted_lateness,
+                    ),
+                    (
+                        'resource_early_arrival_seconds',
+                        round_resource_early_arrival,
+                    ),
+                    (
+                        'resource_wait_before_dispatch_seconds',
+                        round_resource_wait_before_dispatch,
+                    ),
+                    (
+                        'resource_wait_travel_seconds',
+                        round_resource_wait_travel,
+                    ),
+                    (
+                        'resource_wait_post_arrival_seconds',
+                        round_resource_wait_post_arrival,
+                    ),
+                ):
+                    target[:] = np.asarray(
+                        eval_infos.get(field, target), dtype=np.float64
+                    ).reshape(-1)
+                round_resource_lookahead_dispatches[:] = np.asarray(
+                    eval_infos.get(
+                        'resource_lookahead_dispatch_count',
+                        round_resource_lookahead_dispatches,
+                    ),
+                    dtype=np.int32,
+                ).reshape(-1)
                 if valid_ranks.any():
                     max_no_progress = max(
                         max_no_progress,
@@ -4299,6 +5153,33 @@ class HKBZ_Runner(Runner):
                     'finish_steps': int(round_finish_steps[rank_idx]),
                     'total_relocations': float(round_relocations[rank_idx]),
                     'max_no_progress': int(round_max_no_progress[rank_idx]),
+                    'resource_wait_seconds': float(
+                        round_resource_wait[rank_idx]
+                    ),
+                    'resource_critical_wait_seconds': float(
+                        round_resource_critical_wait[rank_idx]
+                    ),
+                    'resource_wait_p95_seconds': float(
+                        round_resource_wait_p95[rank_idx]
+                    ),
+                    'resource_predicted_lateness_seconds': float(
+                        round_resource_predicted_lateness[rank_idx]
+                    ),
+                    'resource_early_arrival_seconds': float(
+                        round_resource_early_arrival[rank_idx]
+                    ),
+                    'resource_wait_before_dispatch_seconds': float(
+                        round_resource_wait_before_dispatch[rank_idx]
+                    ),
+                    'resource_wait_travel_seconds': float(
+                        round_resource_wait_travel[rank_idx]
+                    ),
+                    'resource_wait_post_arrival_seconds': float(
+                        round_resource_wait_post_arrival[rank_idx]
+                    ),
+                    'resource_lookahead_dispatch_count': int(
+                        round_resource_lookahead_dispatches[rank_idx]
+                    ),
                     'completed': bool(valid_completed[local_idx]),
                     'cycle_terminated': bool(valid_cycle[local_idx]),
                     'timeout': bool(valid_timeout[local_idx]),
@@ -4391,7 +5272,9 @@ class HKBZ_Runner(Runner):
             )
         if len(set(case_ids)) != len(case_ids):
             raise RuntimeError('Shared evaluator returned duplicate case IDs.')
-        if getattr(self, 'selection_metric', 'iid') == 'composite':
+        if getattr(self, 'selection_metric', 'iid') in {
+            'composite', 'composite_tail'
+        }:
             lineage_fields = ('case_key', 'profile', 'distribution', 'case_sha256')
             missing_lineage = {
                 field_name: [
@@ -4574,6 +5457,60 @@ class HKBZ_Runner(Runner):
                 self.resource_bc_optimizer_reset
             ),
             'resource_bc_total_labels': int(self.resource_bc_total_labels),
+            'resource_bc_checkpoint_source': self.resource_bc_checkpoint_source,
+            'device_bc_teacher': self.device_bc_teacher,
+            'device_bc_role_balanced': bool(self.device_bc_role_balanced),
+            'device_bc_dagger_schedule': list(
+                self.device_bc_dagger_schedule
+            ),
+            'resource_lookahead_contract': {
+                'device_lookahead_dispatch': bool(getattr(
+                    self.all_args, 'device_lookahead_dispatch', False
+                )),
+                'device_lookahead_safety_margin': float(getattr(
+                    self.all_args, 'device_lookahead_safety_margin', 60.0
+                )),
+                'device_deadline_aware_dispatch': bool(getattr(
+                    self.all_args, 'device_deadline_aware_dispatch', False
+                )),
+                'device_future_intent_horizon': int(getattr(
+                    self.all_args, 'device_future_intent_horizon', 0
+                )),
+                'device_future_intent_mode': str(getattr(
+                    self.all_args, 'device_future_intent_mode', 'legacy_one'
+                )),
+                'device_frontier_max_requests': int(getattr(
+                    self.all_args, 'device_frontier_max_requests', 2
+                )),
+                'resource_release_aware_eta': bool(getattr(
+                    self.all_args, 'resource_release_aware_eta', False
+                )),
+                'device_lookahead_reservation_mode': str(getattr(
+                    self.all_args,
+                    'device_lookahead_reservation_mode',
+                    'none',
+                )),
+                'device_reservation_grace_seconds': float(getattr(
+                    self.all_args, 'device_reservation_grace_seconds', 300.0
+                )),
+                'device_departure_lookahead': bool(getattr(
+                    self.all_args, 'device_departure_lookahead', False
+                )),
+            },
+            'resource_iga_teacher_dir': str(getattr(
+                self.all_args, 'resource_iga_teacher_dir', ''
+            )),
+            'resource_iga_teacher_index': str(getattr(
+                self.all_args, 'resource_iga_teacher_index', ''
+            )),
+            'resource_ppo_update_schedule': self.resource_ppo_update_schedule,
+            'resource_ppo_warmup_epochs': int(
+                self.resource_ppo_warmup_epochs
+            ),
+            'resource_wait_dual_value': float(
+                self.resource_wait_dual_value
+            ),
+            'skip_pre_ppo_eval': bool(self.skip_pre_ppo_eval),
             'resource_actor_summary_before_ppo': (
                 self.resource_actor_summary_before_ppo
             ),
@@ -4603,6 +5540,16 @@ class HKBZ_Runner(Runner):
                 'actor_grad_accumulation_steps': int(
                     self.all_args.actor_grad_accumulation_steps
                 ),
+                'actor_grad_accumulation_target_graphs': int(getattr(
+                    self.all_args,
+                    'actor_grad_accumulation_target_graphs',
+                    0,
+                )),
+                'grad_accumulation_target_graphs': int(getattr(
+                    self.all_args,
+                    'grad_accumulation_target_graphs',
+                    0,
+                )),
                 'entropy_coef': float(self.all_args.entropy_coef),
                 'max_grad_norm': float(self.all_args.max_grad_norm),
                 'bc_reference_kl_coef': float(
@@ -4636,6 +5583,10 @@ class HKBZ_Runner(Runner):
                 'evaluation_tau': float(self.evaluation_tau),
                 'selection_metric': self.selection_metric,
                 'selection_weights': dict(self.selection_weights),
+                'selection_tail_fraction': float(
+                    self.selection_tail_fraction
+                ),
+                'selection_tail_weight': float(self.selection_tail_weight),
                 'global_feature_mode': str(getattr(
                     self.all_args, 'global_feature_mode', 'none'
                 )),
@@ -4645,6 +5596,67 @@ class HKBZ_Runner(Runner):
                 'environment_semantics_version': observation_metadata[
                     'environment_semantics_version'
                 ],
+                'device_lookahead_dispatch': bool(getattr(
+                    self.all_args, 'device_lookahead_dispatch', False
+                )),
+                'device_deadline_aware_dispatch': bool(getattr(
+                    self.all_args, 'device_deadline_aware_dispatch', False
+                )),
+                'device_future_intent_horizon': int(getattr(
+                    self.all_args, 'device_future_intent_horizon', 0
+                )),
+                'device_future_intent_mode': str(getattr(
+                    self.all_args, 'device_future_intent_mode', 'legacy_one'
+                )),
+                'device_frontier_max_requests': int(getattr(
+                    self.all_args, 'device_frontier_max_requests', 2
+                )),
+                'resource_release_aware_eta': bool(getattr(
+                    self.all_args, 'resource_release_aware_eta', False
+                )),
+                'device_lookahead_reservation_mode': str(getattr(
+                    self.all_args,
+                    'device_lookahead_reservation_mode',
+                    'none',
+                )),
+                'device_reservation_grace_seconds': float(getattr(
+                    self.all_args, 'device_reservation_grace_seconds', 300.0
+                )),
+                'device_departure_lookahead': bool(getattr(
+                    self.all_args, 'device_departure_lookahead', False
+                )),
+                'resource_lateness_coef': float(getattr(
+                    self.all_args, 'resource_lateness_coef', 0.0
+                )),
+                'resource_critical_lateness_coef': float(getattr(
+                    self.all_args,
+                    'resource_critical_lateness_coef',
+                    0.0,
+                )),
+                'resource_earliness_coef': float(getattr(
+                    self.all_args, 'resource_earliness_coef', 0.0
+                )),
+                'resource_wait_constraint_target': float(
+                    self.resource_wait_constraint_target
+                ),
+                'resource_wait_dual_lr': float(self.resource_wait_dual_lr),
+                'resource_wait_dual_max': float(self.resource_wait_dual_max),
+                'resource_wait_dual_value': float(
+                    self.resource_wait_dual_value
+                ),
+                'stage2_allow_shared_unfreeze': bool(
+                    self.stage2_allow_shared_unfreeze
+                ),
+                'resource_slack_criticality_seconds': float(getattr(
+                    self.all_args,
+                    'resource_slack_criticality_seconds',
+                    1800.0,
+                )),
+                'resource_slack_forecast_seconds': float(getattr(
+                    self.all_args,
+                    'resource_slack_forecast_seconds',
+                    0.0,
+                )),
                 'stage1_reward_contract': (
                     dict(self.stage1_reward_contract_metadata)
                     if self.stage1_reward_contract_metadata is not None
@@ -4881,6 +5893,34 @@ class HKBZ_Runner(Runner):
                 self.resource_bc_optimizer_reset
             ),
             'resource_bc_total_labels': int(self.resource_bc_total_labels),
+            'device_bc_teacher': self.device_bc_teacher,
+            'device_bc_role_balanced': bool(self.device_bc_role_balanced),
+            'device_bc_dagger_schedule': list(
+                self.device_bc_dagger_schedule
+            ),
+            'resource_lookahead_contract': {
+                'device_lookahead_dispatch': bool(getattr(
+                    self.all_args, 'device_lookahead_dispatch', False
+                )),
+                'device_lookahead_safety_margin': float(getattr(
+                    self.all_args, 'device_lookahead_safety_margin', 60.0
+                )),
+                'device_deadline_aware_dispatch': bool(getattr(
+                    self.all_args, 'device_deadline_aware_dispatch', False
+                )),
+                'device_future_intent_horizon': int(getattr(
+                    self.all_args, 'device_future_intent_horizon', 0
+                )),
+                'device_departure_lookahead': bool(getattr(
+                    self.all_args, 'device_departure_lookahead', False
+                )),
+            },
+            'resource_iga_teacher_dir': str(getattr(
+                self.all_args, 'resource_iga_teacher_dir', ''
+            )),
+            'resource_iga_teacher_index': str(getattr(
+                self.all_args, 'resource_iga_teacher_index', ''
+            )),
             'resource_actor_summary_before_bc': (
                 self.resource_actor_summary_before_bc
             ),
@@ -4899,6 +5939,128 @@ class HKBZ_Runner(Runner):
         self._atomic_torch_save(checkpoint, save_path)
         print(f"[Info] Saved device BC checkpoint to {save_path}")
 
+    def _restore_shared_resource_bc(self, checkpoint_path):
+        """Restore one audited DeviceBC boundary into parallel PPO branches."""
+        checkpoint_path = str(Path(checkpoint_path).expanduser().resolve())
+        if not os.path.isfile(checkpoint_path):
+            raise FileNotFoundError(
+                f'Shared resource BC checkpoint does not exist: {checkpoint_path}'
+            )
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        if (
+            str(checkpoint.get('training_stage', '')).strip().lower()
+            != CANONICAL_RESOURCE_JOINT
+            or checkpoint.get('stage') != 'resource_bc_warmup'
+            or checkpoint.get('phase') != 'resource_bc_warmup_completed'
+            or checkpoint.get('resource_bc_optimizer_reset') is not True
+            or int(checkpoint.get('resource_bc_total_labels', 0)) <= 0
+        ):
+            raise ValueError(
+                'Shared resource BC input is not a completed canonical '
+                'resource_bc_warmup checkpoint.'
+            )
+        source_sha = str((self.stage1_m2_source or {}).get('sha256', ''))
+        if not source_sha or checkpoint.get('source_m2_sha256') != source_sha:
+            raise ValueError(
+                'Shared resource BC checkpoint was not derived from the '
+                'configured immutable Stage-1 M2 source.'
+            )
+        expected_lookahead = {
+            'device_lookahead_dispatch': bool(getattr(
+                self.all_args, 'device_lookahead_dispatch', False
+            )),
+            'device_lookahead_safety_margin': float(getattr(
+                self.all_args, 'device_lookahead_safety_margin', 60.0
+            )),
+            'device_deadline_aware_dispatch': bool(getattr(
+                self.all_args, 'device_deadline_aware_dispatch', False
+            )),
+            'device_future_intent_horizon': int(getattr(
+                self.all_args, 'device_future_intent_horizon', 0
+            )),
+            'device_departure_lookahead': bool(getattr(
+                self.all_args, 'device_departure_lookahead', False
+            )),
+        }
+        if checkpoint.get('resource_lookahead_contract') != expected_lookahead:
+            raise ValueError(
+                'Shared resource BC lookahead semantics differ from this '
+                f'PPO branch: checkpoint={checkpoint.get("resource_lookahead_contract")}, '
+                f'configured={expected_lookahead}.'
+            )
+        validate_stage1_checkpoint_contract(
+            checkpoint,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            strict_metadata=True,
+        )
+        model = checkpoint.get('model')
+        target = self.policy.ac.state_dict()
+        if not isinstance(model, dict) or set(model) != set(target):
+            raise ValueError(
+                'Shared resource BC model keys do not exactly match the '
+                'configured Stage-2 network.'
+            )
+        mismatched = [
+            name for name in target
+            if tuple(model[name].shape) != tuple(target[name].shape)
+        ]
+        if mismatched:
+            raise ValueError(
+                'Shared resource BC tensor shapes mismatch: '
+                f'{mismatched[:8]}'
+            )
+        protected_before = self._protected_resource_joint_summary()
+        recorded_protected = checkpoint.get(
+            'protected_parameter_summary_after_bc'
+        )
+        if protected_before != recorded_protected:
+            raise ValueError(
+                'Shared resource BC protected plane/encoder tensors differ '
+                'from the restored Stage-1 source.'
+            )
+        self.policy.load_model_state(model)
+        self._assert_resource_joint_protected(
+            protected_before, 'shared_resource_bc_restore'
+        )
+        recorded_actor = checkpoint.get('resource_actor_summary_after_bc')
+        if self._resource_actor_summary() != recorded_actor:
+            raise RuntimeError(
+                'Shared resource BC actor digest was not reproduced bitwise.'
+            )
+        self.protected_parameter_summary_before_bc = checkpoint.get(
+            'protected_parameter_summary_before_bc'
+        )
+        self.protected_parameter_summary_after_bc = recorded_protected
+        self.resource_actor_summary_before_bc = checkpoint.get(
+            'resource_actor_summary_before_bc'
+        )
+        self.resource_actor_summary_after_bc = recorded_actor
+        self.resource_bc_total_labels = int(
+            checkpoint['resource_bc_total_labels']
+        )
+        self.resource_bc_optimizer_reset = True
+        self.resource_joint_phase = 'resource_bc_warmup_completed'
+        self.resource_bc_checkpoint_source = {
+            **source_checkpoint_metadata(checkpoint_path),
+            'device_bc_teacher': checkpoint.get('device_bc_teacher'),
+            'device_bc_dagger_schedule': checkpoint.get(
+                'device_bc_dagger_schedule'
+            ),
+            'resource_bc_total_labels': self.resource_bc_total_labels,
+        }
+        self._pending_value_normalizer_state = checkpoint.get(
+            'value_normalizer', self._pending_value_normalizer_state
+        )
+        print(
+            '[Info] Restored shared DeviceBC boundary '
+            f'{checkpoint_path} labels={self.resource_bc_total_labels}.',
+            flush=True,
+        )
+
     def _restore_stage1_m2(self, checkpoint_path):
         """Strictly restore only the Stage-1 plane/shared hand-off state."""
         if not os.path.isfile(str(checkpoint_path)):
@@ -4908,6 +6070,18 @@ class HKBZ_Runner(Runner):
             )
         source_metadata = source_checkpoint_metadata(checkpoint_path)
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        observation_contract = validate_stage1_checkpoint_contract(
+            checkpoint,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            # A resource-joint transition is never allowed to consume a
+            # shape-compatible checkpoint from an older environment state
+            # machine.  This is stricter than ordinary legacy resume.
+            strict_metadata=True,
+        )
         validation = validate_stage1_m2_checkpoint(
             checkpoint,
             self.policy.ac.state_dict(),
@@ -4922,7 +6096,9 @@ class HKBZ_Runner(Runner):
         # tensor is present and shape-compatible, so this permissiveness cannot
         # weaken the plane/shared contract.
         self.policy.load_model_state(checkpoint['model'])
-        loaded_protected_summary = self._protected_resource_joint_summary()
+        # Even an arm that will later adapt the shared encoder must first
+        # reproduce the complete Stage-1 hand-off bit-for-bit.
+        loaded_protected_summary = self._stage1_handoff_summary()
         if loaded_protected_summary != validation['source_summary']:
             raise RuntimeError(
                 "Strict Stage-1 M2 hand-off loader did not reproduce the "
@@ -4934,6 +6110,7 @@ class HKBZ_Runner(Runner):
         self.stage1_m2_source = source_metadata
         self.stage1_m2_checkpoint_summary = {
             **validation,
+            'observation_contract': observation_contract,
             'source_m2_checkpoint': dict(source_metadata),
         }
         self.protected_parameter_summary_before_bc = (
@@ -4951,11 +6128,305 @@ class HKBZ_Runner(Runner):
         self.resource_bc_optimizer_reset = False
         return checkpoint
 
+    def _validate_stage2_method_contract(self, checkpoint):
+        """Reject a recovery checkpoint from a different Stage-2 arm."""
+
+        expected = {
+            'device_bc_teacher': str(self.device_bc_teacher),
+            'device_bc_role_balanced': bool(self.device_bc_role_balanced),
+            'device_bc_dagger_schedule': [
+                float(value) for value in self.device_bc_dagger_schedule
+            ],
+            'resource_ppo_update_schedule': str(
+                self.resource_ppo_update_schedule
+            ),
+            'resource_ppo_warmup_epochs': int(
+                self.resource_ppo_warmup_epochs
+            ),
+            'stage2_allow_shared_unfreeze': bool(
+                self.stage2_allow_shared_unfreeze
+            ),
+            'gnn_freeze_epochs': int(self.gnn_freeze_epochs),
+        }
+        observed = {
+            'device_bc_teacher': str(
+                checkpoint.get('device_bc_teacher', '')
+            ),
+            'device_bc_role_balanced': bool(
+                checkpoint.get('device_bc_role_balanced', False)
+            ),
+            'device_bc_dagger_schedule': [
+                float(value)
+                for value in checkpoint.get('device_bc_dagger_schedule', [])
+            ],
+            'resource_ppo_update_schedule': str(
+                checkpoint.get('resource_ppo_update_schedule', '')
+            ),
+            'resource_ppo_warmup_epochs': int(
+                checkpoint.get('resource_ppo_warmup_epochs', -1)
+            ),
+            'stage2_allow_shared_unfreeze': bool(
+                checkpoint.get('stage2_allow_shared_unfreeze', False)
+            ),
+            'gnn_freeze_epochs': int(
+                checkpoint.get('gnn_freeze_epochs', -1)
+            ),
+        }
+        mismatches = {
+            key: {'checkpoint': observed[key], 'configured': value}
+            for key, value in expected.items()
+            if observed[key] != value
+        }
+
+        experiment_config = checkpoint.get('experiment_config', {})
+        if not isinstance(experiment_config, dict):
+            experiment_config = {}
+        observed_reward = str(
+            experiment_config.get('hindsight_reward_mode', '')
+        )
+        if observed_reward != self.hindsight_reward_mode:
+            mismatches['hindsight_reward_mode'] = {
+                'checkpoint': observed_reward,
+                'configured': self.hindsight_reward_mode,
+            }
+
+        if self.device_bc_teacher == 'iga':
+            for key, configured in (
+                (
+                    'resource_iga_teacher_dir',
+                    str(getattr(
+                        self.all_args, 'resource_iga_teacher_dir', ''
+                    ) or ''),
+                ),
+                (
+                    'resource_iga_teacher_index',
+                    str(getattr(
+                        self.all_args, 'resource_iga_teacher_index', ''
+                    ) or ''),
+                ),
+            ):
+                checkpoint_value = str(checkpoint.get(key, '') or '')
+                configured_path = str(Path(configured).expanduser().resolve())
+                checkpoint_path = str(
+                    Path(checkpoint_value).expanduser().resolve()
+                )
+                if not configured or not checkpoint_value or configured_path != checkpoint_path:
+                    mismatches[key] = {
+                        'checkpoint': checkpoint_value,
+                        'configured': configured,
+                    }
+        if mismatches:
+            raise ValueError(
+                'Stage-2 recovery method contract mismatch: '
+                f'{mismatches}.'
+            )
+        return expected
+
+    def _restore_stage2_recovery(self, checkpoint_path):
+        """Strictly restore a resource_joint PPO cursor and all train state."""
+
+        checkpoint_path = str(Path(checkpoint_path).expanduser().resolve())
+        if not os.path.isfile(checkpoint_path):
+            raise FileNotFoundError(
+                f'Stage-2 recovery checkpoint does not exist: {checkpoint_path}'
+            )
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        validate_stage1_checkpoint_contract(
+            checkpoint,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            strict_metadata=True,
+        )
+        validation = validate_stage2_recovery_checkpoint(
+            checkpoint,
+            self.policy.ac.state_dict(),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+            protected_prefixes=self._resource_joint_protected_prefixes(),
+        )
+        self._validate_stage2_method_contract(checkpoint)
+        if validation['completed_epochs'] > self.num_episodes:
+            raise ValueError(
+                'Stage-2 recovery cursor exceeds configured PPO epochs: '
+                f"checkpoint={validation['completed_epochs']} "
+                f'configured={self.num_episodes}.'
+            )
+
+        source_metadata = source_checkpoint_metadata(
+            validation['source_m2_path']
+        )
+        if source_metadata['sha256'] != validation['source_m2_sha256']:
+            raise ValueError(
+                'Stage-2 recovery source M2 digest mismatch: '
+                f"checkpoint={validation['source_m2_sha256']} "
+                f"observed={source_metadata['sha256']}."
+            )
+        recorded_source = checkpoint.get('source_m2_checkpoint', {})
+        if recorded_source and dict(recorded_source) != source_metadata:
+            raise ValueError(
+                'Stage-2 recovery source_m2_checkpoint binding is inconsistent.'
+            )
+
+        source_checkpoint = torch.load(
+            source_metadata['path'], map_location='cpu'
+        )
+        source_validation = validate_stage1_m2_checkpoint(
+            source_checkpoint,
+            self.policy.ac.state_dict(),
+            plane_order_mode=self.policy.ac.plane_order_mode,
+            plane_pair_decoder=self.policy.ac.plane_pair_decoder,
+            global_feature_mode=getattr(
+                self.all_args, 'global_feature_mode', 'none'
+            ),
+        )
+        source_runtime_state = {
+            name: value
+            for name, value in source_checkpoint['model'].items()
+            if name in self.policy.ac.state_dict()
+        }
+        source_runtime_summary = protected_parameter_summary(
+            source_runtime_state,
+            prefixes=self._resource_joint_protected_prefixes(),
+        )
+        if source_runtime_summary != validation['protected_summary']:
+            raise ValueError(
+                'Stage-2 recovery protected tensors no longer '
+                'match the immutable Stage-1 M2 source.'
+            )
+        recorded_handoff = checkpoint.get('stage1_m2_checkpoint_summary')
+        if (
+            not isinstance(recorded_handoff, dict)
+            or recorded_handoff.get('source_summary')
+            != source_validation['source_summary']
+        ):
+            raise ValueError(
+                'Stage-2 recovery is missing valid Stage-1 M2 hand-off evidence.'
+            )
+
+        self.policy.load_model_state(checkpoint['model'])
+        restored_model_summary = protected_parameter_summary(
+            self.policy.ac.state_dict(), prefixes=('',)
+        )
+        if restored_model_summary != validation['model_summary']:
+            raise RuntimeError(
+                'Strict Stage-2 loader did not reproduce every checkpoint '
+                'model tensor bitwise.'
+            )
+        try:
+            self.policy.actor_optimizer.load_state_dict(
+                checkpoint['actor_optim']
+            )
+            self.policy.critic_optimizer.load_state_dict(
+                checkpoint['critic_optim']
+            )
+        except (KeyError, ValueError) as error:
+            raise ValueError(
+                'Stage-2 recovery optimizer state is missing or incompatible.'
+            ) from error
+        if (
+            bool(getattr(self.all_args, 'use_valuenorm', False))
+            and not checkpoint.get('value_normalizer')
+        ):
+            raise ValueError(
+                'Stage-2 recovery requires persisted ValueNorm statistics.'
+            )
+
+        self.policy.ac.tau = checkpoint.get('tau', self.policy.ac.tau)
+        self.all_args.anneal_original = self.policy.ac.tau
+        self.policy.actor_lr_multiplier = float(
+            checkpoint.get('actor_lr_multiplier', 1.0)
+        )
+        self.policy.actor_lr_decay_factor = float(
+            checkpoint.get('actor_lr_decay_factor', 1.0)
+        )
+        self.resource_wait_dual_value = float(checkpoint.get(
+            'resource_wait_dual_value', self.resource_wait_dual_value
+        ))
+        self._pending_value_normalizer_state = checkpoint.get(
+            'value_normalizer'
+        )
+        self.stage1_m2_source = source_metadata
+        self.stage1_m2_checkpoint_summary = recorded_handoff
+        self.protected_parameter_summary_before_bc = checkpoint.get(
+            'protected_parameter_summary_before_bc'
+        )
+        self.protected_parameter_summary_after_bc = checkpoint.get(
+            'protected_parameter_summary_after_bc'
+        )
+        self.protected_parameter_summary_after_ppo = checkpoint.get(
+            'protected_parameter_summary_after_ppo'
+        )
+        self.resource_actor_summary_before_bc = checkpoint.get(
+            'resource_actor_summary_before_bc'
+        )
+        self.resource_actor_summary_after_bc = checkpoint.get(
+            'resource_actor_summary_after_bc'
+        )
+        self.resource_actor_summary_before_ppo = checkpoint.get(
+            'resource_actor_summary_before_ppo'
+        )
+        self.resource_actor_summary_after_ppo = checkpoint.get(
+            'resource_actor_summary_after_ppo'
+        )
+        self.resource_bc_optimizer_reset = bool(
+            checkpoint.get('resource_bc_optimizer_reset', False)
+        )
+        self.resource_bc_total_labels = int(
+            checkpoint.get('resource_bc_total_labels', 0)
+        )
+
+        completed_shards = int(validation['completed_shards'])
+        total_shards = int(validation['total_shards'])
+        completed_epochs = int(validation['completed_epochs'])
+        if completed_shards == total_shards:
+            self.resume_epoch = completed_epochs
+            self.resume_completed_shards = 0
+        else:
+            self.resume_epoch = max(0, completed_epochs - 1)
+            self.resume_completed_shards = completed_shards
+        self.resume_total_shards = total_shards
+        self.resume_total_num_steps = int(validation['total_num_steps'])
+        self.eval_epochs_without_improvement = int(
+            checkpoint.get('eval_epochs_without_improvement', 0)
+        )
+        self.best_eval_makespan = float(
+            checkpoint.get('best_eval_makespan', np.inf)
+        )
+        self.best_eval_iid_makespan = float(
+            checkpoint.get('best_eval_iid_makespan', np.inf)
+        )
+        self.best_eval_composite_makespan = float(
+            checkpoint.get('best_eval_composite_makespan', np.inf)
+        )
+        self._restore_actor_update_health(
+            checkpoint.get('actor_update_health', {})
+        )
+        self.resource_joint_phase = 'resource_joint_ppo'
+        self.exact_resume_stage2 = True
+        print(
+            '[Info] Restoring exact Stage-2 cursor from '
+            f'epoch={self.resume_epoch + 1}, completed_shards='
+            f'{self.resume_completed_shards}/{self.resume_total_shards}, '
+            f'total_num_steps={self.resume_total_num_steps}, '
+            f'checkpoint={checkpoint_path}.',
+            flush=True,
+        )
+        return checkpoint
+
     def restore(self, checkpoint):
         """Restore policy's networks from a saved model."""
         checkpoint_path = checkpoint
         if self.training_stage == CANONICAL_RESOURCE_JOINT:
-            self._restore_stage1_m2(checkpoint_path)
+            if bool(getattr(self.all_args, 'resume_stage2', False)):
+                self._restore_stage2_recovery(checkpoint_path)
+            else:
+                self._restore_stage1_m2(checkpoint_path)
             return
         checkpoint = torch.load(checkpoint, map_location=self.device)
         print(
@@ -5078,10 +6549,23 @@ class HKBZ_Runner(Runner):
         source_dir = os.path.dirname(str(self.checkpoint_dir))
         for filename in (
             'checkpoint_PlaneBC.pt',
+            'checkpoint_DeviceBC.pt',
             'checkpoint_PrePPO.pt',
+            'checkpoint_PrePPO_tau03.pt',
             'checkpoint_Best.pt',
+            'checkpoint_Best_IID.pt',
+            'checkpoint_Best_Composite.pt',
         ):
             source = os.path.join(source_dir, filename)
             target = os.path.join(self.save_dir, filename)
             if os.path.isfile(source) and not os.path.exists(target):
                 shutil.copy2(source, target)
+        if self.exact_resume_stage2:
+            source_evaluations = os.path.join(
+                os.path.dirname(source_dir), 'evaluations'
+            )
+            if os.path.isdir(source_evaluations):
+                for source in Path(source_evaluations).glob('*.json'):
+                    target = Path(self.evaluation_dir) / source.name
+                    if not target.exists():
+                        shutil.copy2(source, target)

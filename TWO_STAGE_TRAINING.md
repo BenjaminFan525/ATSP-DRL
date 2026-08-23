@@ -2,12 +2,23 @@
 
 当前入口只有两个阶段：
 
-1. **Stage 1 / M2**：`plane_pretrain` 的飞机策略阶段，使用 heuristic
-   移动资源并训练飞机 BC+PPO。由于离场状态机已经改变，旧 M2 只可作为历史对照，
-   不能作为新环境的有效交接源；必须先用新语义重新生成 IGA 教师并从头训练 S1。
-   新 M2 完成三种子验证后，再更新 `onpolicy/config/stage1_m2_handoff.json` 中的
-   路径、大小、SHA256 和模型语义。
-2. **Stage 2 / `resource_joint`**：使用 `env_resource_joint.yaml` 的 fjsp_v3 数据语义和 DRL resource policy。Runner 严格校验 M2 的 plane/shared protected tensors、`plane_order_mode`、`plane_pair_decoder` 与 `global_feature_mode`，然后执行正数 resource BC warm-up 和冻结 plane/shared 的 resource PPO。
+1. **Stage 1 / P5**：`plane_pretrain` 的飞机策略阶段，使用 heuristic
+   移动资源并训练飞机 BC+PPO。新离场语义下的 P5 已完成三种子 validation 与
+   blind test，并作为关闭后的 Stage-1 交接源登记在
+   `onpolicy/config/stage1_m2_handoff.json`。文件名中的 `m2` 只是历史接口名，当前
+   winner 是 `P5_team_time_potential_fixed`，不是 8 月 8 日的旧 M2。
+2. **Stage 2 / `resource_joint`**：使用 `env_resource_joint.yaml` 的 fjsp_v3 数据语义和 DRL resource policy。Runner 严格校验 P5 的 plane/shared protected tensors、`plane_order_mode`、`plane_pair_decoder`、`global_feature_mode`、观测 schema 与环境状态机版本，然后执行正数 resource BC warm-up 和冻结 plane/shared 的 resource PPO。它已经合并原先的 S2/S3；不会再解冻进入 S4。
+
+当前默认交接源是 P5 seed3 的 validation Best（episode 8）。选择依据是三种子中
+最低的 formal-validation composite `9116.5293`，不是 blind test。Stage-2 的
+`SEED` 只控制资源策略训练随机性；如未显式设置 `SOURCE_SEED`，三个 Stage-2 seed
+都从同一份 seed3 飞机策略出发，以隔离资源学习的因果贡献。若要做完整端到端
+seed lineage 对照，可显式设置 `SOURCE_SEED=1|2|3`。
+
+HKBZ 没有采用 IA 农机参考实现中的双 encoder。当前仍是一个共享异构图 encoder，
+Stage 2 将其与飞机 GRU/actor 全程按位冻结，只训练普通移动设备与 R014 各自的
+GRU/actor，以及 critic。这样既保留 P5 的飞机观察表示，也允许两类资源拥有不同
+动作后端。
 
 Stage 2 显式启用 `device_lookahead_dispatch`，并使用 60 秒
 `device_lookahead_safety_margin`。飞机一旦提交 operation/site
@@ -35,11 +46,73 @@ S1/M2 都不能复用。新教师契约明确记录
 IGA-180，600/600 案例完成并独立回放验证后，才自动开始 IGA-1800。两套标签用于
 S1 飞机策略的基线比较与 BC/DAgger，均不训练移动设备策略。
 
-Stage 2 的 `checkpoint_DeviceBC.pt` 只是同一阶段内部的 resource-BC warm-up 边界，不是第三阶段，也不是新的恢复源。当前不承诺 shard 级精确恢复；中断后应从已验证的 Stage-1 M2 重新执行 warm-up。
+Stage 2 的移动资源教师由
+`onpolicy/scripts/train/launch_stage2_resource_iga_labels.sh` 生成。飞机策略固定为
+hand-off 中按 formal-validation 选出的 P5 seed3 validation-Best，普通移动设备与
+R014 均由 `iga_all` 染色体控制；每个案例保存完整的 plane/resource 决策轨迹和
+终局独立回放证据。标注器在两张 GPU 上各运行 3 个分片，每个分片绑定 12 个完整
+物理核及其 SMT sibling，并把内存优先分配到 GPU 对应 NUMA node。IGA-1800 是
+IGA-180 的嵌套细化：先验证 180 秒 incumbent，再追加 1620 秒搜索，因此累计预算
+仍为 1800 秒而不是 1980 秒。输出的 `teacher_scope` 为
+`stage2_resource_policy`，Stage-1 的教师加载器会拒绝误用这套标签。
+
+当前 Stage2 方法筛选不再把这些轨迹仅作为离线分析材料。训练环境通过
+`resource_iga_teacher_actions()` 在每个实际访问状态上用实时 request mask 解码
+IGA-1800 染色体；600 份教师先被压缩为只含 provenance、染色体和终局指标的
+训练视图，并由 sidecar 将“原始轨迹 SHA256 → 精简教师 SHA256 → 数据集 case
+fingerprint”逐案例绑定。任何案例、轨迹或环境语义不一致都会在 BC 前失败。
+
+GPU0 单卡 Wave 1 固定 Stage1 P5 seed3 和 Stage2 seed1，并行比较三种方法：
+
+1. `M0_heuristic_uniform`：Hungarian 实时教师、普通 pooled BC；
+2. `M1_iga_uniform`：IGA-1800 实时教师、普通 pooled BC；
+3. `M2_iga_role_balanced`：IGA-1800 实时教师，普通移动设备与 R014 分别归一化
+   NLL 后等权合并。
+
+三组共同使用 180 个固定比例 screen cases、28 rollout workers、2 BC epochs、
+4 PPO epochs 和同一 `team_cmax` PPO 契约。BC 每个 epoch 强制轮转 7 次，从而
+覆盖全部 180 个案例，而不是达到 64 个 label 后只看首批 24 个案例。资源 DAgger
+支持按 epoch 的教师执行率，但混合单位是“一整个环境的资源联合动作”；教师标签
+始终在学生实际访问的状态上查询，禁止逐设备混合造成重复 claim。
+
+正式 Wave 1 会依据三并发 canary 的实测峰值自动采用吞吐配置：28 rollout
+workers、`mini_batch_size=24`、`data_chunk_length=50`，即大批次处理 1200
+个图、余下 4 个环境处理 200 个图；actor/critic 梯度累积相应改为 2/6，分别
+得到精确的 1400 图和 4200 图 effective batch，接近原来的 `4×350` 与
+`11×350`。PPO generator 按“时间块优先、环境分片其次”输出，并按每个分片的
+有效决策质量加权，因此 `1200+200` 会落在同一个 optimizer step 内。180 个
+案例因此每个 BC epoch 轮转 7 次并保证全部
+覆盖。正式 manifest 会读取 canary 的逐 5 秒显存记录，按整个 GPU 占用随图数
+线性增长这一更保守的假设投影；投影超过 72 GiB 时拒绝启动，而不是冒险 OOM。
+r7 中三组 resource actor 同时反向传播时的实测峰值约为 19.34 GiB；1200 图的
+保守投影约为 66.31 GiB，在 72 GiB 启动红线下仍保留约 7.42 GiB 余量。
+
+入口为：
+
+```bash
+bash onpolicy/scripts/train/launch_stage2_resource_research_gpu0.sh
+```
+
+启动器先在 GPU0 同时运行三组 24-case canary，并让它们共用一组 validation
+进程。canary 的训练轨迹固定为 64 步：这足以让每个进程实际执行在线教师回放、
+BC backward 和 350-graph PPO microbatch，不再为显存预检额外跑完整的
+400--600 步调度。canary 还把 `actor_warmup_shards` 设为 0，确保唯一 shard
+确实更新 resource actor；它省略只用于选模的 Pre-PPO baseline，但三组
+Post-PPO validation 仍始终自然结束。正式 Wave 1 恢复一个 actor warm-up shard、
+Pre-PPO baseline，并且 BC/PPO 训练也
+始终自然结束。只有三组均正常退出、日志无 CUDA OOM 且整卡峰值不超过 72 GiB，
+才自动启动正式 Wave 1。若标准 350-graph forward 超限，会自动改用 250-graph
+microbatch，并用更大的梯度累积近似保持 effective batch。这个单 GPU 方法筛选轮
+不做实验间 CPU 隔离：三个训练和共享 evaluator 的 systemd cgroup 都允许使用
+`0-143`，由系统动态调度；每个进程仍设置 OMP/MKL/OpenBLAS/NumExpr 为 1，避免
+环境 worker 内部线程爆炸。allocator 固定继承
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`。
+
+Stage 2 的 `checkpoint_DeviceBC.pt` 只是同一阶段内部的 resource-BC warm-up 边界，不是第三阶段，也不是新的恢复源。当前不承诺 shard 级精确恢复；中断后应从已验证的 Stage-1 P5 hand-off 重新执行 warm-up。
 
 ## 迁移契约
 
-`run_hkbz_two_stage_pipeline.py` 会先验证 hand-off 中全部 checkpoint；任一文件缺失、大小变化或 SHA256 不一致都会在启动训练前失败。它生成的原子 manifest 记录：
+`run_hkbz_two_stage_pipeline.py` 会先验证 hand-off 中全部 checkpoint；任一文件缺失、大小变化或 SHA256 不一致都会在启动训练前失败。新版 hand-off 还会在 CPU 上加载 checkpoint，逐一验证新离场语义、观测 schema、validation Best 元数据，以及当前 Stage-2 网络中所有 protected tensor 的名称和 shape。P5 的多命令实验 manifest 通过 `source_command_key` 精确定位对应 seed，不会误继承另一条命令。它生成的原子 manifest 记录：
 
 - `source_m2.path` 与 `source_m2.sha256`；执行前会再次检查源文件未被替换。
 - canonical `training_stage: resource_joint`、`resource_policy: drl`、正数 BC/PPO epoch。
@@ -54,7 +127,8 @@ Stage 2 的 `checkpoint_DeviceBC.pt` 只是同一阶段内部的 resource-BC war
 
 ## 完整示例
 
-默认按 `SEED` 从已验证 hand-off 中选择 M2；它不会把 `checkpoint_DeviceBC.pt` 当成新的阶段输入：
+默认从 hand-off 选择预登记的 P5 seed3；它不会把
+`checkpoint_DeviceBC.pt` 当成新的阶段输入：
 
 ```bash
 ROOT="$PWD"
@@ -63,6 +137,15 @@ MANIFEST="$ROOT/result/hkbz_train_logs/two_stage/m2_to_resource_joint.json"
 SEED=1 \
 RUN_TAG="m2_to_resource_joint" \
 MANIFEST_PATH="$MANIFEST" \
+STOP_AFTER_STAGE=2 \
+/bin/bash "$ROOT/onpolicy/scripts/train/launch_hkbz_two_stage_service.sh"
+```
+
+显式使用同 seed 的端到端 lineage 时设置 `SOURCE_SEED`：
+
+```bash
+SEED=1 SOURCE_SEED=1 \
+RUN_TAG="p5_seed1_to_resource_joint_seed1" \
 STOP_AFTER_STAGE=2 \
 /bin/bash "$ROOT/onpolicy/scripts/train/launch_hkbz_two_stage_service.sh"
 ```
@@ -92,7 +175,7 @@ STOP_AFTER_STAGE=2 DRY_RUN=1 \
 ```bash
 python -u onpolicy/scripts/train/run_hkbz_two_stage_pipeline.py \
   run \
-  --source-seed 1 \
+  --source-seed 3 \
   --run-tag m2_to_resource_joint \
   --manifest "$MANIFEST" \
   --bc-epochs 2 \

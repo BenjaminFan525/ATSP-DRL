@@ -43,9 +43,17 @@ def _legal_joint_actions(env, observation, info):
         selected = None
         for op_global_idx in op_indices:
             job_idx = int(op_global_idx) - plane_idx * n_ops
+            if hasattr(observation, "agent_job_site_mask_matrix"):
+                plane_job_sites = observation.agent_job_site_mask_matrix[
+                    plane_idx, job_idx
+                ].cpu().numpy()
+            else:
+                plane_job_sites = observation.job_site_mask_matrix[
+                    job_idx
+                ].cpu().numpy()
             compatible_sites = np.logical_and(
                 observation.site_mask_matrix[plane_idx].cpu().numpy(),
-                observation.job_site_mask_matrix[job_idx].cpu().numpy(),
+                plane_job_sites,
             )
             for site_idx in np.flatnonzero(compatible_sites):
                 if int(site_idx) not in claimed_sites:

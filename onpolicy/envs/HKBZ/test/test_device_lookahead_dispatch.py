@@ -229,6 +229,54 @@ class DeviceLookaheadDispatchTest(unittest.TestCase):
         finally:
             env.close()
 
+    def test_resource_actor_replays_deferred_lookahead_noop(self):
+        """The last compatible device may still defer a lookahead request."""
+        env = _make_env(True)
+        try:
+            _commit_plane_to_future_mobile_job(env)
+            observation = env._get_obs()
+            info = env._get_info()
+            with (ROOT / "onpolicy/config/ac.yaml").open(
+                "r", encoding="utf-8"
+            ) as stream:
+                ac_config = yaml.safe_load(stream)
+            policy = GNN_Actor_Critic(
+                **ac_config,
+                max_plane_agents=env.n_plane_agents,
+                max_device_agents=env.max_device_num,
+            )
+            data = {
+                "graph": Batch.from_data_list([observation]),
+                "hidden_states": torch.zeros(1, env.n_agents, 1, 64),
+            }
+            policy_info = {
+                "active_agents": torch.as_tensor(
+                    info["active_agents"][None, :], dtype=torch.bool
+                ),
+                "last_op_indices": torch.as_tensor(
+                    info["last_op_indices"][None, :], dtype=torch.long
+                ),
+                "last_site_indices": torch.as_tensor(
+                    info["last_site_indices"][None, :], dtype=torch.long
+                ),
+            }
+            with torch.no_grad():
+                _, actions, _, _ = policy(
+                    data, policy_info, deterministic=True
+                )
+                actions[:, env.n_plane_agents :, 0] = 0
+                log_probs, entropy = policy(
+                    data,
+                    policy_info,
+                    chosen_op=actions[..., 0],
+                    chosen_site=actions[..., 1],
+                    eval_action=True,
+                )
+            self.assertTrue(torch.isfinite(log_probs).all())
+            self.assertTrue(torch.isfinite(entropy))
+        finally:
+            env.close()
+
     def test_hungarian_lookahead_completes_a_natural_rollout(self):
         env = _make_env(True)
         try:

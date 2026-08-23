@@ -18,7 +18,9 @@ STAGE1_HANDOFF="${STAGE1_HANDOFF:-${ROOT_DIR}/onpolicy/config/stage1_m2_handoff.
 MANIFEST_PATH="${MANIFEST_PATH:-${ROOT_DIR}/result/hkbz_train_logs/two_stage/${RUN_TAG}.json}"
 ARTIFACT_DIR="${STAGE2_ARTIFACT_DIR:-${ARTIFACT_DIR:-}}"
 SOURCE_COMMAND_JSON="${SOURCE_COMMAND_JSON:-${STAGE1_COMMAND_JSON:-}}"
+SOURCE_COMMAND_KEY="${SOURCE_COMMAND_KEY:-${STAGE1_COMMAND_KEY:-}}"
 SEED="${SEED:-1}"
+SOURCE_SEED="${SOURCE_SEED:-}"
 BC_EPOCHS="${BC_EPOCHS:-2}"
 PPO_EPOCHS="${PPO_EPOCHS:-8}"
 PPO_EPOCH="${PPO_EPOCH:-3}"
@@ -82,10 +84,16 @@ COMMAND_ARGS=(
 if [[ -n "${STAGE1_M2_CHECKPOINT}" ]]; then
   COMMAND_ARGS+=(--source-m2 "${STAGE1_M2_CHECKPOINT}")
 else
-  COMMAND_ARGS+=(--stage1-handoff "${STAGE1_HANDOFF}" --source-seed "${SEED}")
+  COMMAND_ARGS+=(--stage1-handoff "${STAGE1_HANDOFF}")
+  if [[ -n "${SOURCE_SEED}" ]]; then
+    COMMAND_ARGS+=(--source-seed "${SOURCE_SEED}")
+  fi
 fi
 if [[ -n "${SOURCE_COMMAND_JSON}" ]]; then
   COMMAND_ARGS+=(--source-command-json "${SOURCE_COMMAND_JSON}")
+fi
+if [[ -n "${SOURCE_COMMAND_KEY}" ]]; then
+  COMMAND_ARGS+=(--source-command-key "${SOURCE_COMMAND_KEY}")
 fi
 if [[ -n "${PLANE_ORDER_MODE}" ]]; then
   COMMAND_ARGS+=(--plane-order-mode "${PLANE_ORDER_MODE}")
@@ -150,7 +158,7 @@ echo "[Info] RUN_TAG=${RUN_TAG}, STOP_AFTER_STAGE=${STOP_AFTER_STAGE}, GPU=${CUD
 if [[ -n "${STAGE1_M2_CHECKPOINT}" ]]; then
   echo "[Info] Stage-1 M2=${STAGE1_M2_CHECKPOINT}"
 else
-  echo "[Info] Stage-1 hand-off=${STAGE1_HANDOFF}, source seed=${SEED}"
+  echo "[Info] Stage-1 hand-off=${STAGE1_HANDOFF}, source seed=${SOURCE_SEED:-handoff-default}"
 fi
 echo "[Info] Manifest=${MANIFEST_PATH}"
 

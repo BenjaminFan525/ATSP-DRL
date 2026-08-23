@@ -495,6 +495,16 @@ def get_config():
     parser.add_argument("--plane_freeze_epochs", type=int, default=0,
                         help="number of initial joint-training epochs that freeze the pretrained plane actor")
     parser.add_argument(
+        '--stage2_allow_shared_unfreeze',
+        action='store_true',
+        default=False,
+        help=(
+            'experimental Stage2 arm: keep the plane decoder frozen while '
+            'allowing the unsplit shared encoder to adapt after '
+            '--gnn_freeze_epochs'
+        ),
+    )
+    parser.add_argument(
         "--plane_order_freeze_epochs",
         type=int,
         default=0,
@@ -512,6 +522,15 @@ def get_config():
         action="store_true",
         default=False,
         help="explicitly allow plane_pretrain to restore a same-stage recovery checkpoint",
+    )
+    parser.add_argument(
+        "--resume_stage2",
+        action="store_true",
+        default=False,
+        help=(
+            "explicitly resume resource_joint PPO from a complete "
+            "post_shard_recovery checkpoint"
+        ),
     )
     parser.add_argument(
         "--reset_optimizers_on_resume",
@@ -627,6 +646,24 @@ def get_config():
     parser.add_argument("--no_eval", dest='use_eval', action='store_false',
                         help="disable validation during training")
     parser.set_defaults(use_eval=False)
+    parser.add_argument(
+        "--skip_pre_ppo_eval",
+        action="store_true",
+        default=False,
+        help=(
+            "skip only the pre-PPO baseline evaluation; intended for short "
+            "resource-joint infrastructure canaries, never formal selection"
+        ),
+    )
+    parser.add_argument(
+        "--skip_epoch_eval",
+        action="store_true",
+        default=False,
+        help=(
+            "skip PPO epoch validation; intended only for throughput/OOM "
+            "canaries, never formal checkpoint selection"
+        ),
+    )
     parser.add_argument("--eval_interval", type=int, default=1,
                         help="number of training epochs between C_max validations")
     parser.add_argument("--canary_eval_interval_shards", type=int, default=0,
@@ -655,12 +692,28 @@ def get_config():
         "--selection_metric",
         type=str,
         default="iid",
-        choices=["iid", "composite"],
-        help="checkpoint selection by IID mean or weighted IID/OOD validation",
+        choices=["iid", "composite", "composite_tail"],
+        help=(
+            "checkpoint selection by IID mean, weighted IID/OOD validation, "
+            "or a convex combination of that composite and the validation "
+            "worst tail"
+        ),
     )
     parser.add_argument("--selection_iid_weight", type=float, default=0.50)
     parser.add_argument("--selection_ood_stress_weight", type=float, default=0.45)
     parser.add_argument("--selection_ood_scale_weight", type=float, default=0.05)
+    parser.add_argument(
+        "--selection_tail_fraction",
+        type=float,
+        default=0.10,
+        help="largest validation fraction used by composite_tail selection",
+    )
+    parser.add_argument(
+        "--selection_tail_weight",
+        type=float,
+        default=0.25,
+        help="weight of the worst-tail mean in composite_tail selection",
+    )
     parser.add_argument("--early_stop_patience", type=int, default=0,
                         help="stop after this many non-improving validations; 0 disables early stopping")
 
@@ -675,8 +728,54 @@ def get_config():
     parser.add_argument("--gnn_checkpoint", type=str, default=None, help="the path to gnn checkpoint, default None")
     parser.add_argument("--device_bc_pretrain_epochs", type=int, default=0,
                         help="supervised warmup epochs for mobile device and transporter policy heads before PPO")
+    parser.add_argument(
+        '--resource_bc_checkpoint',
+        type=str,
+        default='',
+        help=(
+            'optional completed checkpoint_DeviceBC.pt shared by parallel '
+            'Stage2 PPO branches; mutually exclusive with in-run DeviceBC'
+        ),
+    )
     parser.add_argument("--device_bc_lr", type=float, default=0.0,
                         help="learning rate for device behavior cloning warmup; <=0 uses --lr")
+    parser.add_argument(
+        "--device_bc_teacher",
+        type=str,
+        default="heuristic",
+        choices=["heuristic", "iga"],
+        help="live-mask resource teacher used during Stage2 BC/DAgger",
+    )
+    parser.add_argument(
+        "--resource_iga_teacher_dir",
+        type=str,
+        default="",
+        help="directory containing verified per-case Stage2 IGA teacher JSON files",
+    )
+    parser.add_argument(
+        "--resource_iga_teacher_index",
+        type=str,
+        default="",
+        help="strict SHA256/fingerprint sidecar index for Stage2 IGA teachers",
+    )
+    parser.add_argument(
+        "--device_bc_role_balanced",
+        action="store_true",
+        default=False,
+        help="normalize ordinary-device and R014 BC losses independently",
+    )
+    parser.add_argument(
+        "--device_bc_dagger_schedule",
+        type=str,
+        default="1.0",
+        help="comma-separated per-BC-epoch teacher execution probabilities",
+    )
+    parser.add_argument(
+        "--device_bc_dagger_seed",
+        type=int,
+        default=1701,
+        help="seed for environment-level Stage2 DAgger teacher execution",
+    )
     parser.add_argument("--device_bc_min_labels_per_epoch", type=int, default=64,
                         help="minimum supervised device labels to collect per BC epoch before moving on")
     parser.add_argument("--device_bc_min_rollouts_per_epoch", type=int, default=1,
@@ -694,6 +793,19 @@ def get_config():
     parser.add_argument("--no_device_bc_save", dest='device_bc_save',
                         action='store_false', default=True,
                         help="do not save a checkpoint after device BC warmup")
+    parser.add_argument(
+        "--resource_ppo_update_schedule",
+        type=str,
+        default="joint",
+        choices=["joint", "ordinary_then_joint", "r014_then_joint"],
+        help="which resource actor is updated during the initial Stage2 PPO epochs",
+    )
+    parser.add_argument(
+        "--resource_ppo_warmup_epochs",
+        type=int,
+        default=1,
+        help="number of role-specific PPO epochs before switching to joint updates",
+    )
 
     # specific for IA environment
     parser.add_argument("--obj", type=str, default='s', help="the object to train, default t(time)")
@@ -725,6 +837,74 @@ def get_config():
             "maximum seconds a mobile device may arrive before a lookahead "
             "request becomes blocking"
         ),
+    )
+    parser.add_argument(
+        '--device_deadline_aware_dispatch',
+        action='store_true',
+        default=False,
+        help=(
+            'mask a lookahead dispatch until travel time enters its JIT '
+            'deadline window and wake the event loop at that boundary'
+        ),
+    )
+    parser.add_argument(
+        '--device_future_intent_horizon',
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help=(
+            'number of committed dependency edges exposed as mobile-resource '
+            'intents; the production implementation supports a conservative '
+            'one-edge horizon'
+        ),
+    )
+    parser.add_argument(
+        '--device_future_intent_mode',
+        type=str,
+        default='legacy_one',
+        choices=['legacy_one', 'bounded_frontier'],
+        help=(
+            'legacy_one exposes one direct successor; bounded_frontier '
+            'exposes the highest-priority direct mobile-resource successors '
+            'without changing the fixed request tensor width'
+        ),
+    )
+    parser.add_argument(
+        '--device_frontier_max_requests',
+        type=int,
+        default=2,
+        help='maximum direct-successor intents exposed per aircraft',
+    )
+    parser.add_argument(
+        '--resource_release_aware_eta',
+        action='store_true',
+        default=False,
+        help=(
+            'include in-service release time in device ETA/features and treat '
+            'a job resource list as alternatives instead of simultaneous needs'
+        ),
+    )
+    parser.add_argument(
+        '--device_lookahead_reservation_mode',
+        type=str,
+        default='none',
+        choices=['none', 'soft', 'hard'],
+        help=(
+            'lease a device pre-positioned for a future ordinary-resource '
+            'request; soft leases may be stolen by a blocking request'
+        ),
+    )
+    parser.add_argument(
+        '--device_reservation_grace_seconds',
+        type=float,
+        default=300.0,
+        help='bounded grace period after predicted need before a lease expires',
+    )
+    parser.add_argument(
+        '--device_departure_lookahead',
+        action='store_true',
+        default=False,
+        help='expose an R014 pickup intent during the final service operation',
     )
     parser.add_argument('--train_domain_rand', action='store_true', default=False,
                         help="enable domain randomization during joint-policy fine-tuning")
@@ -937,12 +1117,15 @@ def get_config():
             'team_cmax',
             'team_time',
             'team_time_potential',
+            'team_time_resource_potential',
         ],
         help=(
             'HKBZ reward mode; team_cmax broadcasts one terminal target; '
             'team_time uses global negative remaining makespan at each '
             'decision; team_time_potential adds a versioned departure-aware '
-            'telescoping potential to that exact team-time target'
+            'IGA-calibrated telescoping potential; '
+            'team_time_resource_potential instead uses an online critical '
+            'resource-slack potential without changing the terminal objective'
         ),
     )
     parser.add_argument('--hindsight_cmax_coef', type=float, default=0.0,
@@ -952,12 +1135,42 @@ def get_config():
     parser.add_argument('--hindsight_terminal_cmax_coef', type=float, default=1.0,
                         help="coefficient for the single case-level team Cmax return")
     parser.add_argument(
+        '--resource_lateness_coef', type=float, default=0.0,
+        help='auxiliary team-return penalty per second of total aircraft resource wait',
+    )
+    parser.add_argument(
+        '--resource_critical_lateness_coef', type=float, default=0.0,
+        help='auxiliary team-return penalty per second of worst-aircraft resource wait',
+    )
+    parser.add_argument(
+        '--resource_earliness_coef', type=float, default=0.0,
+        help='anti-hoarding team-return penalty per second of predicted early arrival',
+    )
+    parser.add_argument(
+        '--resource_wait_constraint_target', type=float, default=0.0,
+        help=(
+            'target mean per-case total mobile-resource wait in seconds; zero '
+            'disables the adaptive Lagrange multiplier'
+        ),
+    )
+    parser.add_argument(
+        '--resource_wait_dual_lr', type=float, default=0.0,
+        help='epoch-level normalized dual-ascent rate for the wait constraint',
+    )
+    parser.add_argument(
+        '--resource_wait_dual_max', type=float, default=0.05,
+        help='upper bound for the adaptive resource-wait penalty coefficient',
+    )
+    parser.add_argument(
         '--iga_potential_weights_path', type=str, default='',
         help='JSON weights calibrated from exact IGA teacher trajectory replays',
     )
     parser.add_argument(
         '--iga_potential_beta', type=float, default=0.0,
-        help='scale of IGA-calibrated potential-based reward shaping',
+        help=(
+            'scale of team-time potential shaping (IGA-calibrated or online '
+            'resource-slack, according to --hindsight_reward_mode)'
+        ),
     )
     parser.add_argument(
         '--iga_potential_beta_schedule', type=str, default='',
@@ -970,6 +1183,24 @@ def get_config():
     parser.add_argument(
         '--iga_potential_gamma', type=float, default=0.99,
         help='discount used in gamma * Phi(next_state) - Phi(state)',
+    )
+    parser.add_argument(
+        '--resource_slack_criticality_seconds',
+        type=float,
+        default=1800.0,
+        help=(
+            'remaining-work slack scale used to emphasize mobile-resource '
+            'requests on the estimated Cmax-critical aircraft'
+        ),
+    )
+    parser.add_argument(
+        '--resource_slack_forecast_seconds',
+        type=float,
+        default=0.0,
+        help=(
+            'seconds of state cost per excess arrival within the existing '
+            '1800-second lookahead window; zero disables forecast pressure'
+        ),
     )
     parser.add_argument(
         '--tail_policy_start_fraction', type=float, default=1.0,
@@ -1005,7 +1236,23 @@ def get_config():
                         help="terminal hindsight penalty when the plane cycle guard fires")
     parser.add_argument('--grad_accumulation_steps', type=int, default=5, help="the number of gradient accumulation steps, default 5")    
     parser.add_argument(
+        '--grad_accumulation_target_graphs', type=int, default=0,
+        help=(
+            "critic optimizer target graphs per accumulation group; >0 "
+            "balances whole microbatches by graph count instead of using a "
+            "fixed number of accumulation steps"
+        ),
+    )
+    parser.add_argument(
         '--actor_grad_accumulation_steps', type=int, default=0,
         help="actor-only accumulation steps; <=0 reuses --grad_accumulation_steps",
+    )
+    parser.add_argument(
+        '--actor_grad_accumulation_target_graphs', type=int, default=0,
+        help=(
+            "actor optimizer target graphs per accumulation group; >0 "
+            "preserves effective optimizer batch mass when the physical "
+            "graph forward size changes"
+        ),
     )
     return parser

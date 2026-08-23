@@ -265,7 +265,9 @@ class GNN_Actor_Critic(nn.Module):
                 actor_grad: bool = True, criticize: bool = True, eval_action: bool = False, 
                 dist_only: bool = False, criticize_only: bool = False,
                 return_decision_mask: bool = False,
-                return_log_prob_components: bool = False):
+                return_log_prob_components: bool = False,
+                encoded_graph=None,
+                return_rnn_states: bool = False):
         '''
         FJSP 异构图 Actor-Critic 前向传播核心逻辑
         
@@ -281,7 +283,16 @@ class GNN_Actor_Critic(nn.Module):
         # ========================================================
         # 1. 编码异构图 (Hetero Encoder)
         # ========================================================
-        enc_out = self.encoder(data['graph'])
+        # Stage2 freezes the shared encoder.  DeviceBC first runs the actor to
+        # advance recurrent state and then replays the teacher action for its
+        # supervised loss on exactly the same observation.  Accepting the
+        # first pass' detached encoding avoids doing the frozen GNN work twice
+        # without changing any trainable activation or gradient.
+        enc_out = (
+            self.encoder(data['graph'])
+            if encoded_graph is None
+            else encoded_graph
+        )
         global_emb = torch.nan_to_num(enc_out['global_emb'], nan=0.0, posinf=1e4, neginf=-1e4)      # [B, Embed_Dim]
         op_nodes = torch.nan_to_num(enc_out['op_nodes'], nan=0.0, posinf=1e4, neginf=-1e4)          # [B, N_ops, Embed_Dim]
         site_nodes = torch.nan_to_num(enc_out['site_nodes'], nan=0.0, posinf=1e4, neginf=-1e4)      # [B, N_sites, Embed_Dim]
@@ -340,17 +351,116 @@ class GNN_Actor_Critic(nn.Module):
                 n_sites,
             )
         request_mask_matrix = data['graph'].request_mask_matrix.clone().view(bsz, M, n_requests)
-        raw_pair_features = getattr(data['graph'], 'pair_features', None)
-        if self.plane_pair_decoder == 'joint_pair':
-            if raw_pair_features is None:
-                raise RuntimeError(
-                    'joint_pair decoder requires graph.pair_features.'
-                )
-            pair_features = raw_pair_features.clone().view(
-                bsz, M, n_jobs, n_sites, -1
+        raw_request_is_lookahead = getattr(
+            data['graph'], 'request_is_lookahead', None
+        )
+        if raw_request_is_lookahead is None:
+            request_is_lookahead = torch.zeros(
+                (bsz, n_requests),
+                dtype=torch.bool,
+                device=global_emb.device,
             )
         else:
+            request_is_lookahead = raw_request_is_lookahead.to(
+                device=global_emb.device, dtype=torch.bool
+            ).view(bsz, n_requests)
+        raw_pair_features = getattr(data['graph'], 'pair_features', None)
+        raw_sparse_pair_values = getattr(
+            data['graph'], 'pair_feature_values', None
+        )
+        raw_sparse_pair_flat_ids = getattr(
+            data['graph'], 'pair_feature_flat_ids', None
+        )
+        raw_sparse_pair_counts = getattr(
+            data['graph'], 'pair_feature_counts', None
+        )
+        if self.plane_pair_decoder == 'joint_pair':
+            has_dense_pair_features = raw_pair_features is not None
+            sparse_parts = (
+                raw_sparse_pair_values,
+                raw_sparse_pair_flat_ids,
+                raw_sparse_pair_counts,
+            )
+            has_sparse_pair_features = any(
+                value is not None for value in sparse_parts
+            )
+            if has_dense_pair_features and has_sparse_pair_features:
+                raise RuntimeError(
+                    'Graph cannot contain both dense and sparse pair features.'
+                )
+            if has_dense_pair_features:
+                if raw_pair_features.shape[0] % bsz != 0:
+                    raise RuntimeError(
+                        'Dense pair feature rows are not divisible by the '
+                        f'graph batch size: rows={raw_pair_features.shape[0]}, '
+                        f'batch={bsz}.'
+                    )
+                pair_feature_agent_rows = raw_pair_features.shape[0] // bsz
+                if pair_feature_agent_rows < min(self.max_plane_agents, M):
+                    raise RuntimeError(
+                        'Dense pair features do not contain every plane row: '
+                        f'rows_per_graph={pair_feature_agent_rows}.'
+                    )
+                pair_features = raw_pair_features.view(
+                    bsz,
+                    pair_feature_agent_rows,
+                    n_jobs,
+                    n_sites,
+                    -1,
+                )
+                sparse_pair_values = None
+                sparse_pair_graph_ids = None
+                sparse_pair_agent_ids = None
+                sparse_pair_local_flat_ids = None
+            else:
+                if not all(value is not None for value in sparse_parts):
+                    raise RuntimeError(
+                        'joint_pair decoder requires either graph.pair_features '
+                        'or the complete sparse pair feature representation.'
+                    )
+                sparse_pair_counts = raw_sparse_pair_counts.long().view(-1)
+                if sparse_pair_counts.numel() != bsz:
+                    raise RuntimeError(
+                        'Sparse pair feature counts do not match graph batch: '
+                        f'counts={sparse_pair_counts.numel()}, batch={bsz}.'
+                    )
+                sparse_pair_values = raw_sparse_pair_values.view(
+                    -1, self.actor.pair_feature_dim
+                )
+                sparse_pair_flat_ids = raw_sparse_pair_flat_ids.long().view(-1)
+                pair_span = n_jobs * n_sites
+                sparse_pair_graph_ids = torch.repeat_interleave(
+                    torch.arange(bsz, device=global_emb.device),
+                    sparse_pair_counts,
+                )
+                expected_sparse_rows = sparse_pair_graph_ids.numel()
+                if (
+                    sparse_pair_values.shape[0] != expected_sparse_rows
+                    or sparse_pair_flat_ids.numel() != expected_sparse_rows
+                ):
+                    raise RuntimeError(
+                        'Sparse pair feature payload does not match counts: '
+                        f'values={sparse_pair_values.shape[0]}, '
+                        f'ids={sparse_pair_flat_ids.numel()}, '
+                        f'expected={expected_sparse_rows}.'
+                    )
+                sparse_pair_agent_ids = sparse_pair_flat_ids // pair_span
+                sparse_pair_local_flat_ids = sparse_pair_flat_ids % pair_span
+                valid_sparse_ids = (
+                    (sparse_pair_agent_ids >= 0)
+                    & (sparse_pair_agent_ids < min(self.max_plane_agents, M))
+                )
+                if not valid_sparse_ids.all():
+                    raise RuntimeError(
+                        'Sparse pair features contain a non-plane agent id.'
+                    )
+                pair_features = None
+        else:
             pair_features = None
+            sparse_pair_values = None
+            sparse_pair_graph_ids = None
+            sparse_pair_agent_ids = None
+            sparse_pair_local_flat_ids = None
 
         # In learned mode the exact sampled plane rank is stored as the third
         # action component, keeping structured PPO replay exactly on-policy.
@@ -432,7 +542,9 @@ class GNN_Actor_Critic(nn.Module):
         
         # 用于累加信息熵
         total_entropy = torch.tensor(0.0, device=global_emb.device)
-        entropy_counts = 0
+        entropy_counts = torch.zeros(
+            (), dtype=global_emb.dtype, device=global_emb.device
+        )
 
         # ========================================================
         # 3. 遍历智能体 (飞机) 进行串行自回归决策
@@ -440,18 +552,68 @@ class GNN_Actor_Critic(nn.Module):
             total_entropy = total_entropy + plane_order_entropy[
                 plane_order_trainable
             ].sum()
-            entropy_counts += int(plane_order_trainable.sum().item())
+            entropy_counts += plane_order_trainable.sum().to(
+                dtype=global_emb.dtype
+            )
 
         # ========================================================
-        for iteration_idx in range(M * M):
-            decision_rank = iteration_idx // M
-            agent_idx = iteration_idx % M
-            active_mask_i = (
-                active_agents[:, agent_idx].view(-1).bool()
-                & (decision_order[:, decision_rank] == agent_idx)
+        # Fixed-order policies used to execute the generic per-batch
+        # permutation loop below.  With 24 planes plus 80 resource slots that
+        # meant M*M=10,816 tiny CUDA mask kernels and host synchronizations per
+        # forward even though only the M diagonal entries can ever be active.
+        # Resolve the globally active fixed-order agents once and preserve the
+        # exact ascending autoregressive order.  Learned ordering retains the
+        # general path because different batch rows may select different
+        # agents at the same rank.
+        if self.plane_order_actor is None:
+            fixed_active_mask = active_agents.bool()
+            type_min = torch.where(
+                fixed_active_mask,
+                agent_types,
+                torch.full_like(agent_types, 3),
+            ).amin(dim=0)
+            type_max = torch.where(
+                fixed_active_mask,
+                agent_types,
+                torch.full_like(agent_types, -1),
+            ).amax(dim=0)
+            fixed_metadata = torch.stack(
+                [
+                    fixed_active_mask.any(dim=0).long(),
+                    type_min,
+                    type_max,
+                ],
+                dim=-1,
+            ).detach().cpu().tolist()
+            active_fixed_agents = [
+                agent_idx
+                for agent_idx, metadata in enumerate(fixed_metadata)
+                if metadata[0]
+            ]
+            fixed_agent_roles = {
+                agent_idx: metadata[1]
+                for agent_idx, metadata in enumerate(fixed_metadata)
+                if metadata[0] and metadata[1] == metadata[2]
+            }
+            decision_iterations = (
+                (agent_idx, agent_idx) for agent_idx in active_fixed_agents
             )
-            if not active_mask_i.any():
-                continue
+        else:
+            fixed_agent_roles = {}
+            decision_iterations = (
+                (iteration_idx // M, iteration_idx % M)
+                for iteration_idx in range(M * M)
+            )
+
+        for decision_rank, agent_idx in decision_iterations:
+            active_mask_i = active_agents[:, agent_idx].view(-1).bool()
+            if self.plane_order_actor is not None:
+                active_mask_i = (
+                    active_mask_i
+                    & (decision_order[:, decision_rank] == agent_idx)
+                )
+                if not active_mask_i.any():
+                    continue
                 
             value_mask[:, agent_idx] = active_mask_i
             is_device_agent = agent_idx >= self.max_plane_agents
@@ -483,7 +645,12 @@ class GNN_Actor_Critic(nn.Module):
                     later_real_mask = request_mask_matrix[:, agent_idx + 1:, 1:].any(dim=1)
                 else:
                     later_real_mask = torch.zeros_like(current_real_mask)
-                last_chance_mask = current_real_mask & ~later_real_mask
+                # Lookahead requests are explicitly deferrable even for the
+                # last compatible device.  Only already-blocking requests may
+                # force no-op out of the autoregressive action mask.  This is
+                # the exact network counterpart of env._sequential_device_options.
+                blocking_real_mask = current_real_mask & ~request_is_lookahead[:, 1:]
+                last_chance_mask = blocking_real_mask & ~later_real_mask
                 has_last_chance = last_chance_mask.any(dim=-1)
                 cur_req_mask[:, 0] = ~has_last_chance
                 cur_req_mask[:, 1:] = torch.where(
@@ -492,11 +659,6 @@ class GNN_Actor_Critic(nn.Module):
                     current_real_mask,
                 )
                 request_mask_matrix[:, agent_idx, :] = cur_req_mask
-                is_transporter = (
-                    agent_types[:, agent_idx].view(-1)[active_mask_i]
-                    == self.AGENT_TYPE_TRANSPORTER
-                )
-
                 cur_req = torch.zeros(active_count, dtype=torch.long, device=global_emb.device)
                 cur_log_prob = torch.zeros(active_count, dtype=global_emb.dtype, device=global_emb.device)
                 cur_dist = torch.full(
@@ -506,25 +668,67 @@ class GNN_Actor_Critic(nn.Module):
                     device=global_emb.device,
                 )
                 cur_value = torch.zeros(active_count, dtype=global_emb.dtype, device=global_emb.device)
-                routed = torch.zeros(active_count, dtype=torch.bool, device=global_emb.device)
-
-                role_routes = (
-                    ((~is_transporter).view(-1).bool(), self.device_sel_enc, self.device_actor, self.device_critic),
-                    (is_transporter.view(-1).bool(), self.transporter_sel_enc, self.transporter_actor, self.transporter_critic),
+                cur_selected_valid = torch.zeros(
+                    active_count,
+                    dtype=torch.bool,
+                    device=global_emb.device,
                 )
-                for role_mask, sel_enc, actor_head, critic_head in role_routes:
-                    if not role_mask.any():
-                        continue
 
-                    role_batch_indices = active_batch_indices[role_mask]
+                fixed_role = fixed_agent_roles.get(agent_idx)
+                if fixed_role == self.AGENT_TYPE_DEVICE:
+                    role_routes = ((
+                        None,
+                        self.device_sel_enc,
+                        self.device_actor,
+                        self.device_critic,
+                        'ordinary',
+                    ),)
+                elif fixed_role == self.AGENT_TYPE_TRANSPORTER:
+                    role_routes = ((
+                        None,
+                        self.transporter_sel_enc,
+                        self.transporter_actor,
+                        self.transporter_critic,
+                        'transporter',
+                    ),)
+                else:
+                    is_transporter = (
+                        agent_types[:, agent_idx].view(-1)[active_mask_i]
+                        == self.AGENT_TYPE_TRANSPORTER
+                    )
+                    role_routes = (
+                        (
+                            (~is_transporter).view(-1).bool(),
+                            self.device_sel_enc,
+                            self.device_actor,
+                            self.device_critic,
+                            'ordinary',
+                        ),
+                        (
+                            is_transporter.view(-1).bool(),
+                            self.transporter_sel_enc,
+                            self.transporter_actor,
+                            self.transporter_critic,
+                            'transporter',
+                        ),
+                    )
+                for role_mask, sel_enc, actor_head, critic_head, role_name in role_routes:
+                    if role_mask is None:
+                        role_index = slice(None)
+                    else:
+                        if not role_mask.any():
+                            continue
+                        role_index = role_mask
+
+                    role_batch_indices = active_batch_indices[role_index]
                     hidden_state_i = (
                         data['hidden_states'][role_batch_indices, agent_idx:agent_idx+1, :]
                         .squeeze(1)
                         .transpose(0, 1)
                     )
                     seq_embed, slice_embed, new_hidden_state_i = sel_enc(
-                        selection=last_selection_emb[role_mask],
-                        veh=dev_emb[role_mask],
+                        selection=last_selection_emb[role_index],
+                        veh=dev_emb[role_index],
                         hidden_state=hidden_state_i,
                     )
                     new_hidden_state[role_batch_indices, agent_idx:agent_idx+1, :] = (
@@ -536,21 +740,15 @@ class GNN_Actor_Critic(nn.Module):
                         slice_embed.squeeze(1),
                     ], dim=-1)
                     role_req_mask = cur_req_mask[role_batch_indices]
-                    role_chosen = cur_chosen_req[role_mask] if cur_chosen_req is not None else None
+                    role_chosen = (
+                        cur_chosen_req[role_index]
+                        if cur_chosen_req is not None else None
+                    )
                     role_decision_trainable = role_req_mask.sum(dim=-1) > 1
                     decision_trainable[role_batch_indices, agent_idx] = role_decision_trainable
 
-                    if actor_grad:
-                        role_req, role_log_prob, role_dist = actor_head(
-                            query=role_query.unsqueeze(1),
-                            request_nodes=request_nodes[role_batch_indices],
-                            request_valid_mask=role_req_mask,
-                            deterministic=deterministic,
-                            tau=self.tau,
-                            chosen_request=role_chosen,
-                        )
-                    else:
-                        with torch.no_grad():
+                    try:
+                        if actor_grad:
                             role_req, role_log_prob, role_dist = actor_head(
                                 query=role_query.unsqueeze(1),
                                 request_nodes=request_nodes[role_batch_indices],
@@ -559,26 +757,58 @@ class GNN_Actor_Critic(nn.Module):
                                 tau=self.tau,
                                 chosen_request=role_chosen,
                             )
+                        else:
+                            with torch.no_grad():
+                                role_req, role_log_prob, role_dist = actor_head(
+                                    query=role_query.unsqueeze(1),
+                                    request_nodes=request_nodes[role_batch_indices],
+                                    request_valid_mask=role_req_mask,
+                                    deterministic=deterministic,
+                                    tau=self.tau,
+                                    chosen_request=role_chosen,
+                                )
+                    except RuntimeError as error:
+                        if role_chosen is None:
+                            raise
+                        bad = ~role_req_mask.gather(
+                            1, role_chosen.long().unsqueeze(-1)
+                        ).squeeze(-1)
+                        details = [
+                            {
+                                'batch': int(role_batch_indices[index]),
+                                'chosen_request': int(role_chosen[index]),
+                                'legal_requests': torch.nonzero(
+                                    role_req_mask[index], as_tuple=False
+                                ).flatten().detach().cpu().tolist(),
+                            }
+                            for index in torch.nonzero(
+                                bad, as_tuple=False
+                            ).flatten().detach().cpu().tolist()
+                        ]
+                        raise RuntimeError(
+                            'Resource replay mask mismatch at '
+                            f'agent={agent_idx}, role='
+                            f'{role_name}, '
+                            f'details={details[:8]}'
+                        ) from error
 
                     selected_req_valid = role_req_mask.gather(
                         1,
                         role_req.unsqueeze(-1),
                     ).squeeze(-1)
-                    if not selected_req_valid.all():
-                        raise RuntimeError(
-                            f"Device actor produced a request outside its mask for agent {agent_idx}."
-                        )
 
-                    cur_req[role_mask] = role_req
-                    cur_log_prob[role_mask] = role_log_prob
-                    cur_dist[role_mask] = role_dist
-                    routed[role_mask] = True
+                    cur_req[role_index] = role_req
+                    cur_log_prob[role_index] = role_log_prob
+                    cur_dist[role_index] = role_dist
+                    cur_selected_valid[role_index] = selected_req_valid
 
                     if eval_action or dist_only:
                         dist_req = torch.distributions.Categorical(logits=role_dist)
                         role_entropy = dist_req.entropy()
                         total_entropy += role_entropy[role_decision_trainable].sum()
-                        entropy_counts += int(role_decision_trainable.sum().item())
+                        entropy_counts += role_decision_trainable.sum().to(
+                            dtype=global_emb.dtype
+                        )
 
                     if criticize:
                         cur_req_pad_mask = ~role_req_mask
@@ -591,7 +821,7 @@ class GNN_Actor_Critic(nn.Module):
                             site_nodes[role_batch_indices].detach()
                             if criticize_only else site_nodes[role_batch_indices]
                         )
-                        cur_value[role_mask] = critic_head(
+                        cur_value[role_index] = critic_head(
                             query=critic_query.unsqueeze(1),
                             op_nodes=critic_requests,
                             site_nodes=critic_sites,
@@ -599,27 +829,24 @@ class GNN_Actor_Critic(nn.Module):
                             site_pad_mask=None,
                         ).view(-1)
 
-                if not routed.all():
-                    bad_rows = torch.nonzero(~routed, as_tuple=False).flatten().tolist()
-                    raise RuntimeError(f"Device agents were not routed to a role backend for rows {bad_rows}.")
-
                 op_choice[active_mask_i, agent_idx] = cur_req
                 site_choice[active_mask_i, agent_idx] = 0
                 log_prob[active_mask_i, agent_idx] = cur_log_prob
-                decision_validated[active_mask_i, agent_idx] = True
+                decision_validated[active_mask_i, agent_idx] = (
+                    cur_selected_valid
+                )
 
                 if criticize:
                     value[active_mask_i, agent_idx] = cur_value
 
                 batch_indices = active_batch_indices
                 real_req_mask = cur_req > 0
-                if real_req_mask.any():
-                    affected_batches = batch_indices[real_req_mask]
-                    request_mask_matrix[
-                        affected_batches,
-                        :,
-                        cur_req[real_req_mask],
-                    ] = False
+                affected_batches = batch_indices[real_req_mask]
+                request_mask_matrix[
+                    affected_batches,
+                    :,
+                    cur_req[real_req_mask],
+                ] = False
 
                 continue
             
@@ -717,6 +944,45 @@ class GNN_Actor_Critic(nn.Module):
                     chosen_op[:, agent_idx].view(-1)[active_mask_i] - op_start
                 )
             cur_chosen_site = chosen_site[:, agent_idx].view(-1)[active_mask_i] if chosen_site is not None else None
+            pair_actor_kwargs = {}
+            if self.plane_pair_decoder == 'joint_pair':
+                if pair_features is not None:
+                    pair_actor_kwargs['pair_features'] = pair_features[
+                        active_mask_i, agent_idx
+                    ]
+                else:
+                    active_batch_indices = torch.nonzero(
+                        active_mask_i, as_tuple=False
+                    ).flatten()
+                    batch_to_local = torch.full(
+                        (bsz,),
+                        -1,
+                        dtype=torch.long,
+                        device=global_emb.device,
+                    )
+                    batch_to_local[active_batch_indices] = torch.arange(
+                        active_batch_indices.numel(),
+                        dtype=torch.long,
+                        device=global_emb.device,
+                    )
+                    sparse_selection = (
+                        (sparse_pair_agent_ids == agent_idx)
+                        & active_mask_i[sparse_pair_graph_ids]
+                    )
+                    selected_graph_ids = sparse_pair_graph_ids[
+                        sparse_selection
+                    ]
+                    pair_actor_kwargs.update({
+                        'pair_feature_values': sparse_pair_values[
+                            sparse_selection
+                        ],
+                        'pair_feature_batch_indices': batch_to_local[
+                            selected_graph_ids
+                        ],
+                        'pair_feature_flat_ids': (
+                            sparse_pair_local_flat_ids[sparse_selection]
+                        ),
+                    })
             # ---------------------------------------------------------
             # E. 级联 Actor 决策
             # ---------------------------------------------------------
@@ -731,10 +997,7 @@ class GNN_Actor_Critic(nn.Module):
                     tau=self.tau,
                     chosen_op=cur_chosen_op, 
                     chosen_site=cur_chosen_site,
-                    pair_features=(
-                        pair_features[active_mask_i, agent_idx]
-                        if pair_features is not None else None
-                    ),
+                    **pair_actor_kwargs,
                 )
             else:
                 with torch.no_grad():
@@ -748,10 +1011,7 @@ class GNN_Actor_Critic(nn.Module):
                         chosen_op=cur_chosen_op,
                         chosen_site=cur_chosen_site,
                         tau=self.tau,
-                        pair_features=(
-                            pair_features[active_mask_i, agent_idx]
-                            if pair_features is not None else None
-                        ),
+                        **pair_actor_kwargs,
                     )
             selected_pair_valid = cur_agent_mask[active_mask_i].gather(
                 1,
@@ -762,12 +1022,6 @@ class GNN_Actor_Critic(nn.Module):
                 cur_op,
                 cur_site,
             ]
-            if not selected_pair_valid.all():
-                raise RuntimeError(
-                    f"Plane actor produced an operation-site pair outside its mask "
-                    f"for agent {agent_idx}."
-                )
-
             # 记录决策动作与概率
             op_choice[active_mask_i, agent_idx] = cur_op + op_start
             site_choice[active_mask_i, agent_idx] = cur_site
@@ -776,7 +1030,7 @@ class GNN_Actor_Critic(nn.Module):
                 pair_log_prob[active_mask_i, agent_idx]
                 + plane_order_log_prob[active_mask_i, agent_idx]
             )
-            decision_validated[active_mask_i, agent_idx] = True
+            decision_validated[active_mask_i, agent_idx] = selected_pair_valid
 
             # 累加信息熵 (评估阶段专用)
             if eval_action or dist_only:
@@ -785,7 +1039,9 @@ class GNN_Actor_Critic(nn.Module):
                 dist_joint = torch.distributions.Categorical(logits=joint_logits)
                 plane_decision_trainable = joint_choice_count > 1
                 total_entropy += dist_joint.entropy()[plane_decision_trainable].sum()
-                entropy_counts += int(plane_decision_trainable.sum().item())
+                entropy_counts += plane_decision_trainable.sum().to(
+                    dtype=global_emb.dtype
+                )
 
             # ---------------------------------------------------------
             # F. Critic 价值评估
@@ -851,7 +1107,12 @@ class GNN_Actor_Critic(nn.Module):
             )
         
         # 计算平均熵
-        ent = torch.nan_to_num(total_entropy / max(1, entropy_counts), nan=0.0, posinf=0.0, neginf=0.0)
+        ent = torch.nan_to_num(
+            total_entropy / entropy_counts.clamp_min(1.0),
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
 
         if criticize_only:
             return value
@@ -871,10 +1132,25 @@ class GNN_Actor_Critic(nn.Module):
                     'order_decision_mask': plane_order_trainable,
                 }
                 if return_decision_mask:
-                    return log_prob, ent, decision_trainable, components
-                return log_prob, ent, components
+                    outputs = (
+                        log_prob,
+                        ent,
+                        decision_trainable,
+                        components,
+                    )
+                else:
+                    outputs = (log_prob, ent, components)
+                return (
+                    (*outputs, new_hidden_state)
+                    if return_rnn_states else outputs
+                )
             if return_decision_mask:
-                return log_prob, ent, decision_trainable
-            return log_prob, ent
+                outputs = (log_prob, ent, decision_trainable)
+            else:
+                outputs = (log_prob, ent)
+            return (
+                (*outputs, new_hidden_state)
+                if return_rnn_states else outputs
+            )
             
         return action, new_hidden_state

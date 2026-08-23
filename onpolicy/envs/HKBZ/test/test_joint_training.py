@@ -237,6 +237,202 @@ class JointTrainingRegressionTest(unittest.TestCase):
         finally:
             env.close()
 
+    def test_sparse_pair_graph_matches_dense_policy_and_reduces_bytes(self):
+        dense_env = _make_env()
+        sparse_env = _make_env()
+        try:
+            dense_env.config['pair_feature_storage'] = 'dense_legacy'
+            sparse_env.config['pair_feature_storage'] = 'sparse_legal'
+            dense_obs, _, dense_info = dense_env.reset()
+            sparse_obs, _, sparse_info = sparse_env.reset()
+
+            plane_count = dense_env.n_plane_agents
+            agent_count = dense_env.n_agents
+            job_count = len(dense_env.job_code_list)
+            site_count = len(dense_env.site_code_list)
+            local_op_mask = torch.stack([
+                dense_obs.op_mask.view(agent_count, -1)[
+                    plane_idx,
+                    plane_idx * job_count:(plane_idx + 1) * job_count,
+                ]
+                for plane_idx in range(plane_count)
+            ])
+            legal_pair_mask = (
+                local_op_mask.unsqueeze(-1)
+                & dense_obs.agent_job_site_mask_matrix[:plane_count]
+                & dense_obs.site_mask_matrix[
+                    :plane_count, None, :
+                ]
+            )
+            reconstructed = torch.zeros(
+                plane_count * job_count * site_count,
+                dense_obs.pair_features.shape[-1],
+            )
+            reconstructed[sparse_obs.pair_feature_flat_ids.long()] = (
+                sparse_obs.pair_feature_values
+            )
+            reconstructed = reconstructed.view(
+                plane_count,
+                job_count,
+                site_count,
+                -1,
+            )
+            torch.testing.assert_close(
+                reconstructed[legal_pair_mask],
+                dense_obs.pair_features[:plane_count][legal_pair_mask],
+                rtol=0.0,
+                atol=0.0,
+            )
+            self.assertEqual(
+                sparse_obs.pair_feature_values.shape[0],
+                int(legal_pair_mask.sum()),
+            )
+
+            def tensor_bytes(graph):
+                return sum(
+                    value.numel() * value.element_size()
+                    for store in graph.stores
+                    for value in store.values()
+                    if torch.is_tensor(value)
+                )
+
+            self.assertLess(
+                tensor_bytes(sparse_obs), 0.10 * tensor_bytes(dense_obs)
+            )
+
+            policy = _make_policy()
+            policy.ac.eval()
+            rnn_states = np.zeros(
+                (1, agent_count, 1, 64), dtype=np.float32
+            )
+            last_indices = -np.ones(
+                (1, agent_count), dtype=np.int64
+            )
+            common = {
+                'rnn_states': rnn_states,
+                'active_agents': dense_info['active_agents'][None, :],
+                'last_op_indices': last_indices,
+                'last_site_indices': last_indices,
+                'agent_types': dense_info['agent_types'][None, :],
+                'deterministic': True,
+                'return_decision_mask': True,
+            }
+            with torch.inference_mode():
+                dense_output = policy.get_actions(
+                    Batch.from_data_list([dense_obs]), **common
+                )
+                sparse_output = policy.get_actions(
+                    Batch.from_data_list([sparse_obs]), **common
+                )
+            for dense_value, sparse_value in zip(
+                dense_output, sparse_output
+            ):
+                torch.testing.assert_close(
+                    sparse_value, dense_value, rtol=1e-6, atol=1e-6
+                )
+            np.testing.assert_array_equal(
+                sparse_info['active_agents'], dense_info['active_agents']
+            )
+        finally:
+            dense_env.close()
+            sparse_env.close()
+
+    def test_sparse_pair_variable_length_batch_matches_dense_policy(self):
+        dense_env = _make_env()
+        sparse_env = _make_env()
+        try:
+            dense_env.config['pair_feature_storage'] = 'dense_legacy'
+            sparse_env.config['pair_feature_storage'] = 'sparse_legal'
+            dense_obs, _, dense_info = dense_env.reset()
+            sparse_obs, _, sparse_info = sparse_env.reset()
+            policy = _make_policy()
+            policy.ac.eval()
+            agent_count = dense_env.n_agents
+            dense_graphs = []
+            sparse_graphs = []
+            infos = []
+
+            for _ in range(4):
+                dense_graphs.append(dense_obs.clone())
+                sparse_graphs.append(sparse_obs.clone())
+                infos.append(dense_info)
+                rnn_states = np.zeros(
+                    (1, agent_count, 1, 64), dtype=np.float32
+                )
+                last_indices = -np.ones(
+                    (1, agent_count), dtype=np.int64
+                )
+                kwargs = {
+                    'rnn_states': rnn_states,
+                    'active_agents': dense_info['active_agents'][None, :],
+                    'last_op_indices': last_indices,
+                    'last_site_indices': last_indices,
+                    'agent_types': dense_info['agent_types'][None, :],
+                    'deterministic': True,
+                    'return_decision_mask': True,
+                }
+                with torch.inference_mode():
+                    dense_step = policy.get_actions(
+                        Batch.from_data_list([dense_obs]), **kwargs
+                    )
+                    sparse_step = policy.get_actions(
+                        Batch.from_data_list([sparse_obs]), **kwargs
+                    )
+                torch.testing.assert_close(
+                    sparse_step[1], dense_step[1], rtol=0.0, atol=0.0
+                )
+                action = dense_step[1][0].cpu().numpy()
+                dense_obs, _, dense_done, dense_info = dense_env.step(action)
+                sparse_obs, _, sparse_done, sparse_info = sparse_env.step(action)
+                np.testing.assert_array_equal(sparse_done, dense_done)
+                np.testing.assert_array_equal(
+                    sparse_info['active_agents'], dense_info['active_agents']
+                )
+
+            sparse_counts = [
+                int(graph.pair_feature_counts[0])
+                for graph in sparse_graphs
+            ]
+            self.assertGreater(len(set(sparse_counts)), 1)
+            batch_size = len(dense_graphs)
+            active_agents = np.stack([
+                info['active_agents'] for info in infos
+            ])
+            agent_types = np.stack([
+                info['agent_types'] for info in infos
+            ])
+            rnn_states = np.zeros(
+                (batch_size, agent_count, 1, 64), dtype=np.float32
+            )
+            last_indices = -np.ones(
+                (batch_size, agent_count), dtype=np.int64
+            )
+            kwargs = {
+                'rnn_states': rnn_states,
+                'active_agents': active_agents,
+                'last_op_indices': last_indices,
+                'last_site_indices': last_indices,
+                'agent_types': agent_types,
+                'deterministic': True,
+                'return_decision_mask': True,
+            }
+            with torch.inference_mode():
+                dense_output = policy.get_actions(
+                    Batch.from_data_list(dense_graphs), **kwargs
+                )
+                sparse_output = policy.get_actions(
+                    Batch.from_data_list(sparse_graphs), **kwargs
+                )
+            for dense_value, sparse_value in zip(
+                dense_output, sparse_output
+            ):
+                torch.testing.assert_close(
+                    sparse_value, dense_value, rtol=1e-6, atol=1e-6
+                )
+        finally:
+            dense_env.close()
+            sparse_env.close()
+
     def test_global_feature_modes_have_stable_batched_shape(self):
         observations = {}
         for mode in ("none", "f1", "f1f2", "f1f2_departure"):
@@ -355,6 +551,47 @@ class JointTrainingRegressionTest(unittest.TestCase):
         self.assertAlmostEqual(float(weights[agent_types == 0].sum()), 1.0)
         self.assertAlmostEqual(float(weights[agent_types == 1].sum()), 0.5)
         self.assertAlmostEqual(float(weights[agent_types == 2].sum()), 0.25)
+
+    def test_actor_sample_mass_only_counts_trainable_roles(self):
+        trainer = MAPPO_Trainer.__new__(MAPPO_Trainer)
+        sample = [None] * 15
+        sample[12] = np.array([[[0, 0, 1, 2]]], dtype=np.int64)
+        sample[13] = np.array(
+            [[[[0.4], [0.6], [0.2], [0.3]]]],
+            dtype=np.float32,
+        )
+
+        self.assertAlmostEqual(
+            trainer._role_filtered_sample_mass(sample, 13, {1, 2}),
+            0.5,
+        )
+        self.assertEqual(
+            trainer._role_filtered_sample_mass(sample, 13, set()),
+            0.0,
+        )
+
+    def test_nondifferentiable_actor_loss_is_skipped_without_backward(self):
+        frozen_loss = torch.tensor(1.0)
+        self.assertFalse(MAPPO_Trainer._backward_actor_loss(frozen_loss))
+
+        parameter = torch.nn.Parameter(torch.tensor(2.0))
+        trainable_loss = parameter.square()
+        self.assertTrue(MAPPO_Trainer._backward_actor_loss(trainable_loss))
+        self.assertAlmostEqual(float(parameter.grad), 4.0)
+
+    def test_resource_joint_trainable_roles_exclude_frozen_plane(self):
+        policy = _make_policy()
+        policy.set_resource_joint_training_stage(
+            freeze_plane=True,
+            freeze_shared=True,
+            train_device=True,
+            train_transporter=True,
+        )
+        trainer = MAPPO_Trainer.__new__(MAPPO_Trainer)
+        trainer.policy = policy
+        trainer.joint_team_ppo = False
+
+        self.assertEqual(trainer._trainable_actor_roles(), {1, 2})
 
     def test_terminal_cmax_is_assigned_once_per_agent(self):
         env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)

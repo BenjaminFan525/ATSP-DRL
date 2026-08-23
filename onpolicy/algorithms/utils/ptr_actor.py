@@ -330,7 +330,10 @@ class JointPairPtrActor(Module):
 
     def forward(self, query, op_nodes, site_nodes, op_valid_mask,
                 site_valid_mask, deterministic=False, chosen_op=None,
-                chosen_site=None, tau=1.0, pair_features=None):
+                chosen_site=None, tau=1.0, pair_features=None,
+                pair_feature_values=None,
+                pair_feature_batch_indices=None,
+                pair_feature_flat_ids=None):
         batch_size = query.shape[0]
         op_count = op_nodes.shape[1]
         site_count = site_nodes.shape[1]
@@ -354,46 +357,147 @@ class JointPairPtrActor(Module):
                 f"Joint pair actor has no legal action for rows {bad_rows}."
             )
 
+        sparse_inputs = (
+            pair_feature_values,
+            pair_feature_batch_indices,
+            pair_feature_flat_ids,
+        )
+        sparse_mode = any(value is not None for value in sparse_inputs)
+        if sparse_mode and not all(value is not None for value in sparse_inputs):
+            raise ValueError(
+                'Sparse pair features require values, batch indices and flat ids.'
+            )
+        if sparse_mode and pair_features is not None:
+            raise ValueError(
+                'Dense and sparse pair features cannot be supplied together.'
+            )
+
         q = self.query_proj(query).squeeze(1)
-        q_grid = q[:, None, None, :].expand(
-            -1, op_count, site_count, -1
-        )
-        op_grid = op_nodes[:, :, None, :].expand(
-            -1, -1, site_count, -1
-        )
-        site_grid = site_nodes[:, None, :, :].expand(
-            -1, op_count, -1, -1
-        )
-        pair_latent = torch.cat(
-            (
-                q_grid,
-                op_grid,
-                site_grid,
-                op_grid * site_grid,
-                q_grid * op_grid,
-                q_grid * site_grid,
-            ),
-            dim=-1,
-        )
-        if self.pair_feature_proj is not None:
-            expected_pair_shape = (
-                batch_size, op_count, site_count, self.pair_feature_dim
-            )
-            if pair_features is None or pair_features.shape != expected_pair_shape:
-                actual = None if pair_features is None else tuple(pair_features.shape)
+        if sparse_mode:
+            if self.pair_feature_proj is None:
                 raise ValueError(
-                    f"pair_features must have shape {expected_pair_shape}, "
-                    f"got {actual}."
+                    'Sparse pair features require pair_feature_dim > 0.'
                 )
-            pair_features = torch.nan_to_num(
-                pair_features, nan=0.0, posinf=10.0, neginf=-10.0
+            sparse_values = pair_feature_values
+            sparse_batches = pair_feature_batch_indices.long().view(-1)
+            sparse_flat_ids = pair_feature_flat_ids.long().view(-1)
+            if (
+                sparse_values.dim() != 2
+                or sparse_values.shape[1] != self.pair_feature_dim
+                or sparse_values.shape[0] != sparse_batches.numel()
+                or sparse_values.shape[0] != sparse_flat_ids.numel()
+            ):
+                raise ValueError(
+                    'Sparse pair feature tensors have inconsistent shapes: '
+                    f'values={tuple(sparse_values.shape)}, '
+                    f'batches={tuple(sparse_batches.shape)}, '
+                    f'flat_ids={tuple(sparse_flat_ids.shape)}.'
+                )
+            pair_count = op_count * site_count
+            in_bounds = (
+                (sparse_batches >= 0)
+                & (sparse_batches < batch_size)
+                & (sparse_flat_ids >= 0)
+                & (sparse_flat_ids < pair_count)
             )
-            pair_latent = torch.cat(
-                (pair_latent, self.pair_feature_proj(pair_features)),
+            if not in_bounds.all():
+                raise ValueError('Sparse pair feature coordinates are out of range.')
+
+            # Autoregressive plane decisions can only remove choices from the
+            # environment mask.  Drop those newly masked entries, then require
+            # exact coverage of every pair that remains legal for this call.
+            still_legal = flat_valid[sparse_batches, sparse_flat_ids]
+            sparse_values = sparse_values[still_legal]
+            sparse_batches = sparse_batches[still_legal]
+            sparse_flat_ids = sparse_flat_ids[still_legal]
+            coverage = torch.zeros_like(flat_valid)
+            coverage[sparse_batches, sparse_flat_ids] = True
+            missing = flat_valid & ~coverage
+            if missing.any():
+                missing_rows = torch.nonzero(
+                    missing.any(dim=-1), as_tuple=False
+                ).flatten().tolist()
+                raise RuntimeError(
+                    'Sparse pair features do not cover every legal action for '
+                    f'rows {missing_rows}.'
+                )
+
+            sparse_ops = sparse_flat_ids // site_count
+            sparse_sites = sparse_flat_ids % site_count
+            q_sparse = q[sparse_batches]
+            op_sparse = op_nodes[sparse_batches, sparse_ops]
+            site_sparse = site_nodes[sparse_batches, sparse_sites]
+            sparse_latent = torch.cat(
+                (
+                    q_sparse,
+                    op_sparse,
+                    site_sparse,
+                    op_sparse * site_sparse,
+                    q_sparse * op_sparse,
+                    q_sparse * site_sparse,
+                    self.pair_feature_proj(torch.nan_to_num(
+                        sparse_values,
+                        nan=0.0,
+                        posinf=10.0,
+                        neginf=-10.0,
+                    )),
+                ),
                 dim=-1,
             )
-        logits = self.pair_score(pair_latent).squeeze(-1)
-        logits = logits.reshape(batch_size, -1)
+            sparse_logits = self.pair_score(sparse_latent).squeeze(-1)
+            logits = torch.full(
+                (batch_size, pair_count),
+                float('-inf'),
+                dtype=sparse_logits.dtype,
+                device=sparse_logits.device,
+            )
+            logits[sparse_batches, sparse_flat_ids] = sparse_logits
+        else:
+            q_grid = q[:, None, None, :].expand(
+                -1, op_count, site_count, -1
+            )
+            op_grid = op_nodes[:, :, None, :].expand(
+                -1, -1, site_count, -1
+            )
+            site_grid = site_nodes[:, None, :, :].expand(
+                -1, op_count, -1, -1
+            )
+            pair_latent = torch.cat(
+                (
+                    q_grid,
+                    op_grid,
+                    site_grid,
+                    op_grid * site_grid,
+                    q_grid * op_grid,
+                    q_grid * site_grid,
+                ),
+                dim=-1,
+            )
+            if self.pair_feature_proj is not None:
+                expected_pair_shape = (
+                    batch_size, op_count, site_count, self.pair_feature_dim
+                )
+                if (
+                    pair_features is None
+                    or pair_features.shape != expected_pair_shape
+                ):
+                    actual = (
+                        None if pair_features is None
+                        else tuple(pair_features.shape)
+                    )
+                    raise ValueError(
+                        f"pair_features must have shape {expected_pair_shape}, "
+                        f"got {actual}."
+                    )
+                pair_features = torch.nan_to_num(
+                    pair_features, nan=0.0, posinf=10.0, neginf=-10.0
+                )
+                pair_latent = torch.cat(
+                    (pair_latent, self.pair_feature_proj(pair_features)),
+                    dim=-1,
+                )
+            logits = self.pair_score(pair_latent).squeeze(-1)
+            logits = logits.reshape(batch_size, -1)
         logits = logits / max(float(tau), 1e-6)
         logits = _safe_logits(logits, valid_mask=flat_valid)
         log_probs = F.log_softmax(logits, dim=-1)

@@ -179,6 +179,88 @@ class ActionMaskTest(unittest.TestCase):
         torch.testing.assert_close(replay[2], log_prob)
         torch.testing.assert_close(replay[3], logits)
 
+    def test_sparse_joint_pair_actor_matches_dense_logits_and_gradients(self):
+        torch.manual_seed(20260819)
+        dense_actor = JointPairPtrActor(
+            query_dim=12, embed_dim=8, pair_feature_dim=10
+        )
+        sparse_actor = JointPairPtrActor(
+            query_dim=12, embed_dim=8, pair_feature_dim=10
+        )
+        sparse_actor.load_state_dict(dense_actor.state_dict())
+
+        batch_size, op_count, site_count = 5, 4, 6
+        query = torch.randn(batch_size, 1, 12)
+        op_nodes = torch.randn(batch_size, op_count, 8)
+        site_nodes = torch.randn(batch_size, site_count, 8)
+        op_mask = torch.rand(batch_size, op_count) > 0.25
+        pair_mask = (
+            (torch.rand(batch_size, op_count, site_count) > 0.65)
+            & op_mask.unsqueeze(-1)
+        )
+        for batch_idx in range(batch_size):
+            if not pair_mask[batch_idx].any():
+                pair_mask[batch_idx, 0, 0] = True
+                op_mask[batch_idx, 0] = True
+
+        dense_features = torch.randn(
+            batch_size, op_count, site_count, 10
+        )
+        coordinates = pair_mask.nonzero(as_tuple=False)
+        sparse_values = dense_features[
+            coordinates[:, 0], coordinates[:, 1], coordinates[:, 2]
+        ]
+        sparse_flat_ids = (
+            coordinates[:, 1] * site_count + coordinates[:, 2]
+        )
+        chosen_flat = torch.stack([
+            torch.nonzero(pair_mask[index].reshape(-1))[0, 0]
+            for index in range(batch_size)
+        ])
+        chosen_op = chosen_flat // site_count
+        chosen_site = chosen_flat % site_count
+
+        dense_output = dense_actor(
+            query,
+            op_nodes,
+            site_nodes,
+            op_mask,
+            pair_mask,
+            chosen_op=chosen_op,
+            chosen_site=chosen_site,
+            pair_features=dense_features,
+        )
+        sparse_output = sparse_actor(
+            query,
+            op_nodes,
+            site_nodes,
+            op_mask,
+            pair_mask,
+            chosen_op=chosen_op,
+            chosen_site=chosen_site,
+            pair_feature_values=sparse_values,
+            pair_feature_batch_indices=coordinates[:, 0],
+            pair_feature_flat_ids=sparse_flat_ids,
+        )
+        torch.testing.assert_close(
+            sparse_output[2], dense_output[2], rtol=1e-6, atol=1e-7
+        )
+        torch.testing.assert_close(
+            sparse_output[3], dense_output[3], rtol=1e-6, atol=1e-7
+        )
+
+        (-dense_output[2].mean()).backward()
+        (-sparse_output[2].mean()).backward()
+        for dense_parameter, sparse_parameter in zip(
+            dense_actor.parameters(), sparse_actor.parameters()
+        ):
+            torch.testing.assert_close(
+                sparse_parameter.grad,
+                dense_parameter.grad,
+                rtol=1e-5,
+                atol=1e-7,
+            )
+
     def test_pointer_actors_never_sample_outside_masks(self):
         plane_actor = CascadePtrActor(query_dim=12, embed_dim=8, nhead=2)
         query = torch.randn(2, 1, 12)

@@ -15,7 +15,7 @@ CASE_DIR = (
 )
 
 
-def _make_env(resource_policy="heuristic"):
+def _make_env(resource_policy="heuristic", **overrides):
     config = {
         "jobs_path": str(CASE_DIR / "job.json"),
         "fixed_res_path": str(CASE_DIR / "fixed_resources.json"),
@@ -28,6 +28,7 @@ def _make_env(resource_policy="heuristic"):
         "n_agents": 24,
         "max_device_num": 80,
     }
+    config.update(overrides)
     env = AircraftScheduleEnv(config)
     env.reset()
     return env
@@ -366,6 +367,75 @@ class DepartureFlowTest(unittest.TestCase):
             plane, ready_only=True
         ))
         self.assertIn(plane.code, env._departure_runway_plan)
+
+    def test_staging_promotes_local_lookahead_r014_before_event_deadlock(self):
+        """A zero-time lease promotion must wake the ZY-S plane decision.
+
+        This is the exact ordering that failed in the Wave-4 natural BC
+        rollout: the observation offers ZY-T while a pre-positioned R014 has
+        an unpromoted lease; executing the hold/staging action makes the lease
+        promotable without creating any future timed event.
+        """
+        for reservation_mode in ("soft", "hard"):
+            with self.subTest(reservation_mode=reservation_mode):
+                env = _make_env(
+                    resource_policy="drl",
+                    device_lookahead_dispatch=True,
+                    device_future_intent_horizon=1,
+                    device_departure_lookahead=True,
+                    device_lookahead_reservation_mode=reservation_mode,
+                    device_reservation_grace_seconds=300.0,
+                )
+                try:
+                    plane = _prepare_planes(env, 1, completed=True)[0]
+                    transporter = env.mobile_devices["R014"][0]
+                    if transporter.site != plane.site:
+                        transporter.start_transport(plane.site)
+                        transporter.finish_transport()
+                    transporter.lookahead_reservation = {
+                        "identity": [
+                            plane.code,
+                            env.TRANSFER_JOB_CODE,
+                            plane.site.code,
+                        ],
+                        "plane_id": plane.code,
+                        "job_code": env.TRANSFER_JOB_CODE,
+                        "site_code": plane.site.code,
+                        "mode": reservation_mode,
+                        "created_time": float(env.total_time),
+                        "needed_time": float(env.total_time),
+                        "expires_at": float(env.total_time + 300.0),
+                    }
+
+                    env._get_obs()
+                    info = env._get_info()
+                    self.assertFalse(plane.departure_staging_decided)
+                    self.assertNotIn(
+                        plane.code, env.departure_transporter_by_plane
+                    )
+
+                    actions = np.zeros((env.n_agents, 2), dtype=np.int64)
+                    transfer_idx = env.job_code_list.index(
+                        env.TRANSFER_JOB_CODE
+                    )
+                    current_site_idx = env.site_code_list.index(
+                        plane.site.code
+                    )
+                    actions[0] = [transfer_idx, current_site_idx]
+
+                    _, _, dones, next_info = env.step(actions)
+
+                    self.assertFalse(bool(np.all(dones)))
+                    self.assertTrue(plane.departure_staging_decided)
+                    self.assertIsNone(transporter.lookahead_reservation)
+                    self.assertEqual(
+                        env.departure_transporter_by_plane[plane.code],
+                        transporter.code,
+                    )
+                    self.assertTrue(bool(next_info["active_agents"][0]))
+                    self.assertIn(plane.code, env._departure_runway_plan)
+                finally:
+                    env.close()
 
     def test_hold_action_fast_forwards_to_future_arrival_without_zero_time_loop(self):
         env = _make_env()

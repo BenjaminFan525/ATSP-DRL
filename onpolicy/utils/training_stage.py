@@ -316,6 +316,144 @@ def validate_stage1_m2_checkpoint(
     }
 
 
+def validate_stage2_recovery_checkpoint(
+    checkpoint: Mapping[str, object],
+    target_state: Mapping[str, object],
+    *,
+    plane_order_mode: object,
+    plane_pair_decoder: object,
+    global_feature_mode: object,
+    protected_prefixes: Sequence[str] = PROTECTED_RESOURCE_JOINT_PREFIXES,
+) -> dict[str, object]:
+    """Validate a complete, cursor-bearing Stage-2 recovery checkpoint.
+
+    Stage-2 recovery must be exact: unlike the Stage-1 hand-off, every model
+    tensor is required and shape-compatible.  Only a checkpoint written after
+    a completed shard is accepted, so an emergency snapshot taken halfway
+    through an update can never be mistaken for a resumable cursor.
+    """
+
+    if not isinstance(checkpoint, Mapping):
+        raise ValueError("Stage-2 recovery checkpoint must contain a mapping payload.")
+    model = checkpoint.get("model")
+    if not isinstance(model, Mapping):
+        raise ValueError("Stage-2 recovery checkpoint is missing its model state mapping.")
+
+    training_stage = str(checkpoint.get("training_stage", "")).strip().lower()
+    stage = str(checkpoint.get("stage", "")).strip().lower()
+    phase = str(checkpoint.get("phase", "")).strip().lower()
+    if training_stage != CANONICAL_RESOURCE_JOINT:
+        raise ValueError(
+            "Stage-2 recovery requires training_stage='resource_joint'; got "
+            f"{checkpoint.get('training_stage')!r}."
+        )
+    if stage != "post_shard_recovery":
+        raise ValueError(
+            "Stage-2 recovery requires a post_shard_recovery checkpoint; got "
+            f"stage={checkpoint.get('stage')!r}."
+        )
+    if phase != "resource_joint_ppo":
+        raise ValueError(
+            "Stage-2 recovery checkpoint is not in resource_joint_ppo; got "
+            f"phase={checkpoint.get('phase')!r}."
+        )
+
+    total_shards = int(checkpoint.get("total_shards", 0))
+    completed_shards = int(checkpoint.get("completed_shard", 0))
+    completed_epochs = int(checkpoint.get("episodes", 0))
+    total_num_steps = int(checkpoint.get("total_num_steps", -1))
+    if total_shards <= 0 or not 0 < completed_shards <= total_shards:
+        raise ValueError(
+            "Stage-2 recovery checkpoint has an invalid shard cursor: "
+            f"completed={completed_shards}, total={total_shards}."
+        )
+    if completed_epochs <= 0 or total_num_steps < 0:
+        raise ValueError(
+            "Stage-2 recovery checkpoint has invalid progress counters: "
+            f"episodes={completed_epochs}, total_num_steps={total_num_steps}."
+        )
+
+    expected_semantics = {
+        "plane_order_mode": str(plane_order_mode),
+        "plane_pair_decoder": str(plane_pair_decoder),
+        "global_feature_mode": str(global_feature_mode),
+    }
+    observed_semantics = {
+        "plane_order_mode": checkpoint.get("plane_order_mode"),
+        "plane_pair_decoder": checkpoint.get("plane_pair_decoder"),
+        "global_feature_mode": _checkpoint_global_feature_mode(checkpoint),
+    }
+    incompatible = {
+        key: {"checkpoint": observed_semantics[key], "configured": value}
+        for key, value in expected_semantics.items()
+        if observed_semantics[key] is None
+        or str(observed_semantics[key]) != value
+    }
+    if incompatible:
+        raise ValueError(
+            "Stage-2 recovery semantic mismatch for "
+            f"{sorted(incompatible)}: {incompatible}."
+        )
+
+    missing = []
+    mismatched = []
+    for name, target_value in target_state.items():
+        if name not in model:
+            missing.append(str(name))
+            continue
+        source_value = model[name]
+        if not _is_tensor_like(source_value) or not _is_tensor_like(target_value):
+            mismatched.append((str(name), "non_tensor"))
+            continue
+        if tuple(source_value.shape) != tuple(target_value.shape):
+            mismatched.append(
+                (
+                    str(name),
+                    f"checkpoint={tuple(source_value.shape)} "
+                    f"target={tuple(target_value.shape)}",
+                )
+            )
+    if missing or mismatched:
+        details = []
+        if missing:
+            details.append(f"missing model tensors={missing[:8]}")
+        if mismatched:
+            details.append(f"shape/type mismatches={mismatched[:8]}")
+        raise ValueError("Strict Stage-2 recovery rejected: " + "; ".join(details))
+
+    source_path = str(checkpoint.get("source_m2_path", "") or "")
+    source_sha256 = str(checkpoint.get("source_m2_sha256", "") or "")
+    if not source_path or len(source_sha256) != 64:
+        raise ValueError(
+            "Stage-2 recovery checkpoint is missing its immutable Stage-1 M2 binding."
+        )
+
+    model_summary = protected_parameter_summary(model, prefixes=("",))
+    protected_summary = protected_parameter_summary(
+        model, prefixes=protected_prefixes
+    )
+    recorded_protected = checkpoint.get("protected_parameter_summary")
+    if recorded_protected != protected_summary:
+        raise ValueError(
+            "Stage-2 recovery protected-parameter evidence does not match its model."
+        )
+
+    return {
+        "training_stage": training_stage,
+        "stage": stage,
+        "phase": phase,
+        "completed_epochs": completed_epochs,
+        "completed_shards": completed_shards,
+        "total_shards": total_shards,
+        "total_num_steps": total_num_steps,
+        "semantic_config": expected_semantics,
+        "source_m2_path": source_path,
+        "source_m2_sha256": source_sha256,
+        "model_summary": model_summary,
+        "protected_summary": protected_summary,
+    }
+
+
 __all__ = [
     "CANONICAL_RESOURCE_JOINT",
     "RESOURCE_JOINT_STAGE",
@@ -334,4 +472,5 @@ __all__ = [
     "protected_parameter_summary",
     "protected_parameters_equal",
     "validate_stage1_m2_checkpoint",
+    "validate_stage2_recovery_checkpoint",
 ]

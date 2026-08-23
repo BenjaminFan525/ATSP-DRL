@@ -289,6 +289,12 @@ def make_train_env(all_args):
     env_config_base['iga_potential_beta'] = all_args.iga_potential_beta
     env_config_base['iga_potential_gamma'] = all_args.iga_potential_gamma
     env_config_base['iga_teacher_dir'] = all_args.plane_bc_teacher_dir
+    env_config_base['resource_iga_teacher_dir'] = (
+        all_args.resource_iga_teacher_dir
+    )
+    env_config_base['resource_iga_teacher_index'] = (
+        all_args.resource_iga_teacher_index
+    )
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
     env_config_base['device_lookahead_dispatch'] = bool(
         all_args.device_lookahead_dispatch
@@ -296,6 +302,45 @@ def make_train_env(all_args):
     )
     env_config_base['device_lookahead_safety_margin'] = float(
         all_args.device_lookahead_safety_margin
+    )
+    env_config_base['device_deadline_aware_dispatch'] = bool(
+        all_args.device_deadline_aware_dispatch
+    )
+    env_config_base['device_future_intent_horizon'] = int(
+        all_args.device_future_intent_horizon
+    )
+    env_config_base['device_future_intent_mode'] = str(
+        all_args.device_future_intent_mode
+    )
+    env_config_base['device_frontier_max_requests'] = int(
+        all_args.device_frontier_max_requests
+    )
+    env_config_base['resource_release_aware_eta'] = bool(
+        all_args.resource_release_aware_eta
+    )
+    env_config_base['device_lookahead_reservation_mode'] = str(
+        all_args.device_lookahead_reservation_mode
+    )
+    env_config_base['device_reservation_grace_seconds'] = float(
+        all_args.device_reservation_grace_seconds
+    )
+    env_config_base['device_departure_lookahead'] = bool(
+        all_args.device_departure_lookahead
+    )
+    env_config_base['resource_lateness_coef'] = float(
+        all_args.resource_lateness_coef
+    )
+    env_config_base['resource_critical_lateness_coef'] = float(
+        all_args.resource_critical_lateness_coef
+    )
+    env_config_base['resource_earliness_coef'] = float(
+        all_args.resource_earliness_coef
+    )
+    env_config_base['resource_slack_criticality_seconds'] = float(
+        all_args.resource_slack_criticality_seconds
+    )
+    env_config_base['resource_slack_forecast_seconds'] = float(
+        all_args.resource_slack_forecast_seconds
     )
     env_config_base['plane_cycle_repeat_limit'] = all_args.plane_cycle_repeat_limit
     env_config_base['plane_no_progress_limit'] = all_args.plane_no_progress_limit
@@ -391,6 +436,10 @@ def make_eval_env(all_args):
     env_config_base['iga_potential_beta'] = all_args.iga_potential_beta
     env_config_base['iga_potential_gamma'] = all_args.iga_potential_gamma
     env_config_base['iga_teacher_dir'] = ''
+    # Evaluation is policy-only.  Never let a training teacher silently leak
+    # into validation, including through an env YAML inherited from a run.
+    env_config_base['resource_iga_teacher_dir'] = ''
+    env_config_base['resource_iga_teacher_index'] = ''
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
     env_config_base['device_lookahead_dispatch'] = bool(
         all_args.device_lookahead_dispatch
@@ -398,6 +447,45 @@ def make_eval_env(all_args):
     )
     env_config_base['device_lookahead_safety_margin'] = float(
         all_args.device_lookahead_safety_margin
+    )
+    env_config_base['device_deadline_aware_dispatch'] = bool(
+        all_args.device_deadline_aware_dispatch
+    )
+    env_config_base['device_future_intent_horizon'] = int(
+        all_args.device_future_intent_horizon
+    )
+    env_config_base['device_future_intent_mode'] = str(
+        all_args.device_future_intent_mode
+    )
+    env_config_base['device_frontier_max_requests'] = int(
+        all_args.device_frontier_max_requests
+    )
+    env_config_base['resource_release_aware_eta'] = bool(
+        all_args.resource_release_aware_eta
+    )
+    env_config_base['device_lookahead_reservation_mode'] = str(
+        all_args.device_lookahead_reservation_mode
+    )
+    env_config_base['device_reservation_grace_seconds'] = float(
+        all_args.device_reservation_grace_seconds
+    )
+    env_config_base['device_departure_lookahead'] = bool(
+        all_args.device_departure_lookahead
+    )
+    env_config_base['resource_lateness_coef'] = float(
+        all_args.resource_lateness_coef
+    )
+    env_config_base['resource_critical_lateness_coef'] = float(
+        all_args.resource_critical_lateness_coef
+    )
+    env_config_base['resource_earliness_coef'] = float(
+        all_args.resource_earliness_coef
+    )
+    env_config_base['resource_slack_criticality_seconds'] = float(
+        all_args.resource_slack_criticality_seconds
+    )
+    env_config_base['resource_slack_forecast_seconds'] = float(
+        all_args.resource_slack_forecast_seconds
     )
     env_config_base['plane_cycle_repeat_limit'] = all_args.plane_cycle_repeat_limit
     env_config_base['plane_no_progress_limit'] = all_args.plane_no_progress_limit
@@ -530,10 +618,66 @@ def main(args):
         )
     if all_args.iga_potential_beta < 0.0:
         raise ValueError('--iga_potential_beta must be non-negative.')
+    if all_args.device_lookahead_safety_margin < 0.0:
+        raise ValueError('--device_lookahead_safety_margin must be non-negative.')
+    if all_args.device_frontier_max_requests < 1:
+        raise ValueError('--device_frontier_max_requests must be positive.')
+    if (
+        not np.isfinite(all_args.device_reservation_grace_seconds)
+        or all_args.device_reservation_grace_seconds < 0.0
+    ):
+        raise ValueError(
+            '--device_reservation_grace_seconds must be finite and non-negative.'
+        )
+    if (
+        all_args.device_deadline_aware_dispatch
+        or all_args.device_future_intent_horizon > 0
+        or all_args.device_departure_lookahead
+    ) and not all_args.device_lookahead_dispatch:
+        raise ValueError(
+            'Deadline/future-intent controls require '
+            '--device_lookahead_dispatch.'
+        )
+    for flag, value in (
+        ('--resource_lateness_coef', all_args.resource_lateness_coef),
+        (
+            '--resource_critical_lateness_coef',
+            all_args.resource_critical_lateness_coef,
+        ),
+        ('--resource_earliness_coef', all_args.resource_earliness_coef),
+    ):
+        if not np.isfinite(value) or value < 0.0:
+            raise ValueError(f'{flag} must be finite and non-negative.')
+    for flag, value in (
+        (
+            '--resource_wait_constraint_target',
+            all_args.resource_wait_constraint_target,
+        ),
+        ('--resource_wait_dual_lr', all_args.resource_wait_dual_lr),
+        ('--resource_wait_dual_max', all_args.resource_wait_dual_max),
+    ):
+        if not np.isfinite(value) or value < 0.0:
+            raise ValueError(f'{flag} must be finite and non-negative.')
+    if bool(all_args.resource_wait_constraint_target) != bool(
+        all_args.resource_wait_dual_lr
+    ):
+        raise ValueError(
+            '--resource_wait_constraint_target and --resource_wait_dual_lr '
+            'must either both be positive or both be zero.'
+        )
+    if (
+        all_args.resource_wait_constraint_target > 0.0
+        and all_args.resource_wait_dual_max <= 0.0
+    ):
+        raise ValueError(
+            '--resource_wait_dual_max must be positive when the adaptive '
+            'wait constraint is enabled.'
+        )
     for flag, raw in (
         ('--iga_potential_beta_schedule', all_args.iga_potential_beta_schedule),
         ('--bc_reference_kl_coef_schedule', all_args.bc_reference_kl_coef_schedule),
         ('--plane_bc_dagger_schedule', all_args.plane_bc_dagger_schedule),
+        ('--device_bc_dagger_schedule', all_args.device_bc_dagger_schedule),
         (
             '--plane_bc_staging_dagger_schedule',
             all_args.plane_bc_staging_dagger_schedule,
@@ -551,6 +695,51 @@ def main(args):
             raise ValueError(f'{flag} values must be finite and non-negative.')
         if 'dagger' in flag and any(value > 1.0 for value in values):
             raise ValueError(f'{flag} teacher rates must not exceed 1.')
+    if all_args.device_bc_teacher == 'iga':
+        teacher_dir = Path(all_args.resource_iga_teacher_dir).expanduser()
+        teacher_index = Path(all_args.resource_iga_teacher_index).expanduser()
+        if not teacher_dir.is_dir():
+            raise FileNotFoundError(
+                'IGA device BC requires an existing '
+                f'--resource_iga_teacher_dir, got {teacher_dir}.'
+            )
+        if not teacher_index.is_file():
+            raise FileNotFoundError(
+                'IGA device BC requires an existing '
+                f'--resource_iga_teacher_index, got {teacher_index}.'
+            )
+        all_args.resource_iga_teacher_dir = str(teacher_dir.resolve())
+        all_args.resource_iga_teacher_index = str(teacher_index.resolve())
+    elif (
+        all_args.resource_iga_teacher_dir
+        or all_args.resource_iga_teacher_index
+    ):
+        raise ValueError(
+            'Resource IGA teacher paths are only valid with '
+            '--device_bc_teacher iga.'
+        )
+    if all_args.resource_bc_checkpoint:
+        resource_bc_checkpoint = Path(
+            all_args.resource_bc_checkpoint
+        ).expanduser()
+        if not resource_bc_checkpoint.is_file():
+            raise FileNotFoundError(
+                'Shared resource BC checkpoint does not exist: '
+                f'{resource_bc_checkpoint}'
+            )
+        all_args.resource_bc_checkpoint = str(
+            resource_bc_checkpoint.resolve()
+        )
+    if all_args.resource_ppo_warmup_epochs < 0:
+        raise ValueError('--resource_ppo_warmup_epochs must be non-negative.')
+    if (
+        all_args.resource_ppo_update_schedule != 'joint'
+        and all_args.resource_ppo_warmup_epochs >= all_args.num_episodes
+    ):
+        raise ValueError(
+            'A role-specific Stage2 PPO schedule must leave at least one joint '
+            'epoch after --resource_ppo_warmup_epochs.'
+        )
     if not 0.0 <= all_args.tail_policy_start_fraction <= 1.0:
         raise ValueError('--tail_policy_start_fraction must be in [0, 1].')
     if all_args.tail_policy_weight < 1.0:
@@ -593,20 +782,23 @@ def main(args):
                 f'--iga_potential_weights_path, got {weights_path}.'
             )
         all_args.iga_potential_weights_path = str(weights_path.resolve())
-    if all_args.hindsight_reward_mode == 'team_time_potential':
+    if all_args.hindsight_reward_mode in {
+        'team_time_potential', 'team_time_resource_potential'
+    }:
         if not np.isclose(all_args.iga_potential_gamma, 1.0):
             raise ValueError(
-                'team_time_potential requires --iga_potential_gamma 1.0 '
-                'for exact telescoping.'
+                f'{all_args.hindsight_reward_mode} requires '
+                '--iga_potential_gamma 1.0 for exact telescoping.'
             )
         if not np.isclose(all_args.hindsight_terminal_cmax_coef, 1.0):
             raise ValueError(
-                'team_time_potential requires '
+                f'{all_args.hindsight_reward_mode} requires '
                 '--hindsight_terminal_cmax_coef 1.0.'
             )
     if (
         all_args.hindsight_reward_mode in {
-            'team_cmax', 'team_time', 'team_time_potential'
+            'team_cmax', 'team_time', 'team_time_potential',
+            'team_time_resource_potential',
         }
         and all_args.hindsight_terminal_cmax_coef <= 0.0
     ):
@@ -745,6 +937,7 @@ def main(args):
                 'training_stage': all_args.training_stage,
                 'checkpoint_dir': str(all_args.checkpoint_dir or ''),
                 'selection_checkpoint_dir': str(all_args.selection_checkpoint_dir or ''),
+                'resume_stage2': bool(all_args.resume_stage2),
                 'reset_optimizers_on_resume': bool(all_args.reset_optimizers_on_resume),
                 'canary_eval_interval_shards': int(all_args.canary_eval_interval_shards),
                 'canary_max_regression': float(all_args.canary_max_regression),

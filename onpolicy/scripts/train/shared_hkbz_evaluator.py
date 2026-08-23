@@ -245,6 +245,20 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
         'environment_semantics_version'
     ]:
         raise ValueError('Shared-evaluator environment semantics mismatch.')
+    requested_planning = request.get('resource_planning_config')
+    if not isinstance(requested_planning, dict):
+        raise ValueError(
+            'Shared-evaluator resource planning metadata is missing.'
+        )
+    observed_planning = runner.envs.call(
+        'set_resource_planning_config', requested_planning
+    )
+    if any(item != requested_planning for item in observed_planning):
+        raise RuntimeError(
+            'Validation workers rejected resource planning semantics: '
+            f'requested={requested_planning!r}, '
+            f'observed={observed_planning!r}'
+        )
     supported_global_modes = set(
         runner.envs.call('set_global_feature_mode', requested_global_mode)
     )
@@ -280,6 +294,10 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
         'environment_semantics_version'
     ) != expected_observation['environment_semantics_version']:
         raise ValueError('Shared-evaluator checkpoint semantics mismatch.')
+    if checkpoint.get('resource_planning_config') != requested_planning:
+        raise ValueError(
+            'Shared-evaluator checkpoint resource planning mismatch.'
+        )
     runner.policy.load_model_state(checkpoint['model'])
     runner.trainer.policy = runner.policy
     runner.policy.ac.tau = float(request['evaluation_tau'])

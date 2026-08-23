@@ -1,5 +1,11 @@
 # 当前 Stage 2 训练、异构策略网络与环境实现说明
 
+> **范围声明：** 本文记录的是另一套 IA 农机环境（收割机/运粮车）的参考实现，
+> 不是当前 HKBZ 飞机保障 Stage 2 的代码契约。HKBZ 不拆分 encoder，也不存在
+> 本文的收割机预规划、物理油耗目标或 840-event horizon。当前可执行口径以
+> [TWO_STAGE_TRAINING.md](TWO_STAGE_TRAINING.md) 和
+> `onpolicy/config/env_resource_joint.yaml` 为准。
+>
 > 实现快照：2026-08-11 当前工作树
 > 运行口径：当前保留的 Raw-c（油耗单目标）正式实验
 > canonical 阶段：`curriculum_stage=2` / `stage2_transporter_event_learning`

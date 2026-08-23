@@ -13,7 +13,10 @@ import json
 import math
 from collections.abc import Mapping
 
-from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
+from onpolicy.utils.hkbz_semantics import (
+    ENVIRONMENT_SEMANTICS_VERSION,
+    global_feature_contract,
+)
 
 
 ACTION_CMAX_REWARD_MODES = frozenset({
@@ -21,6 +24,7 @@ ACTION_CMAX_REWARD_MODES = frozenset({
 })
 TEAM_CMAX_REWARD_MODES = frozenset({
     'team_cmax', 'team_time', 'team_time_potential',
+    'team_time_resource_potential',
 })
 STRICT_STAGE1_REWARD_MODES = (
     ACTION_CMAX_REWARD_MODES | TEAM_CMAX_REWARD_MODES
@@ -48,14 +52,12 @@ def checkpoint_global_feature_mode(checkpoint: Mapping[str, object]):
 
 
 def stage1_observation_metadata(global_feature_mode: object) -> dict:
-    contract = AircraftScheduleEnv.global_feature_contract(
-        str(global_feature_mode)
-    )
+    contract = global_feature_contract(str(global_feature_mode))
     return {
         'global_feature_mode': contract['mode'],
         'observation_schema_id': contract['schema_id'],
         'observation_schema': contract,
-        'environment_semantics_version': AircraftScheduleEnv.SEMANTICS_VERSION,
+        'environment_semantics_version': ENVIRONMENT_SEMANTICS_VERSION,
     }
 
 

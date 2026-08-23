@@ -115,6 +115,8 @@ class GNN_MAPPOPolicy:
         self,
         freeze_plane=True,
         freeze_shared=True,
+        train_device=True,
+        train_transporter=True,
     ):
         """Configure the canonical resource-joint PPO trainability contract.
 
@@ -126,8 +128,12 @@ class GNN_MAPPOPolicy:
         """
         self._set_module_group_trainable(self.ac.shared_actor_param, not freeze_shared)
         self._set_module_group_trainable(self.ac.plane_actor_param, not freeze_plane)
-        self._set_module_group_trainable(self.ac.device_actor_param, True)
-        self._set_module_group_trainable(self.ac.transporter_actor_param, True)
+        self._set_module_group_trainable(
+            self.ac.device_actor_param, bool(train_device)
+        )
+        self._set_module_group_trainable(
+            self.ac.transporter_actor_param, bool(train_transporter)
+        )
         self._set_module_group_trainable(self.ac.critic_param, True)
 
     def set_joint_training_stage(self, freeze_plane=False, freeze_shared=False):
@@ -355,6 +361,52 @@ class GNN_MAPPOPolicy:
 
         return values, actions, action_log_probs, new_rnn_states
 
+    def get_actor_actions(
+        self,
+        graph_obs,
+        rnn_states,
+        active_agents,
+        last_op_indices,
+        last_site_indices,
+        deterministic=False,
+        agent_types=None,
+        return_encoder_cache=False,
+    ):
+        """Collect actor actions without evaluating any critic heads.
+
+        Resource behavior cloning discards rollout values and log-probability
+        tensors.  Calling :meth:`get_actions` there nevertheless evaluated a
+        critic for every active plane and device.  The actor path and updated
+        recurrent state are independent of those critic outputs, so this
+        narrower entry point is numerically identical for the values consumed
+        by DeviceBC while avoiding unused work.
+        """
+        data, info = self._build_inputs(
+            graph_obs,
+            rnn_states,
+            active_agents,
+            last_op_indices,
+            last_site_indices,
+            agent_types=agent_types,
+        )
+        encoded_graph = (
+            self.ac.encoder(data['graph'])
+            if return_encoder_cache else None
+        )
+        actions, new_rnn_states = self.ac(
+            data,
+            info,
+            deterministic=deterministic,
+            criticize=False,
+            encoded_graph=encoded_graph,
+        )
+        if return_encoder_cache:
+            return actions, new_rnn_states, {
+                'graph': data['graph'],
+                'encoded_graph': encoded_graph,
+            }
+        return actions, new_rnn_states
+
     def get_values(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices,
                    agent_types=None):
         """
@@ -370,7 +422,9 @@ class GNN_MAPPOPolicy:
 
     def evaluate_actions(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices, actions,
                          agent_types=None, return_decision_mask=False,
-                         return_log_prob_components=False):
+                         return_log_prob_components=False,
+                         encoded_graph=None,
+                         return_rnn_states=False):
         """
         PPO 更新网络阶段 (Update) 调用。
         强制给定历史动作 (actions)，评估在当前最新策略下的对数概率 (用于计算 Ratio) 和信息熵。
@@ -393,8 +447,14 @@ class GNN_MAPPOPolicy:
             eval_action=True,
             return_decision_mask=return_decision_mask,
             return_log_prob_components=return_log_prob_components,
+            encoded_graph=encoded_graph,
+            return_rnn_states=return_rnn_states,
         )
-        if return_decision_mask or return_log_prob_components:
+        if (
+            return_decision_mask
+            or return_log_prob_components
+            or return_rnn_states
+        ):
             return outputs
 
         action_log_probs, dist_entropy = outputs

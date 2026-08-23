@@ -26,6 +26,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -36,6 +37,8 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 PYTHON = Path(
     os.environ.get(
         "PYTHON",
@@ -52,6 +55,7 @@ DEFAULT_RESULTS_ROOT = ROOT / "onpolicy/scripts/results/HKBZ/simple/gnn_mappo"
 CANONICAL_STAGE = "resource_joint"
 STAGE1_KIND = "stage1_m2"
 MANIFEST_SCHEMA_VERSION = 1
+SUPPORTED_HANDOFF_SCHEMA_VERSIONS = frozenset({1, 2})
 DEFAULT_BC_EPOCHS = 2
 DEFAULT_PPO_EPOCHS = 8
 DEFAULT_PPO_EPOCH = 3
@@ -123,6 +127,8 @@ INHERITED_OPTIONS = frozenset(
         "--max_graphs_per_forward",
         "--grad_accumulation_steps",
         "--actor_grad_accumulation_steps",
+        "--grad_accumulation_target_graphs",
+        "--actor_grad_accumulation_target_graphs",
         "--actor_warmup_shards",
         "--lr",
         "--critic_lr",
@@ -191,6 +197,8 @@ SWITCH_OPTIONS = frozenset(
         "--safe_graph_batch_pipeline",
         "--safe_dagger_teacher_overlap",
         "--device_lookahead_dispatch",
+        "--strict_checkpoint_contract",
+        "--device_bc_role_balanced",
     }
 )
 
@@ -213,6 +221,13 @@ VALUE_OPTIONS = INHERITED_OPTIONS | STAGE1_ONLY_OPTIONS | frozenset(
         "--device_bc_min_labels_per_epoch",
         "--device_bc_min_rollouts_per_epoch",
         "--device_bc_max_rollouts_per_epoch",
+        "--device_bc_teacher",
+        "--resource_iga_teacher_dir",
+        "--resource_iga_teacher_index",
+        "--device_bc_dagger_schedule",
+        "--device_bc_dagger_seed",
+        "--resource_ppo_update_schedule",
+        "--resource_ppo_warmup_epochs",
         "--ppo_epoch",
         "--num_episodes",
         "--gnn_freeze_epochs",
@@ -361,13 +376,41 @@ def sanitize_stage1_command(source_command: Sequence[str]) -> list[str]:
     return result
 
 
-def _load_source_command(path: str | os.PathLike[str] | None) -> list[str] | None:
+def _load_source_command(
+    path: str | os.PathLike[str] | None,
+    command_key: str | None = None,
+) -> list[str] | None:
+    """Load either a legacy one-command record or a keyed suite manifest."""
+
     if not path:
         return None
     payload = read_json(path)
     command = payload.get("command")
+    if command is None:
+        commands = payload.get("commands")
+        if not isinstance(commands, Mapping):
+            raise ValueError(
+                f"Source command JSON has neither command nor commands: {path}"
+            )
+        key = str(command_key or "").strip()
+        if not key:
+            if len(commands) != 1:
+                available = ", ".join(sorted(map(str, commands)))
+                raise ValueError(
+                    "A multi-command source manifest requires source_command_key; "
+                    f"available keys: {available}."
+                )
+            key = str(next(iter(commands)))
+        entry = commands.get(key)
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"Source command key {key!r} is missing from {path}."
+            )
+        command = entry.get("argv", entry.get("command"))
     if not isinstance(command, list) or not all(isinstance(value, str) for value in command):
-        raise ValueError(f"Source command JSON must contain a string list: {path}")
+        raise ValueError(
+            f"Source command JSON must resolve to a string list: {path}"
+        )
     return command
 
 
@@ -495,6 +538,7 @@ def build_stage2_command(
     # plain switch and does not re-enable any Stage-1 regularizer.
     set_switch(command, "--use_eval", True)
     set_switch(command, "--device_lookahead_dispatch", True)
+    set_switch(command, "--strict_checkpoint_contract", True)
     set_option(command, "--eval_interval", 1)
 
     # A positive Stage-2 contract must not accidentally inherit any old
@@ -531,6 +575,9 @@ def stage2_contract(
     plane_pair_decoder: str,
     global_feature_mode: str,
 ) -> dict[str, Any]:
+    from onpolicy.utils.checkpoint_contract import stage1_observation_metadata
+
+    observation = stage1_observation_metadata(global_feature_mode)
     return {
         "from": STAGE1_KIND,
         "to": CANONICAL_STAGE,
@@ -541,6 +588,11 @@ def stage2_contract(
             "negative_lead_time_for_lookahead_nonnegative_wait_for_blocking"
         ),
         "checkpoint_contract": "strict_stage1_m2_protected_plane_shared",
+        "strict_checkpoint_contract": True,
+        "environment_semantics_version": observation[
+            "environment_semantics_version"
+        ],
+        "observation_schema_id": observation["observation_schema_id"],
         "source_m2_checkpoint": dict(source),
         "device_bc_pretrain_epochs": int(bc_epochs),
         "ppo_epochs": int(ppo_epochs),
@@ -636,6 +688,126 @@ def _base_manifest(
     return payload
 
 
+def _resource_joint_target_state(
+    semantics: Mapping[str, str],
+) -> Mapping[str, Any]:
+    """Build the current Stage-2 network once for strict shape preflight."""
+
+    from types import SimpleNamespace
+
+    import torch
+    import yaml
+
+    from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import (
+        GNN_MAPPOPolicy,
+    )
+
+    with AC_CONFIG.open("r", encoding="utf-8") as stream:
+        ac_config = yaml.safe_load(stream)
+    with ENV_CONFIG.open("r", encoding="utf-8") as stream:
+        env_config = yaml.safe_load(stream)
+    args = SimpleNamespace(
+        lr=1e-5,
+        critic_lr=1e-4,
+        opti_eps=1e-5,
+        weight_decay=0.0,
+        anneal_original=0.3,
+        anneal_final=0.3,
+        tau_anneal_epochs=0,
+        max_agent_num=int(env_config["n_agents"]),
+        max_device_num=int(env_config["max_device_num"]),
+        resource_policy="drl",
+        shared_actor_lr_scale=0.1,
+        plane_actor_lr_scale=1.0,
+        device_actor_lr_scale=1.0,
+        transporter_actor_lr_scale=1.0,
+        plane_order_mode=semantics["plane_order_mode"],
+        plane_pair_decoder=semantics["plane_pair_decoder"],
+        central_team_critic=False,
+    )
+    policy = GNN_MAPPOPolicy(args, ac_config, device=torch.device("cpu"))
+    return policy.ac.state_dict()
+
+
+def _validate_stage1_handoff_checkpoint_payload(
+    checkpoint_path: Path,
+    *,
+    semantics: Mapping[str, str],
+    entry: Mapping[str, Any],
+    target_state: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate checkpoint metadata and protected tensor compatibility."""
+
+    from onpolicy.utils.checkpoint_contract import (
+        validate_stage1_checkpoint_contract,
+    )
+    from onpolicy.utils.training_stage import validate_stage1_m2_checkpoint
+
+    checkpoint = _load_checkpoint(checkpoint_path)
+    observation = validate_stage1_checkpoint_contract(
+        checkpoint,
+        global_feature_mode=semantics["global_feature_mode"],
+        plane_order_mode=semantics["plane_order_mode"],
+        plane_pair_decoder=semantics["plane_pair_decoder"],
+        strict_metadata=True,
+    )
+    transition = validate_stage1_m2_checkpoint(
+        checkpoint,
+        target_state,
+        plane_order_mode=semantics["plane_order_mode"],
+        plane_pair_decoder=semantics["plane_pair_decoder"],
+        global_feature_mode=semantics["global_feature_mode"],
+    )
+    if str(checkpoint.get("stage", "")) != "best_eval":
+        raise ValueError(
+            f"Stage-1 hand-off must use a validation Best checkpoint: {checkpoint_path}"
+        )
+    expected_episode = int(entry.get("selected_episode", -1))
+    if expected_episode <= 0 or int(checkpoint.get("episodes", -1)) != expected_episode:
+        raise ValueError(
+            "Stage-1 hand-off selected_episode disagrees with checkpoint: "
+            f"entry={expected_episode}, checkpoint={checkpoint.get('episodes')}."
+        )
+    for field, checkpoint_field in (
+        ("selection_score", "selection_score"),
+        ("validation_raw_makespan", "eval_raw_makespan"),
+    ):
+        expected = float(entry.get(field, math.nan))
+        observed = float(checkpoint.get(checkpoint_field, math.nan))
+        if not (
+            math.isfinite(expected)
+            and math.isfinite(observed)
+            and math.isclose(expected, observed, rel_tol=0.0, abs_tol=1e-9)
+        ):
+            raise ValueError(
+                f"Stage-1 hand-off {field} mismatch: "
+                f"entry={expected!r}, checkpoint={observed!r}."
+            )
+    protected_sha = str(transition["source_summary"]["sha256"])
+    expected_protected_sha = str(
+        entry.get("protected_parameter_sha256", "")
+    ).lower()
+    if expected_protected_sha != protected_sha:
+        raise ValueError(
+            "Stage-1 hand-off protected tensor digest mismatch: "
+            f"expected={expected_protected_sha!r}, observed={protected_sha!r}."
+        )
+    return {
+        "training_stage": transition["training_stage"],
+        "protected_parameter_sha256": protected_sha,
+        "protected_parameter_count": int(
+            transition["source_summary"]["count"]
+        ),
+        "environment_semantics_version": observation[
+            "environment_semantics_version"
+        ],
+        "observation_schema_id": observation["observation_schema_id"],
+        "selected_episode": expected_episode,
+        "selection_score": float(entry["selection_score"]),
+        "validation_raw_makespan": float(entry["validation_raw_makespan"]),
+    }
+
+
 def load_stage1_handoff(
     path: str | os.PathLike[str] = DEFAULT_STAGE1_HANDOFF,
 ) -> dict[str, Any]:
@@ -643,7 +815,8 @@ def load_stage1_handoff(
 
     handoff_path = Path(path).expanduser().resolve()
     payload = read_json(handoff_path)
-    if int(payload.get("schema_version", -1)) != 1:
+    schema_version = int(payload.get("schema_version", -1))
+    if schema_version not in SUPPORTED_HANDOFF_SCHEMA_VERSIONS:
         raise ValueError("Unsupported Stage-1 M2 hand-off schema.")
     if payload.get("stage1_status") != "closed":
         raise ValueError("Stage-1 hand-off must declare stage1_status='closed'.")
@@ -670,11 +843,33 @@ def load_stage1_handoff(
                 f"Invalid Stage-1 hand-off semantic {field}={value!r}."
             )
         normalized_semantics[field] = value
+    if schema_version >= 2:
+        from onpolicy.utils.checkpoint_contract import stage1_observation_metadata
+
+        expected_observation = stage1_observation_metadata(
+            normalized_semantics["global_feature_mode"]
+        )
+        for field in (
+            "environment_semantics_version",
+            "observation_schema_id",
+        ):
+            value = str(semantics.get(field, ""))
+            if value != str(expected_observation[field]):
+                raise ValueError(
+                    f"Stage-1 hand-off semantic {field} is stale: "
+                    f"handoff={value!r}, current={expected_observation[field]!r}."
+                )
+            normalized_semantics[field] = value
 
     checkpoints = payload.get("checkpoints")
     if not isinstance(checkpoints, Mapping) or not checkpoints:
         raise ValueError("Stage-1 hand-off has no checkpoints.")
     normalized_checkpoints: dict[str, dict[str, Any]] = {}
+    target_state = (
+        _resource_joint_target_state(normalized_semantics)
+        if schema_version >= 2
+        else None
+    )
     for raw_seed, raw_entry in checkpoints.items():
         seed = str(int(raw_seed))
         if not isinstance(raw_entry, Mapping):
@@ -737,7 +932,15 @@ def load_stage1_handoff(
                 f"expected={expected_command_size}, "
                 f"observed={observed_command_size}."
             )
-        source_command = _load_source_command(command_path)
+        source_command_key = raw_entry.get("source_command_key")
+        if schema_version >= 2 and not str(source_command_key or "").strip():
+            raise ValueError(
+                f"Stage-1 hand-off seed {seed} requires source_command_key."
+            )
+        source_command = _load_source_command(
+            command_path,
+            None if source_command_key is None else str(source_command_key),
+        )
         if _option_value(source_command or (), "--seed") != seed:
             raise ValueError(
                 f"Stage-1 M2 seed {seed} source command has a different seed."
@@ -752,6 +955,14 @@ def load_stage1_handoff(
                     f"Stage-1 M2 seed {seed} source command disagrees with "
                     f"semantic_contract.{field}."
                 )
+        checkpoint_contract = None
+        if schema_version >= 2:
+            checkpoint_contract = _validate_stage1_handoff_checkpoint_payload(
+                checkpoint_path,
+                semantics=normalized_semantics,
+                entry=raw_entry,
+                target_state=target_state or {},
+            )
         normalized_checkpoints[seed] = {
             "path": str(checkpoint_path),
             "sha256": observed_sha,
@@ -759,6 +970,10 @@ def load_stage1_handoff(
             "source_command_path": str(command_path),
             "source_command_sha256": observed_command_sha,
             "source_command_size_bytes": observed_command_size,
+            "source_command_key": (
+                None if source_command_key is None else str(source_command_key)
+            ),
+            "checkpoint_contract": checkpoint_contract,
         }
 
     return {
@@ -1589,7 +1804,10 @@ def _common_cli(parser: argparse.ArgumentParser, *, source_required: bool = True
             "--source-seed",
             type=int,
             default=None,
-            help="M2 seed selected from --stage1-handoff; defaults to --seed",
+            help=(
+                "Stage-1 seed selected from --stage1-handoff; defaults to "
+                "handoff.default_source_seed, then --seed for legacy hand-offs"
+            ),
         )
     parser.add_argument("--manifest", "--manifest-path", default=None, dest="manifest_path")
     parser.add_argument("--run-tag", required=True)
@@ -1606,6 +1824,11 @@ def _common_cli(parser: argparse.ArgumentParser, *, source_required: bool = True
     parser.add_argument("--plane-pair-decoder", choices=("cascade", "joint_pair"), default=None)
     parser.add_argument("--global-feature-mode", choices=("none", "f1", "f1f2"), default=None)
     parser.add_argument("--source-command-json", default=None)
+    parser.add_argument(
+        "--source-command-key",
+        default=None,
+        help="entry key when --source-command-json is a multi-command suite manifest",
+    )
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -1634,7 +1857,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def _plan_kwargs(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "artifact_dir": args.artifact_dir,
-        "source_command": _load_source_command(args.source_command_json),
+        "source_command": _load_source_command(
+            args.source_command_json,
+            args.source_command_key,
+        ),
         "seed": args.seed,
         "bc_epochs": args.bc_epochs,
         "ppo_epochs": args.ppo_epochs,
@@ -1652,14 +1878,25 @@ def _plan_kwargs(args: argparse.Namespace) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.action != "audit" and args.source_m2 is None:
-        source_seed = args.seed if args.source_seed is None else args.source_seed
-        source_entry, semantics = resolve_stage1_handoff_entry(
-            source_seed,
-            args.stage1_handoff,
+        handoff = load_stage1_handoff(args.stage1_handoff)
+        source_seed = (
+            int(handoff.get("default_source_seed", args.seed))
+            if args.source_seed is None
+            else args.source_seed
         )
+        source_seed_key = str(int(source_seed))
+        if source_seed_key not in handoff["checkpoints"]:
+            available = ", ".join(sorted(handoff["checkpoints"]))
+            raise ValueError(
+                f"Stage-1 hand-off has no seed {source_seed_key}; "
+                f"available seeds: {available}."
+            )
+        source_entry = dict(handoff["checkpoints"][source_seed_key])
+        semantics = dict(handoff["semantic_contract"])
         args.source_m2 = source_entry["path"]
         if args.source_command_json is None:
             args.source_command_json = source_entry["source_command_path"]
+            args.source_command_key = source_entry.get("source_command_key")
         if args.plane_order_mode is None:
             args.plane_order_mode = semantics["plane_order_mode"]
         if args.plane_pair_decoder is None:

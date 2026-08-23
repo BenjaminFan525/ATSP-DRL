@@ -1,6 +1,7 @@
 # grid_world_env.py
 import gymnasium as gym
 from gymnasium import spaces
+import hashlib
 import numpy as np
 import os
 from typing import List, Dict, Tuple
@@ -13,13 +14,17 @@ import math
 import torch
 from torch_geometric.data import HeteroData
 import copy
-import hashlib
 from scipy.optimize import linear_sum_assignment
+from onpolicy.utils import hkbz_semantics
+from onpolicy.envs.HKBZ.resource_teacher import (
+    ResourceGenomeLayout,
+    mixed_resource_actions,
+)
 
 # 调度环境类：基于Gymnasium的多智能体强化学习环境，用于模拟飞机在机场站点的调度过程
 class AircraftScheduleEnv(gym.Env):
     environment_name = "Plane Schedule"
-    SEMANTICS_VERSION = "progressive-departure-r014-pipeline-v2"
+    SEMANTICS_VERSION = hkbz_semantics.ENVIRONMENT_SEMANTICS_VERSION
     IGA_POTENTIAL_SCHEMA_VERSION = 3
     AGENT_TYPE_PLANE = 0
     AGENT_TYPE_DEVICE = 1
@@ -77,52 +82,19 @@ class AircraftScheduleEnv(gym.Env):
         'iga_potential',
         'team_time_potential',
     })
-    GLOBAL_FEATURE_MODES = frozenset({
-        'none',
-        'f1',
-        'f1f2',
-        'f1f2_departure',
-    })
-    GLOBAL_FEATURE_DIM = 24
-    GLOBAL_FEATURE_SCHEMA_VERSION = 1
-    GLOBAL_FEATURE_NORMALIZATION_VERSION = 'hkbz-global-normalization-v1'
-    GLOBAL_FEATURE_F1_NAMES = (
-        'active_plane_fraction',
-        'future_plane_fraction',
-        'completed_plane_fraction',
-        'idle_active_plane_fraction',
-        'remaining_operation_fraction',
-        'mean_remaining_operation_fraction',
-        'remaining_work_hours_per_plane',
-        'future_work_hours_per_plane',
-        'next_arrival_hours',
-        'third_arrival_hours',
-        'free_service_site_fraction',
-        'interfered_service_site_fraction',
+    GLOBAL_FEATURE_MODES = hkbz_semantics.GLOBAL_FEATURE_MODES
+    GLOBAL_FEATURE_DIM = hkbz_semantics.GLOBAL_FEATURE_DIM
+    GLOBAL_FEATURE_SCHEMA_VERSION = hkbz_semantics.GLOBAL_FEATURE_SCHEMA_VERSION
+    GLOBAL_FEATURE_NORMALIZATION_VERSION = (
+        hkbz_semantics.GLOBAL_FEATURE_NORMALIZATION_VERSION
     )
+    GLOBAL_FEATURE_F1_NAMES = hkbz_semantics.GLOBAL_FEATURE_F1_NAMES
     GLOBAL_FEATURE_RESOURCE_COMMON_NAMES = (
-        'idle_device_fraction',
-        'mean_device_unavailable_hours',
-        'max_device_unavailable_hours',
-        'request_pool_fraction',
-        'mean_request_wait_hours',
-        'max_request_wait_hours',
+        hkbz_semantics.GLOBAL_FEATURE_RESOURCE_COMMON_NAMES
     )
-    GLOBAL_FEATURE_F2_NAMES = (
-        'mean_resource_demand_fraction',
-        'max_resource_demand_fraction',
-        'mean_resource_capacity_fraction',
-        'min_capacity_demand_ratio',
-        'mean_capacity_demand_ratio',
-        'idle_r014_fraction',
-    )
+    GLOBAL_FEATURE_F2_NAMES = hkbz_semantics.GLOBAL_FEATURE_F2_NAMES
     GLOBAL_FEATURE_DEPARTURE_NAMES = (
-        'departure_ready_plane_fraction',
-        'mean_departure_ready_age_hours',
-        'max_departure_ready_age_hours',
-        'busy_runway_fraction',
-        'unavailable_r014_fraction',
-        'idle_unreserved_r014_fraction',
+        hkbz_semantics.GLOBAL_FEATURE_DEPARTURE_NAMES
     )
 
     @classmethod
@@ -133,45 +105,7 @@ class AircraftScheduleEnv(gym.Env):
         width but different meanings in the final six slots.  A checkpoint
         therefore needs a semantic identifier in addition to shape checks.
         """
-        mode = str(mode)
-        if mode not in cls.GLOBAL_FEATURE_MODES:
-            raise ValueError(f'Unsupported global_feature_mode={mode!r}.')
-        zero_names = tuple(f'constant_zero_{index:02d}' for index in range(24))
-        if mode == 'none':
-            feature_names = zero_names
-        elif mode == 'f1':
-            feature_names = cls.GLOBAL_FEATURE_F1_NAMES + zero_names[12:]
-        elif mode == 'f1f2':
-            feature_names = (
-                cls.GLOBAL_FEATURE_F1_NAMES
-                + cls.GLOBAL_FEATURE_RESOURCE_COMMON_NAMES
-                + cls.GLOBAL_FEATURE_F2_NAMES
-            )
-        else:
-            feature_names = (
-                cls.GLOBAL_FEATURE_F1_NAMES
-                + cls.GLOBAL_FEATURE_RESOURCE_COMMON_NAMES
-                + cls.GLOBAL_FEATURE_DEPARTURE_NAMES
-            )
-        if len(feature_names) != cls.GLOBAL_FEATURE_DIM:
-            raise RuntimeError(
-                f'Global feature schema {mode!r} has {len(feature_names)} '
-                f'slots, expected {cls.GLOBAL_FEATURE_DIM}.'
-            )
-        payload = {
-            'schema_version': cls.GLOBAL_FEATURE_SCHEMA_VERSION,
-            'mode': mode,
-            'dimension': cls.GLOBAL_FEATURE_DIM,
-            'normalization_version': cls.GLOBAL_FEATURE_NORMALIZATION_VERSION,
-            'feature_names': list(feature_names),
-        }
-        encoded = json.dumps(
-            payload, sort_keys=True, separators=(',', ':'), ensure_ascii=True
-        ).encode('utf-8')
-        payload['schema_id'] = 'hkbz-global-' + hashlib.sha256(
-            encoded
-        ).hexdigest()[:20]
-        return payload
+        return hkbz_semantics.global_feature_contract(mode)
     
     def __init__(self, config_list, render_mode: str = None):
         super().__init__()
@@ -215,6 +149,8 @@ class AircraftScheduleEnv(gym.Env):
         self.pending_device_actions = {}
         self.request_list = []
         self.request_pool = {}
+        self.resource_intent_ledger = {}
+        self._resource_lateness_metrics_cache = None
         self._deferred_lookahead_requests = set()
         self._lookahead_deferred_at_time = None
         self.device_deadlock_repeat_limit = int(self.config.get('device_deadlock_repeat_limit', 300))
@@ -238,14 +174,7 @@ class AircraftScheduleEnv(gym.Env):
         self.seed(self.config.get('seed', None))
         self.use_domain_rand = self.config.get('use_domain_rand', True)
         self.resource_policy = self.config.get('resource_policy', 'heuristic')
-        self.device_lookahead_dispatch = bool(
-            self.config.get('device_lookahead_dispatch', False)
-        )
-        self.device_lookahead_safety_margin = float(
-            self.config.get('device_lookahead_safety_margin', 60.0)
-        )
-        if self.device_lookahead_safety_margin < 0.0:
-            raise ValueError('device_lookahead_safety_margin must be non-negative.')
+        self._load_resource_lookahead_config(self.config)
         self.global_feature_mode = str(
             self.config.get('global_feature_mode', 'none')
         )
@@ -264,6 +193,116 @@ class AircraftScheduleEnv(gym.Env):
         # 在 __init__ 中加载一次数据，是为了让 gym.Env 能够正确初始化 action_space 等静态属性
         initial_data = self._load_data_from_disk(self.config)
         self._apply_data(initial_data, clone=False)
+
+    def _load_resource_lookahead_config(self, config):
+        """Load deadline-aware Stage-2 controls without changing graph width."""
+        self.device_lookahead_dispatch = bool(
+            config.get('device_lookahead_dispatch', False)
+        )
+        self.device_lookahead_safety_margin = float(
+            config.get('device_lookahead_safety_margin', 60.0)
+        )
+        self.device_deadline_aware_dispatch = bool(
+            config.get('device_deadline_aware_dispatch', False)
+        )
+        self.device_future_intent_horizon = int(
+            config.get('device_future_intent_horizon', 0)
+        )
+        self.device_future_intent_mode = str(
+            config.get('device_future_intent_mode', 'legacy_one')
+        )
+        self.device_frontier_max_requests = int(
+            config.get('device_frontier_max_requests', 2)
+        )
+        self.resource_release_aware_eta = bool(
+            config.get('resource_release_aware_eta', False)
+        )
+        self.device_lookahead_reservation_mode = str(
+            config.get('device_lookahead_reservation_mode', 'none')
+        )
+        self.device_reservation_grace_seconds = float(
+            config.get('device_reservation_grace_seconds', 300.0)
+        )
+        self.device_departure_lookahead = bool(
+            config.get('device_departure_lookahead', False)
+        )
+        self.resource_lateness_coef = float(
+            config.get('resource_lateness_coef', 0.0)
+        )
+        self.resource_critical_lateness_coef = float(
+            config.get('resource_critical_lateness_coef', 0.0)
+        )
+        self.resource_earliness_coef = float(
+            config.get('resource_earliness_coef', 0.0)
+        )
+        self.resource_slack_criticality_seconds = float(
+            config.get('resource_slack_criticality_seconds', 1800.0)
+        )
+        self.resource_slack_forecast_seconds = float(
+            config.get('resource_slack_forecast_seconds', 0.0)
+        )
+        if self.device_lookahead_safety_margin < 0.0:
+            raise ValueError(
+                'device_lookahead_safety_margin must be non-negative.'
+            )
+        if self.device_future_intent_horizon not in {0, 1}:
+            raise ValueError(
+                'device_future_intent_horizon currently supports only 0 or 1.'
+            )
+        if self.device_future_intent_mode not in {
+            'legacy_one', 'bounded_frontier'
+        }:
+            raise ValueError(
+                'device_future_intent_mode must be legacy_one or '
+                'bounded_frontier.'
+            )
+        if self.device_frontier_max_requests < 1:
+            raise ValueError('device_frontier_max_requests must be positive.')
+        if self.device_lookahead_reservation_mode not in {
+            'none', 'soft', 'hard'
+        }:
+            raise ValueError(
+                'device_lookahead_reservation_mode must be none, soft or hard.'
+            )
+        if (
+            not math.isfinite(self.device_reservation_grace_seconds)
+            or self.device_reservation_grace_seconds < 0.0
+        ):
+            raise ValueError(
+                'device_reservation_grace_seconds must be finite and '
+                'non-negative.'
+            )
+        reward_coefs = (
+            self.resource_lateness_coef,
+            self.resource_critical_lateness_coef,
+            self.resource_earliness_coef,
+        )
+        if any(not math.isfinite(value) or value < 0.0 for value in reward_coefs):
+            raise ValueError(
+                'Resource lateness coefficients must be finite and non-negative.'
+            )
+        if (
+            not math.isfinite(self.resource_slack_criticality_seconds)
+            or self.resource_slack_criticality_seconds <= 0.0
+        ):
+            raise ValueError(
+                'resource_slack_criticality_seconds must be finite and positive.'
+            )
+        if (
+            not math.isfinite(self.resource_slack_forecast_seconds)
+            or self.resource_slack_forecast_seconds < 0.0
+        ):
+            raise ValueError(
+                'resource_slack_forecast_seconds must be finite and non-negative.'
+            )
+        if (
+            self.device_future_intent_horizon > 0
+            or self.device_departure_lookahead
+            or self.device_deadline_aware_dispatch
+        ) and not self.device_lookahead_dispatch:
+            raise ValueError(
+                'Deadline/future-intent controls require device_lookahead_dispatch.'
+            )
 
     def _load_plane_safety_config(self, config):
         self.plane_cycle_repeat_limit = int(config.get('plane_cycle_repeat_limit', 8))
@@ -288,9 +327,70 @@ class AircraftScheduleEnv(gym.Env):
         mode = str(mode)
         if mode not in self.GLOBAL_FEATURE_MODES:
             raise ValueError(f'Unsupported global_feature_mode={mode!r}.')
+        for config in self.data_list:
+            config['global_feature_mode'] = mode
         self.config['global_feature_mode'] = mode
         self.global_feature_mode = mode
         return mode
+
+    def resource_planning_config(self):
+        """Return shape-compatible Stage-2 planning semantics.
+
+        These fields may differ between causal arms served by one persistent
+        validator.  They deliberately do not include reward coefficients,
+        dataset paths, or any tensor-width setting.
+        """
+        return {
+            'resource_release_aware_eta': bool(
+                self.resource_release_aware_eta
+            ),
+            'device_future_intent_mode': str(
+                self.device_future_intent_mode
+            ),
+            'device_frontier_max_requests': int(
+                self.device_frontier_max_requests
+            ),
+            'device_lookahead_reservation_mode': str(
+                self.device_lookahead_reservation_mode
+            ),
+            'device_reservation_grace_seconds': float(
+                self.device_reservation_grace_seconds
+            ),
+        }
+
+    def set_resource_planning_config(self, planning):
+        """Switch a shared evaluator to one arm's compatible semantics."""
+        if not isinstance(planning, dict):
+            raise TypeError('resource planning config must be a dictionary.')
+        allowed = set(self.resource_planning_config())
+        unknown = set(planning).difference(allowed)
+        if unknown:
+            raise ValueError(
+                f'Unknown resource planning fields: {sorted(unknown)!r}.'
+            )
+        previous_capacity = int(getattr(self, 'max_request_num', 0))
+        for config in self.data_list:
+            config.update(planning)
+        self.config.update(planning)
+        self._load_resource_lookahead_config(self.config)
+        # All Wave-4 arms retain horizon=1/departure lookahead and therefore
+        # the same 3*N+1 request tensor. Fail closed if a future experiment
+        # tries to use this lightweight switch for a shape-changing setting.
+        requests_per_plane = (
+            3
+            if (
+                self.device_future_intent_horizon > 0
+                or self.device_departure_lookahead
+            )
+            else 2 if self.device_lookahead_dispatch else 1
+        )
+        new_capacity = requests_per_plane * self.n_plane_agents + 1
+        if previous_capacity and new_capacity != previous_capacity:
+            raise ValueError(
+                'Shared-evaluator planning switch changed request capacity: '
+                f'{previous_capacity} -> {new_capacity}.'
+            )
+        return self.resource_planning_config()
 
     def _load_iga_potential_config(self, config):
         self.iga_potential_beta = float(config.get('iga_potential_beta', 0.0))
@@ -676,6 +776,173 @@ class AircraftScheduleEnv(gym.Env):
             for name in self.IGA_POTENTIAL_FEATURES
         )
 
+    def _plane_remaining_work_seconds(self, plane):
+        """Cheap per-aircraft work lower bound for critical-path weighting."""
+        fuel = float(plane.config.get('fuel', 30.0))
+        left_work = sum(
+            self._job_duration(plane.jobs[code], fuel)
+            for code in plane.left_jobs
+            if code in plane.jobs
+        )
+        if plane.is_busy:
+            current_work = max(
+                0.0, float(getattr(plane.site, 'left_job_time', 0.0))
+            )
+        else:
+            current_work = sum(
+                self._job_duration(plane.jobs[code], fuel)
+                for code in plane.current_jobs
+                if code in plane.jobs
+            )
+        return max(0.0, float(left_work + current_work))
+
+    def get_resource_slack_potential_components(self):
+        """Return a non-negative, online proxy for Cmax-critical resource delay.
+
+        Unlike the old episode-level maximum aircraft wait, this state cost is
+        attached to each outstanding request.  It combines elapsed/predicted
+        device delay with the owning aircraft's remaining-work slack.  A small
+        optional forecast term exposes imminent stand pressure already present
+        in the observation contract.  The runner uses only potential
+        differences with gamma=1, so the terminal Cmax objective is unchanged.
+        """
+        remaining_work = {
+            plane.code: self._plane_remaining_work_seconds(plane)
+            for plane in self.planes.values()
+            if not plane.is_completed_all_jobs()
+        }
+        max_remaining = max(remaining_work.values(), default=0.0)
+        criticality_scale = self.resource_slack_criticality_seconds
+        devices_by_type = {
+            resource_type: tuple(devices)
+            for resource_type, devices in self.mobile_devices.items()
+        }
+        eta_cache = {}
+        weighted_delays = []
+        blocking_count = 0
+        lookahead_count = 0
+
+        for request in self.request_list:
+            if request.get('is_noop', False):
+                continue
+            target_site = self.sites.get(request.get('site_code'))
+            if target_site is None:
+                continue
+            required_types = tuple(request.get('needed_res_types', ()))
+            if not required_types:
+                continue
+            type_etas = []
+            for resource_type in required_types:
+                cache_key = (
+                    str(resource_type),
+                    str(target_site.code),
+                    str(request.get('plane_id', ''))
+                    if self.resource_release_aware_eta else '',
+                    str(request.get('job_code', ''))
+                    if self.resource_release_aware_eta else '',
+                )
+                eta = eta_cache.get(cache_key)
+                if eta is None:
+                    candidates = devices_by_type.get(resource_type, ())
+                    if self.resource_release_aware_eta:
+                        eta = min((
+                            self._device_eta_seconds(
+                                device, target_site, request=request
+                            )
+                            for device in candidates
+                        ), default=36000.0)
+                    else:
+                        eta = min((
+                            max(
+                                0.0,
+                                float(getattr(
+                                    device, 'left_trans_time', 0.0
+                                )),
+                                float(getattr(
+                                    device, 'left_rec_time', 0.0
+                                )),
+                            ) + self._device_travel_seconds(
+                                device, target_site
+                            )
+                            for device in candidates
+                        ), default=36000.0)
+                    eta_cache[cache_key] = float(eta)
+                type_etas.append(float(eta))
+            # FJSP job resource lists are alternatives: Site.start_jobs picks
+            # the first available type.  ``max`` is retained only for the
+            # explicit legacy control arm.
+            device_eta = (
+                min(type_etas, default=36000.0)
+                if self.resource_release_aware_eta
+                else max(type_etas, default=36000.0)
+            )
+
+            is_lookahead = bool(request.get('is_lookahead', False))
+            if is_lookahead:
+                lookahead_count += 1
+                delay = max(
+                    0.0,
+                    device_eta - max(0.0, float(request.get('lead_time', 0.0))),
+                )
+            else:
+                blocking_count += 1
+                delay = (
+                    max(0.0, float(request.get('waiting_time', 0.0)))
+                    + device_eta
+                )
+
+            plane_work = remaining_work.get(request.get('plane_id'), 0.0)
+            slack = max(0.0, max_remaining - plane_work)
+            criticality = 0.25 + 0.75 * math.exp(
+                -slack / criticality_scale
+            )
+            weighted_delays.append(float(criticality * delay))
+
+        request_sum = float(sum(weighted_delays))
+        request_max = float(max(weighted_delays, default=0.0))
+        # The max term protects the catastrophic aircraft while the sum term
+        # still distinguishes actions when several near-critical requests tie.
+        request_cost = 0.5 * request_sum + 0.5 * request_max
+
+        service_site_codes = set(
+            getattr(self, 'service_site_code_list', ())
+        )
+        service_sites = [
+            site for code, site in self.sites.items()
+            if code in service_site_codes
+        ]
+        free_service_sites = sum(
+            not site.is_occupied and not site.is_interfered
+            for site in service_sites
+        )
+        current_time = float(self.total_time)
+        imminent_arrivals = sum(
+            max(0.0, float(item[0]) - current_time) <= 1800.0
+            for item in self.landing_list
+        )
+        arrival_pressure = float(max(
+            0, imminent_arrivals - free_service_sites
+        ))
+        forecast_cost = (
+            self.resource_slack_forecast_seconds * arrival_pressure
+        )
+        total_cost = max(0.0, request_cost + forecast_cost)
+        if not math.isfinite(total_cost):
+            raise RuntimeError('Resource-slack potential became non-finite.')
+        return {
+            'total_cost': float(total_cost),
+            'request_cost': float(request_cost),
+            'request_sum': request_sum,
+            'request_max': request_max,
+            'forecast_cost': float(forecast_cost),
+            'arrival_pressure': arrival_pressure,
+            'blocking_request_count': int(blocking_count),
+            'lookahead_request_count': int(lookahead_count),
+        }
+
+    def _resource_slack_potential_value(self):
+        return -self.get_resource_slack_potential_components()['total_cost']
+
     def _load_data_from_disk(self, config_dict):
         """
         根据传入的配置字典，从硬盘加载所有 JSON 数据并实例化基础对象。
@@ -781,14 +1048,7 @@ class AircraftScheduleEnv(gym.Env):
         
         self.num_planes = len(self.flights_data)
         self.resource_policy = self.config.get('resource_policy', 'heuristic')
-        self.device_lookahead_dispatch = bool(
-            self.config.get('device_lookahead_dispatch', False)
-        )
-        self.device_lookahead_safety_margin = float(
-            self.config.get('device_lookahead_safety_margin', 60.0)
-        )
-        if self.device_lookahead_safety_margin < 0.0:
-            raise ValueError('device_lookahead_safety_margin must be non-negative.')
+        self._load_resource_lookahead_config(self.config)
         self.global_feature_mode = str(
             self.config.get('global_feature_mode', 'none')
         )
@@ -806,7 +1066,14 @@ class AircraftScheduleEnv(gym.Env):
         self.device_deadlock_repeat_limit = int(self.config.get('device_deadlock_repeat_limit', 300))
         self._load_plane_safety_config(self.config)
         self.n_agents = self.n_plane_agents + self.max_device_num
-        requests_per_plane = 2 if self.device_lookahead_dispatch else 1
+        requests_per_plane = (
+            3
+            if (
+                self.device_future_intent_horizon > 0
+                or self.device_departure_lookahead
+            )
+            else 2 if self.device_lookahead_dispatch else 1
+        )
         self.max_request_num = requests_per_plane * self.n_plane_agents + 1
         self.device_list = [dev for devs in self.mobile_devices.values() for dev in devs]
         self.device_code_to_agent_id = {
@@ -1550,6 +1817,226 @@ class AircraftScheduleEnv(gym.Env):
         result = {'actions': actions, 'info': info}
         return result if return_info else actions
 
+    @staticmethod
+    def _sha256_file(path):
+        digest = hashlib.sha256()
+        with open(path, 'rb') as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _case_fingerprint(metadata):
+        direct = metadata.get('case_sha256')
+        if direct:
+            return str(direct)
+        fingerprints = metadata.get('fingerprints', {})
+        return str(fingerprints.get('case_sha256') or '')
+
+    def _load_resource_iga_teacher_index(self, index_path):
+        index_path = os.path.realpath(index_path)
+        cache_key = (
+            index_path,
+            os.path.getmtime(index_path) if os.path.isfile(index_path) else None,
+        )
+        if getattr(self, '_resource_iga_index_cache_key', None) == cache_key:
+            return getattr(self, '_resource_iga_index_cache', None)
+        if not os.path.isfile(index_path):
+            raise FileNotFoundError(
+                f'Stage2 resource IGA teacher index not found: {index_path}'
+            )
+        with open(index_path, 'r', encoding='utf-8') as handle:
+            index = json.load(handle)
+        if (
+            int(index.get('schema_version', 0)) != 1
+            or index.get('teacher_scope') != 'stage2_resource_policy'
+            or index.get('teacher_method') != 'resource_iga_all'
+            or index.get('environment_semantics_version') != self.SEMANTICS_VERSION
+            or not isinstance(index.get('entries'), dict)
+        ):
+            raise ValueError(
+                f'Invalid Stage2 resource IGA teacher index: {index_path}'
+            )
+        self._resource_iga_index_cache_key = cache_key
+        self._resource_iga_index_cache = index
+        return index
+
+    def _load_resource_iga_teacher(self):
+        """Load and strictly bind a Stage2 IGA chromosome to this case.
+
+        Historical Stage2 label files have a null top-level ``case_sha256``.
+        The immutable sidecar index repairs that provenance gap without
+        rewriting 600 verified trajectories: it binds the current dataset
+        fingerprint and the exact teacher-file digest before decoding.
+        """
+
+        teacher_dir = str(
+            self.config.get('resource_iga_teacher_dir', '') or ''
+        )
+        index_path = str(
+            self.config.get('resource_iga_teacher_index', '') or ''
+        )
+        case_path = str(getattr(self, 'current_case_path', '') or '')
+        cache_key = (teacher_dir, index_path, case_path)
+        if getattr(self, '_resource_iga_teacher_cache_key', None) == cache_key:
+            return getattr(self, '_resource_iga_teacher_cache', None)
+        self._resource_iga_teacher_cache_key = cache_key
+        self._resource_iga_teacher_cache = None
+        if not teacher_dir or not case_path:
+            return None
+        if not index_path:
+            raise ValueError(
+                'Stage2 IGA BC requires resource_iga_teacher_index; refusing '
+                'unbound teacher files.'
+            )
+
+        teacher_dir = os.path.realpath(teacher_dir)
+        index = self._load_resource_iga_teacher_index(index_path)
+        indexed_dir = os.path.realpath(str(index.get('teacher_dir', '')))
+        if indexed_dir != teacher_dir:
+            raise ValueError(
+                'Stage2 resource teacher directory does not match its index: '
+                f'{teacher_dir} != {indexed_dir}'
+            )
+        case_name = os.path.basename(case_path.rstrip(os.sep))
+        entry = index['entries'].get(case_name)
+        if not isinstance(entry, dict):
+            raise FileNotFoundError(
+                f'No indexed Stage2 resource teacher for {case_name}.'
+            )
+        teacher_path = os.path.join(teacher_dir, f'{case_name}.json')
+        if not os.path.isfile(teacher_path):
+            raise FileNotFoundError(
+                f'Indexed Stage2 resource teacher is missing: {teacher_path}'
+            )
+        actual_teacher_sha = self._sha256_file(teacher_path)
+        if actual_teacher_sha != entry.get('teacher_sha256'):
+            raise ValueError(
+                f'Stage2 resource teacher SHA256 mismatch for {case_name}.'
+            )
+
+        metadata_path = os.path.join(case_path, 'metadata.json')
+        if not os.path.isfile(metadata_path):
+            raise FileNotFoundError(
+                f'Dataset metadata missing for indexed teacher: {metadata_path}'
+            )
+        with open(metadata_path, 'r', encoding='utf-8') as handle:
+            metadata = json.load(handle)
+        case_sha = self._case_fingerprint(metadata)
+        if not case_sha or case_sha != entry.get('case_sha256'):
+            raise ValueError(
+                f'Dataset fingerprint mismatch for Stage2 teacher {case_name}.'
+            )
+
+        with open(teacher_path, 'r', encoding='utf-8') as handle:
+            teacher = json.load(handle)
+        try:
+            teacher_cmax = float(teacher.get('makespan', math.inf))
+            chromosome = np.asarray(
+                teacher.get('search', {}).get('chromosome', []),
+                dtype=np.float64,
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f'Stage2 resource teacher has invalid numeric data: {teacher_path}'
+            ) from error
+        if (
+            int(teacher.get('schema_version', 0)) < 1
+            or teacher.get('teacher_scope') != 'stage2_resource_policy'
+            or teacher.get('teacher_method') != 'resource_iga_all'
+            or teacher.get('resource_policy') != 'drl'
+            or teacher.get('arm') != 'iga_all'
+            or teacher.get('backends')
+            != {'ordinary': 'iga', 'transporter': 'iga'}
+            or teacher.get('environment_semantics_version')
+            != self.SEMANTICS_VERSION
+            or teacher.get('case') != case_name
+            or not teacher.get('completion_verified', False)
+            or not teacher.get('completed', False)
+            or not math.isfinite(teacher_cmax)
+            or teacher_cmax >= 100000.0
+            or teacher.get('frozen_plane_checkpoint_sha256')
+            != index.get('frozen_plane_checkpoint_sha256')
+        ):
+            raise ValueError(
+                f'{teacher_path} is not a verified Stage2 resource IGA teacher '
+                f'for semantics {self.SEMANTICS_VERSION}.'
+            )
+
+        backends = {'ordinary': 'iga', 'transporter': 'iga'}
+        layout = ResourceGenomeLayout.from_env(self, backends)
+        decoded = layout.decode(chromosome)
+        if int(teacher.get('search', {}).get('n_var', -1)) != layout.n_var:
+            raise ValueError(
+                f'Stage2 teacher layout mismatch for {case_name}: '
+                f"{teacher.get('search', {}).get('n_var')} != {layout.n_var}."
+            )
+        self._resource_iga_teacher_cache = {
+            'path': teacher_path,
+            'teacher_sha256': actual_teacher_sha,
+            'teacher_cmax': teacher_cmax,
+            'decoded': decoded,
+            'backends': backends,
+        }
+        return self._resource_iga_teacher_cache
+
+    def resource_iga_teacher_actions(self, return_info=False):
+        """Decode the per-case IGA resource teacher against live masks."""
+
+        actions = np.zeros((self.n_agents, 2), dtype=np.int64)
+        base_stats = {
+            'preferred_assignments': 0,
+            'greedy_legal_fills': 0,
+            'real_dispatches': 0,
+            'noop_after_claimed': 0,
+            'deferred_noop': 0,
+            'non_unique_candidate_masks': 0,
+            'ordinary_labels': 0,
+            'transporter_labels': 0,
+        }
+        teacher = self._load_resource_iga_teacher()
+        if teacher is None:
+            result = {
+                'actions': actions,
+                'info': {'available': False, **base_stats},
+            }
+            return result if return_info else actions
+        actions, decisions = mixed_resource_actions(
+            self,
+            teacher['backends'],
+            teacher['decoded'],
+            record=True,
+        )
+        for decision in decisions:
+            selected = int(decision['selected_request_id'])
+            legal_count = len(decision['legal_request_ids'])
+            candidate_count = len(decision['candidate_request_ids'])
+            if decision['role'] == 'transporter':
+                base_stats['transporter_labels'] += 1
+            else:
+                base_stats['ordinary_labels'] += 1
+            if legal_count > 1:
+                base_stats['non_unique_candidate_masks'] += 1
+            if selected:
+                base_stats['real_dispatches'] += 1
+                if decision['reason'] == 'preferred':
+                    base_stats['preferred_assignments'] += 1
+                else:
+                    base_stats['greedy_legal_fills'] += 1
+            elif candidate_count and not legal_count:
+                base_stats['noop_after_claimed'] += 1
+            else:
+                base_stats['deferred_noop'] += 1
+        info = {
+            'available': True,
+            'teacher_path': teacher['path'],
+            'teacher_sha256': teacher['teacher_sha256'],
+            'teacher_cmax': teacher['teacher_cmax'],
+            **base_stats,
+        }
+        result = {'actions': actions, 'info': info}
+        return result if return_info else actions
+
     def heuristic_device_actions(self, return_info=False):
         """
         Return supervised labels for DRL mobile-resource agents.
@@ -1695,12 +2182,40 @@ class AircraftScheduleEnv(gym.Env):
                 'left_trans_time': device.left_trans_time,
                 'resource_available': device.resource.is_available(),
                 'on_service': list(device.resource.on_service),
+                'reserved_for_plane': getattr(
+                    device, 'reserved_for_plane', None
+                ),
+                'lookahead_reservation': copy.deepcopy(getattr(
+                    device, 'lookahead_reservation', None
+                )),
             })
+        current_departure_plan = self._compute_departure_runway_plan()
+        runway_state = [
+            {
+                'site': code,
+                'occupied': bool(self.sites[code].is_occupied),
+                'plane': getattr(self.sites[code].plane, 'code', None),
+                'interfered': bool(self.sites[code].is_interfered),
+                'left_recovery_time': float(
+                    self.sites[code].left_rec_time
+                ),
+                'left_job_time': float(self.sites[code].left_job_time),
+                'ongoing_jobs': sorted(self.sites[code].onging_jobs),
+            }
+            for code in self.takeoff_site_code_list
+        ]
         return {
             'planes': active_planes,
             'waiting_sites': queued,
             'orphaned_queue_entries': orphaned_queue_entries,
-            'departure_runway_plan': dict(self._departure_runway_plan),
+            # Keep both values: a mismatch directly exposes a stale cached
+            # observation rather than falsely suggesting that no runway is
+            # currently usable.
+            'cached_departure_runway_plan': dict(
+                self._departure_runway_plan
+            ),
+            'departure_runway_plan': dict(current_departure_plan),
+            'runways': runway_state,
             'departure_transporter_by_plane': dict(
                 self.departure_transporter_by_plane
             ),
@@ -2317,6 +2832,329 @@ class AircraftScheduleEnv(gym.Env):
             )
         return 0.0
 
+    @staticmethod
+    def _device_travel_seconds(device, target_site):
+        distance = (
+            abs(float(device.site.pos[0]) - float(target_site.pos[0]))
+            + abs(float(device.site.pos[1]) - float(target_site.pos[1]))
+        )
+        return float(distance / max(float(device.velocity), 1.0))
+
+    def _device_service_release_seconds(self, device):
+        """Return the next exact capacity release for a carried resource.
+
+        ``Device.is_idle`` only describes transport/recovery state.  A parked
+        device can still have its resource serving an operation, and the old
+        ETA treated that device as immediately available.  Site job records
+        contain the resource code actually selected by ``Site.start_jobs``,
+        which lets us recover the next release without adding mutable clocks.
+        """
+        resource = device.resource
+        if resource.is_available():
+            return 0.0
+        release_times = []
+        for site_code in tuple(getattr(resource, 'on_service', ())):
+            site = self.sites.get(site_code)
+            if site is None:
+                continue
+            matching = [
+                max(0.0, float(job_state[0]))
+                for job_state in getattr(site, 'onging_jobs', {}).values()
+                if len(job_state) > 1 and job_state[1] == resource.code
+            ]
+            if matching:
+                # One capacity slot becomes available at the first matching
+                # completion at this site.
+                release_times.append(min(matching))
+            else:
+                release_times.append(max(
+                    0.0, float(getattr(site, 'left_job_time', 0.0))
+                ))
+        if release_times:
+            return float(min(release_times))
+        # Inconsistent external state must look unavailable, never free.
+        return 36000.0
+
+    def _lookahead_reservation_blocks(self, device, request=None):
+        reservation = getattr(device, 'lookahead_reservation', None)
+        if not reservation:
+            return False
+        if request is not None:
+            identity = tuple(reservation.get('identity', ()))
+            if identity and identity == self._request_identity(request):
+                return False
+            if (
+                reservation.get('mode') == 'soft'
+                and not bool(request.get('is_lookahead', False))
+            ):
+                return False
+        return True
+
+    def _device_release_seconds(self, device, request=None):
+        if (
+            self.resource_release_aware_eta
+            and self._lookahead_reservation_blocks(device, request=request)
+            and getattr(device, 'lookahead_reservation', {}).get('mode') == 'hard'
+        ):
+            expires_at = float(
+                device.lookahead_reservation.get('expires_at', self.total_time)
+            )
+            reservation_delay = max(0.0, expires_at - float(self.total_time))
+        else:
+            reservation_delay = 0.0
+        service_delay = (
+            self._device_service_release_seconds(device)
+            if self.resource_release_aware_eta else 0.0
+        )
+        return float(max(
+            0.0,
+            float(getattr(device, 'left_trans_time', 0.0)),
+            float(getattr(device, 'left_rec_time', 0.0)),
+            service_delay,
+            reservation_delay,
+        ))
+
+    def _device_eta_seconds(self, device, target_site, request=None):
+        return float(
+            self._device_release_seconds(device, request=request)
+            + self._device_travel_seconds(device, target_site)
+        )
+
+    def _device_observation_available(self, device):
+        if not self.resource_release_aware_eta:
+            return bool(device.is_idle())
+        return bool(
+            device.is_idle()
+            and device.resource.is_available()
+            and getattr(device, 'reserved_for_plane', None) is None
+            and getattr(device, 'lookahead_reservation', None) is None
+        )
+
+    def _resource_already_committed(self, target_site, needed_res_types):
+        """Return whether a compatible resource is present or already inbound."""
+        target_site.update_resources()
+        if any(
+            resource_type in target_site.res_avail
+            for resource_type in needed_res_types
+        ):
+            return True
+        return any(
+            device.is_transporting
+            and device.site == target_site
+            and device.resource.type in needed_res_types
+            for device in self.device_list
+        )
+
+    def _future_request(self, plane, job_code, target_site, lead_time, kind):
+        needed_res_types = self._needed_mobile_types(job_code)
+        if not needed_res_types or self._resource_already_committed(
+            target_site, needed_res_types
+        ):
+            return None
+        return {
+            'job_code': job_code,
+            'site_code': target_site.code,
+            'plane_id': plane.code,
+            'plane_idx': int(plane.code.split('_')[-1]),
+            'needed_res_types': needed_res_types,
+            'waiting_time': 0.0,
+            'lead_time': max(0.0, float(lead_time)),
+            'is_noop': False,
+            'is_lookahead': True,
+            'urgent': False,
+            'request_kind': kind,
+        }
+
+    def _next_mobile_job_request(self, plane):
+        """Expose one direct mobile-resource successor of committed work.
+
+        The horizon is deliberately one dependency edge.  It provides enough
+        notice for a vehicle to travel while avoiding speculative rollouts of
+        the frozen aircraft policy or a guessed future stand.
+        """
+        if getattr(self, 'device_future_intent_horizon', 0) <= 0:
+            return None
+
+        target_site = plane.site
+        future_finished = set(plane.finished_jobs)
+        completing = set()
+        lead_time = 0.0
+        if plane.is_busy:
+            completing.update(plane.current_jobs)
+            lead_time = float(max(0.0, plane.site.left_job_time))
+        else:
+            record = self.pending_actions.get(plane.code)
+            if record is None:
+                return None
+            selected_job = record.get('target_job_code')
+            selected_site = record.get('target_site_code') or record.get('site_id')
+            if selected_job not in plane.left_jobs or selected_site not in self.sites:
+                return None
+            completing.add(selected_job)
+            target_site = self.sites[selected_site]
+            lead_time = self._lookahead_lead_time(plane, target_site)
+            lead_time += float(plane.jobs[selected_job].time or 0.0)
+
+        if not completing:
+            return None
+        candidates = []
+        completed_after_commitment = future_finished.union(completing)
+        departure_codes = set(self.departure_job_code_list)
+        for job_code in plane.left_jobs:
+            if job_code in completing or job_code in departure_codes:
+                continue
+            needed = self._needed_mobile_types(job_code)
+            if not needed:
+                continue
+            predecessors = set(plane.jobs[job_code].predecessor)
+            if not predecessors.issubset(completed_after_commitment):
+                continue
+            # At least one currently unfinished predecessor must be part of
+            # the committed work; otherwise this is an unrelated ready branch.
+            pending_predecessors = predecessors.difference(future_finished)
+            if (
+                not pending_predecessors
+                or not pending_predecessors.issubset(completing)
+            ):
+                continue
+            candidates.append(job_code)
+        if not candidates:
+            return None
+        # Prefer the longest operation at the same deadline: its delay is most
+        # likely to propagate into the final synchronization tail.
+        job_code = min(
+            candidates,
+            key=lambda code: (
+                -float(plane.jobs[code].time or 0.0),
+                str(code),
+            ),
+        )
+        return self._future_request(
+            plane,
+            job_code,
+            target_site,
+            lead_time,
+            'next_mobile_job',
+        )
+
+    def _bounded_mobile_frontier_requests(self, plane):
+        """Expose a deterministic, bounded direct-successor frontier.
+
+        This never guesses a future stand or rolls out the frozen aircraft
+        policy.  It only expands operations made ready by work that is already
+        executing or committed at a known site, then keeps the most scarce and
+        longest mobile-resource successors.  The per-aircraft bound preserves
+        the existing 3*N+1 request capacity.
+        """
+        if getattr(self, 'device_future_intent_horizon', 0) <= 0:
+            return []
+        target_site = plane.site
+        future_finished = set(plane.finished_jobs)
+        completing = set()
+        lead_time = 0.0
+        if plane.is_busy:
+            completing.update(plane.current_jobs)
+            lead_time = float(max(0.0, plane.site.left_job_time))
+        else:
+            record = self.pending_actions.get(plane.code)
+            if record is None:
+                return []
+            selected_job = record.get('target_job_code')
+            selected_site = (
+                record.get('target_site_code') or record.get('site_id')
+            )
+            if (
+                selected_job not in plane.left_jobs
+                or selected_site not in self.sites
+            ):
+                return []
+            completing.add(selected_job)
+            target_site = self.sites[selected_site]
+            lead_time = self._lookahead_lead_time(plane, target_site)
+            lead_time += float(plane.jobs[selected_job].time or 0.0)
+        if not completing:
+            return []
+
+        completed_after_commitment = future_finished.union(completing)
+        departure_codes = set(self.departure_job_code_list)
+        candidates = []
+        for job_code in plane.left_jobs:
+            if job_code in completing or job_code in departure_codes:
+                continue
+            needed = self._needed_mobile_types(job_code)
+            if not needed:
+                continue
+            predecessors = set(plane.jobs[job_code].predecessor)
+            pending_predecessors = predecessors.difference(future_finished)
+            if (
+                not predecessors.issubset(completed_after_commitment)
+                or not pending_predecessors
+                or not pending_predecessors.issubset(completing)
+            ):
+                continue
+            capacity = sum(
+                len(self.mobile_devices.get(resource_type, ()))
+                for resource_type in needed
+            )
+            candidates.append((
+                max(1, capacity),
+                -float(plane.jobs[job_code].time or 0.0),
+                str(job_code),
+            ))
+
+        requests = []
+        for _, _, job_code in sorted(candidates):
+            request = self._future_request(
+                plane,
+                job_code,
+                target_site,
+                lead_time,
+                'bounded_mobile_frontier',
+            )
+            if request is not None:
+                requests.append(request)
+            if len(requests) >= self.device_frontier_max_requests:
+                break
+        return requests
+
+    def _departure_lookahead_request(self, plane):
+        """Expose R014 while the final service commitment is still running."""
+        if (
+            not getattr(self, 'device_departure_lookahead', False)
+            or plane.has_completed_service_jobs()
+        ):
+            return None
+        unfinished_service = set(plane.left_jobs).union(plane.current_jobs)
+        unfinished_service.intersection_update(plane.service_job_codes)
+        target_site = plane.site
+        lead_time = None
+        if plane.is_busy and unfinished_service.issubset(set(plane.current_jobs)):
+            lead_time = float(max(0.0, plane.site.left_job_time))
+        else:
+            record = self.pending_actions.get(plane.code)
+            selected_job = record.get('target_job_code') if record else None
+            selected_site = (
+                record.get('target_site_code') or record.get('site_id')
+                if record else None
+            )
+            if (
+                selected_job in unfinished_service
+                and unfinished_service == {selected_job}
+                and selected_site in self.sites
+            ):
+                target_site = self.sites[selected_site]
+                lead_time = self._lookahead_lead_time(plane, target_site)
+                lead_time += float(plane.jobs[selected_job].time or 0.0)
+        if lead_time is None:
+            return None
+        return self._future_request(
+            plane,
+            self.TRANSFER_JOB_CODE,
+            target_site,
+            lead_time,
+            'departure_future_pickup',
+        )
+
     def _iter_lookahead_requests(self, seen, assigned):
         """Yield requests for resources needed by an already selected future job.
 
@@ -2378,6 +3216,152 @@ class AircraftScheduleEnv(gym.Env):
                 'request_kind': 'selected_future_job',
             }
 
+        for plane in sorted(
+            self.planes.values(),
+            key=lambda item: int(item.code.split('_')[-1]),
+        ):
+            if self.device_future_intent_mode == 'bounded_frontier':
+                future_requests = self._bounded_mobile_frontier_requests(plane)
+            else:
+                future_requests = [self._next_mobile_job_request(plane)]
+            future_requests.append(self._departure_lookahead_request(plane))
+            for request in future_requests:
+                if request is None:
+                    continue
+                key = self._request_identity(request)
+                if (
+                    key in seen
+                    or key in assigned
+                    or key in self._deferred_lookahead_requests
+                ):
+                    continue
+                yield request
+
+    def _sync_resource_intent_ledger(self, requests):
+        """Track the soft -> firm -> dispatched -> arrived lifecycle."""
+        active = set()
+        for request in requests:
+            if request.get('is_noop', False):
+                continue
+            key = self._request_identity(request)
+            active.add(key)
+            desired_status = (
+                'soft' if request.get('is_lookahead', False) else 'firm'
+            )
+            entry = self.resource_intent_ledger.setdefault(key, {
+                'identity': list(key),
+                'created_time': float(self.total_time),
+                'status': desired_status,
+                'history': [],
+            })
+            previous = entry.get('status')
+            if previous == 'cancelled':
+                entry['status'] = desired_status
+                entry['history'].append({
+                    'status': desired_status,
+                    'time': float(self.total_time),
+                    'reason': 'intent_reactivated',
+                })
+            if previous == 'soft' and desired_status == 'firm':
+                entry['status'] = 'firm'
+                entry['history'].append({
+                    'status': 'firm', 'time': float(self.total_time)
+                })
+            entry.update({
+                'request_kind': request.get('request_kind'),
+                'needed_time': float(self.total_time) + float(
+                    request.get('lead_time', 0.0)
+                ),
+                'last_seen_time': float(self.total_time),
+            })
+        for key, entry in self.resource_intent_ledger.items():
+            if key in active or entry.get('status') not in {'soft', 'firm'}:
+                continue
+            entry['status'] = 'cancelled'
+            entry['history'].append({
+                'status': 'cancelled', 'time': float(self.total_time)
+            })
+
+    def _clear_lookahead_reservation(self, device, reason):
+        reservation = getattr(device, 'lookahead_reservation', None)
+        if reservation is None:
+            return False
+        identity = tuple(reservation.get('identity', ()))
+        intent = self.resource_intent_ledger.get(identity)
+        if intent is not None:
+            intent['reservation_release_time'] = float(self.total_time)
+            intent['reservation_release_reason'] = str(reason)
+            intent.setdefault('history', []).append({
+                'status': 'reservation_released',
+                'time': float(self.total_time),
+                'reason': str(reason),
+                'device_id': device.code,
+            })
+        device.lookahead_reservation = None
+        return True
+
+    def _reconcile_lookahead_reservations(self):
+        """Expire leases and hand a ready R014 to departure atomically."""
+        for device in self.device_list:
+            reservation = getattr(device, 'lookahead_reservation', None)
+            if not reservation:
+                continue
+            plane = self.planes.get(reservation.get('plane_id'))
+            if plane is None:
+                self._clear_lookahead_reservation(device, 'plane_absent')
+                continue
+            if float(self.total_time) >= float(
+                reservation.get('expires_at', self.total_time)
+            ) - 1e-9:
+                self._clear_lookahead_reservation(device, 'lease_expired')
+                continue
+            job_code = reservation.get('job_code')
+            site_code = reservation.get('site_code')
+            if job_code == self.TRANSFER_JOB_CODE:
+                if (
+                    bool(getattr(plane, 'departure_staging_decided', False))
+                    and plane.site.code != site_code
+                ):
+                    self._clear_lookahead_reservation(
+                        device, 'departure_pickup_site_changed'
+                    )
+                    continue
+                if (
+                    self._plane_awaiting_departure(plane)
+                    and plane.is_idle()
+                    and not device.is_transporting
+                    and device.site == plane.site
+                    and plane.site.code == site_code
+                    and device.resource.is_available()
+                ):
+                    if self._reserve_departure_transporter(plane, device):
+                        self._clear_lookahead_reservation(
+                            device, 'promoted_to_departure_reservation'
+                        )
+                continue
+            if (
+                job_code in plane.current_jobs
+                or job_code in plane.finished_jobs
+                or job_code not in plane.left_jobs
+            ):
+                self._clear_lookahead_reservation(
+                    device, 'job_started_or_cancelled'
+                )
+
+    def _next_lookahead_reservation_expiry_dt(self):
+        delays = [
+            float(reservation.get('expires_at', self.total_time))
+            - float(self.total_time)
+            for device in self.device_list
+            for reservation in [getattr(
+                device, 'lookahead_reservation', None
+            )]
+            if reservation is not None
+            and float(reservation.get('expires_at', self.total_time))
+            > float(self.total_time) + 1e-9
+        ]
+        return min(delays, default=math.inf)
+
     def _refresh_request_pool(self):
         """Build a stable request list from planes waiting for mobile resources."""
         if (
@@ -2391,7 +3375,12 @@ class AircraftScheduleEnv(gym.Env):
         ):
             self._deferred_lookahead_requests.clear()
             self._lookahead_deferred_at_time = None
+        self._reconcile_lookahead_reservations()
         self._settle_ready_waiting_planes()
+        # ``waiting_sites`` is a derived index.  Rebuild it after all
+        # zero-time settlements so completed/departed aircraft cannot leave
+        # stale queue entries in diagnostics or heuristic teacher matching.
+        self._sync_waiting_sites()
         request_list = [{
             'id': 0,
             'job_code': '__WAIT__',
@@ -2468,6 +3457,7 @@ class AircraftScheduleEnv(gym.Env):
 
         self.request_list = request_list
         self.request_pool = {req['id']: req for req in request_list}
+        self._sync_resource_intent_ledger(request_list)
 
     def _heuristic_dispatch_departure_pickups(self):
         """Pre-position idle R014s for independently ready aircraft."""
@@ -2515,17 +3505,64 @@ class AircraftScheduleEnv(gym.Env):
     def _device_can_serve(self, device, request):
         if request.get('is_noop', False):
             return True
-        return device.resource.type in request.get('needed_res_types', [])
+        if device.resource.type not in request.get('needed_res_types', []):
+            return False
+        return not self._lookahead_reservation_blocks(
+            device, request=request
+        )
 
     def _device_is_dispatchable(self, device):
         return bool(
             device.is_idle()
             and device.resource.is_available()
             and getattr(device, 'reserved_for_plane', None) is None
+            and not (
+                getattr(device, 'lookahead_reservation', None)
+                and device.lookahead_reservation.get('mode') == 'hard'
+            )
+        )
+
+    def _lookahead_dispatch_delay(self, device, request):
+        """Seconds until a JIT request enters this device's legal window."""
+        if (
+            not getattr(self, 'device_deadline_aware_dispatch', False)
+            or not request.get('is_lookahead', False)
+        ):
+            return 0.0
+        target_site = self.sites.get(request.get('site_code'))
+        if target_site is None:
+            return math.inf
+        travel_time = self._device_travel_seconds(device, target_site)
+        lead_time = max(0.0, float(request.get('lead_time', 0.0)))
+        return max(
+            0.0,
+            lead_time - travel_time - self.device_lookahead_safety_margin,
         )
 
     def _device_can_dispatch(self, device, request):
-        return self._device_is_dispatchable(device) and self._device_can_serve(device, request)
+        return bool(
+            self._device_is_dispatchable(device)
+            and self._device_can_serve(device, request)
+            and self._lookahead_dispatch_delay(device, request) <= 1e-9
+        )
+
+    def _next_lookahead_dispatch_dt(self):
+        """Return the next event time at which one JIT action becomes legal."""
+        if not getattr(self, 'device_deadline_aware_dispatch', False):
+            return math.inf
+        delays = []
+        for request in self.request_list[1:]:
+            if not request.get('is_lookahead', False):
+                continue
+            for device in self.device_list[:self.max_device_num]:
+                if (
+                    self._device_is_dispatchable(device)
+                    and self._device_can_serve(device, request)
+                ):
+                    delay = self._lookahead_dispatch_delay(device, request)
+                    if delay > 1e-9 and math.isfinite(delay):
+                        delays.append(delay)
+        return min(delays, default=math.inf)
 
     def _sequential_device_options(self, dev_idx, claimed_requests):
         """Return real requests and whether no-op is legal for one device turn.
@@ -2666,6 +3703,19 @@ class AircraftScheduleEnv(gym.Env):
         if target_site is None:
             return False
 
+        existing_lookahead_reservation = getattr(
+            device, 'lookahead_reservation', None
+        )
+        if (
+            existing_lookahead_reservation
+            and tuple(existing_lookahead_reservation.get('identity', ()))
+            != self._request_identity(request)
+        ):
+            # Only a soft lease can reach this point; hard leases are masked.
+            self._clear_lookahead_reservation(
+                device, 'stolen_by_blocking_request'
+            )
+
         if not device.resource.is_available():
             return False
 
@@ -2700,6 +3750,26 @@ class AircraftScheduleEnv(gym.Env):
                     device_code=device.code,
                 )
             raise
+        if (
+            request.get('is_lookahead', False)
+            and self.device_lookahead_reservation_mode in {'soft', 'hard'}
+        ):
+            identity = self._request_identity(request)
+            needed_time = float(self.total_time) + max(
+                0.0, float(request.get('lead_time', 0.0))
+            )
+            device.lookahead_reservation = {
+                'identity': list(identity),
+                'plane_id': request.get('plane_id'),
+                'job_code': request.get('job_code'),
+                'site_code': request.get('site_code'),
+                'mode': self.device_lookahead_reservation_mode,
+                'created_time': float(self.total_time),
+                'needed_time': needed_time,
+                'expires_at': float(
+                    needed_time + self.device_reservation_grace_seconds
+                ),
+            }
         self._remove_waiting_site(request['job_code'], target_site.code)
 
         if agent_id is not None:
@@ -2724,10 +3794,45 @@ class AircraftScheduleEnv(gym.Env):
                 record.update({
                     'is_lookahead': True,
                     'request_kind': request.get('request_kind'),
+                    'reservation_mode': str(
+                        self.device_lookahead_reservation_mode
+                    ),
                     'lead_time_at_dispatch': float(
                         request.get('lead_time', 0.0)
                     ),
+                    'predicted_lateness_at_dispatch': max(
+                        0.0,
+                        float(trans_time)
+                        - float(request.get('lead_time', 0.0)),
+                    ),
+                    'predicted_earliness_at_dispatch': max(
+                        0.0,
+                        float(request.get('lead_time', 0.0))
+                        - float(trans_time),
+                    ),
                 })
+            intent_key = self._request_identity(request)
+            record['intent_identity'] = list(intent_key)
+            intent = self.resource_intent_ledger.setdefault(intent_key, {
+                'identity': list(intent_key),
+                'created_time': float(self.total_time),
+                'history': [],
+            })
+            intent.update({
+                'status': 'dispatched',
+                'assigned_device': device.code,
+                'dispatch_time': float(self.total_time),
+                'expected_arrival_time': float(self.total_time + trans_time),
+                'reservation_mode': (
+                    self.device_lookahead_reservation_mode
+                    if request.get('is_lookahead', False) else 'none'
+                ),
+            })
+            intent['history'].append({
+                'status': 'dispatched',
+                'time': float(self.total_time),
+                'device_id': device.code,
+            })
             if trans_time <= 0.0:
                 if device.is_transporting:
                     device.finish_transport()
@@ -2739,6 +3844,11 @@ class AircraftScheduleEnv(gym.Env):
                 record['duration'] = 0.0
                 record['settled_waiting_planes'] = int(settled)
                 self.device_trajectory_log.append(record)
+                intent['status'] = 'arrived'
+                intent['arrival_time'] = float(self.total_time)
+                intent['history'].append({
+                    'status': 'arrived', 'time': float(self.total_time)
+                })
             else:
                 self.pending_device_actions[device.code] = record
         return True
@@ -2817,8 +3927,17 @@ class AircraftScheduleEnv(gym.Env):
 
         devices = list(self.device_list)
         availability = [
-            float(max(device.left_trans_time, device.left_rec_time))
+            (
+                self._device_release_seconds(device)
+                if self.resource_release_aware_eta
+                else float(max(
+                    device.left_trans_time, device.left_rec_time
+                ))
+            )
             for device in devices
+        ]
+        device_available = [
+            self._device_observation_available(device) for device in devices
         ]
         real_requests = [
             request
@@ -2857,17 +3976,15 @@ class AircraftScheduleEnv(gym.Env):
                 for site in runway_sites
             )
             transporter_unavailable = sum(
-                (not device.is_idle())
-                or getattr(device, 'reserved_for_plane', None) is not None
+                not self._device_observation_available(device)
                 for device in transporters
             )
             transporter_idle_unreserved = sum(
-                device.is_idle()
-                and getattr(device, 'reserved_for_plane', None) is None
+                self._device_observation_available(device)
                 for device in transporters
             )
             features[12:] = np.asarray([
-                sum(device.is_idle() for device in devices)
+                sum(device_available)
                 / max(1.0, float(len(devices))),
                 min(
                     (np.mean(availability) if availability else 0.0)
@@ -2932,7 +4049,7 @@ class AircraftScheduleEnv(gym.Env):
             for resource_type in device_types
         ]
         features[12:] = np.asarray([
-            sum(device.is_idle() for device in devices)
+            sum(device_available)
             / max(1.0, float(len(devices))),
             min((np.mean(availability) if availability else 0.0) / 3600.0, 10.0),
             min((max(availability) if availability else 0.0) / 3600.0, 10.0),
@@ -2945,7 +4062,10 @@ class AircraftScheduleEnv(gym.Env):
             min(capacity_demand) / 5.0 if capacity_demand else 0.0,
             min(float(np.mean(capacity_demand)), 5.0) / 5.0
             if capacity_demand else 0.0,
-            sum(device.is_idle() for device in transporters)
+            sum(
+                self._device_observation_available(device)
+                for device in transporters
+            )
             / max(1.0, float(len(transporters))),
         ], dtype=np.float32)
         return np.nan_to_num(
@@ -3031,18 +4151,32 @@ class AircraftScheduleEnv(gym.Env):
             dtype_enc = float(dev_types.index(dev.resource.type)) / max(
                 1.0, float(len(dev_types) - 1)
             )
-            status_enc = 0.0 if dev.is_idle() else 1.0
+            if self.resource_release_aware_eta:
+                status_enc = (
+                    0.0 if self._device_observation_available(dev) else 1.0
+                )
+                rem_time_seconds = self._device_release_seconds(dev)
+            else:
+                status_enc = 0.0 if dev.is_idle() else 1.0
+                rem_time_seconds = float(max(
+                    dev.left_trans_time, dev.left_rec_time
+                ))
             if (
-                self.global_feature_mode == 'f1f2_departure'
-                and dev.resource.type == self.TRANSPORTER_RESOURCE_TYPE
-                and dev.is_idle()
-                and getattr(dev, 'reserved_for_plane', None) is not None
+                dev.is_idle()
+                and (
+                    getattr(dev, 'reserved_for_plane', None) is not None
+                    or getattr(dev, 'lookahead_reservation', None) is not None
+                )
+                and (
+                    self.resource_release_aware_eta
+                    or self.global_feature_mode == 'f1f2_departure'
+                )
             ):
                 # Reserved-idle is distinct from both genuinely available and
                 # physically busy, without changing the five-dimensional node.
                 status_enc = 0.5
             rem_time = min(
-                float(max(dev.left_trans_time, dev.left_rec_time)) / 3600.0,
+                float(rem_time_seconds) / 3600.0,
                 10.0,
             )
             pos_x = float(dev.site.pos[0]) / coordinate_scale
@@ -3242,10 +4376,30 @@ class AircraftScheduleEnv(gym.Env):
         # arrival and downstream site flexibility without forcing the GNN to
         # reconstruct those quantities from unrelated node embeddings.
         pair_feature_dim = 10
-        pair_features = np.zeros(
-            (n_agents, n_ops, n_sites, pair_feature_dim),
-            dtype=np.float32,
+        pair_feature_storage = str(
+            self.config.get('pair_feature_storage', 'sparse_legal')
         )
+        if pair_feature_storage not in {'sparse_legal', 'dense_legacy'}:
+            raise ValueError(
+                'pair_feature_storage must be sparse_legal or dense_legacy, '
+                f'got {pair_feature_storage!r}.'
+            )
+        # Resource actors choose request nodes and never consume plane
+        # operation-site features.  The legacy tensor nevertheless allocated
+        # [plane + device, job, site, feature] and therefore stored 80 rows of
+        # zeros in every Stage2 transition.  In sparse mode we keep only the
+        # operation-site pairs that are legal in this observation.  Masked
+        # logits have no probability or gradient contribution, so scoring
+        # this exact legal set is numerically equivalent to the dense path.
+        dense_pair_features = (
+            np.zeros(
+                (n_agents, n_ops, n_sites, pair_feature_dim),
+                dtype=np.float32,
+            )
+            if pair_feature_storage == 'dense_legacy' else None
+        )
+        sparse_pair_feature_values = []
+        sparse_pair_feature_flat_ids = []
         current_site_indices = np.full((n_agents,), -1, dtype=np.int64)
         critical_job_codes = {'ZY10', 'ZY12'}
         critical_op_mask = np.asarray(
@@ -3255,7 +4409,23 @@ class AircraftScheduleEnv(gym.Env):
         for global_pid, plane in active_planes.items():
             current_site_idx = site2idx.get(plane.site.code, -1)
             current_site_indices[global_pid] = current_site_idx
-            for job_idx, job_code in enumerate(self.job_code_list):
+            own_op_mask = agent_op_mask[
+                global_pid,
+                global_pid * n_ops:(global_pid + 1) * n_ops,
+            ]
+            legal_pair_mask = (
+                own_op_mask[:, None]
+                & agent_job_site_mask_matrix[global_pid]
+                & ptr_site_mask_matrix[global_pid][None, :]
+            )
+            job_indices = (
+                range(n_ops)
+                if dense_pair_features is not None
+                else np.flatnonzero(legal_pair_mask.any(axis=1))
+            )
+            for raw_job_idx in job_indices:
+                job_idx = int(raw_job_idx)
+                job_code = self.job_code_list[job_idx]
                 job_obj = plane.jobs.get(job_code, self.jobs[job_code])
                 is_departure_tow = bool(
                     self.departure_job_code_list
@@ -3281,7 +4451,14 @@ class AircraftScheduleEnv(gym.Env):
                         for predecessor in job_obj.predecessor
                     )
                 )
-                for site_idx, site in enumerate(site_list):
+                site_indices = (
+                    range(n_sites)
+                    if dense_pair_features is not None
+                    else np.flatnonzero(legal_pair_mask[job_idx])
+                )
+                for raw_site_idx in site_indices:
+                    site_idx = int(raw_site_idx)
+                    site = site_list[site_idx]
                     distance = (
                         abs(float(plane.site.pos[0]) - float(site.pos[0]))
                         + abs(float(plane.site.pos[1]) - float(site.pos[1]))
@@ -3289,7 +4466,13 @@ class AircraftScheduleEnv(gym.Env):
                     travel_time = distance / max(
                         float(getattr(plane, 'velocity', 1.0)), 1.0
                     )
-                    device_eta = 0.0
+                    type_etas = []
+                    pair_request = {
+                        'plane_id': plane.code,
+                        'job_code': job_code,
+                        'site_code': site.code,
+                        'is_lookahead': True,
+                    }
                     for device_type in required_device_types:
                         candidates = (
                             [reserved_departure_device]
@@ -3307,21 +4490,34 @@ class AircraftScheduleEnv(gym.Env):
                             in {None, plane.code}
                         ]
                         if not candidates:
-                            device_eta = 36000.0
+                            type_etas.append(36000.0)
                             break
-                        type_eta = min(
-                            float(max(
-                                device.left_trans_time,
-                                device.left_rec_time,
-                            )) + (
-                                abs(float(device.site.pos[0]) - float(site.pos[0]))
-                                + abs(float(device.site.pos[1]) - float(site.pos[1]))
-                            ) / max(
-                                float(getattr(device, 'velocity', 1.0)), 1.0
+                        if self.resource_release_aware_eta:
+                            type_eta = min(
+                                self._device_eta_seconds(
+                                    device, site, request=pair_request
+                                )
+                                for device in candidates
                             )
-                            for device in candidates
-                        )
-                        device_eta = max(device_eta, type_eta)
+                        else:
+                            type_eta = min(
+                                float(max(
+                                    device.left_trans_time,
+                                    device.left_rec_time,
+                                )) + (
+                                    abs(float(device.site.pos[0]) - float(site.pos[0]))
+                                    + abs(float(device.site.pos[1]) - float(site.pos[1]))
+                                ) / max(
+                                    float(getattr(device, 'velocity', 1.0)), 1.0
+                                )
+                                for device in candidates
+                            )
+                        type_etas.append(float(type_eta))
+                    device_eta = (
+                        min(type_etas, default=0.0)
+                        if self.resource_release_aware_eta
+                        else max(type_etas, default=0.0)
+                    )
                     future_compatibility = float(
                         sum(
                             self._site_can_eventually_support_job(
@@ -3331,7 +4527,7 @@ class AircraftScheduleEnv(gym.Env):
                             if future_code in self.jobs
                         )
                     ) / max(1.0, float(len(plane.left_jobs)))
-                    pair_features[global_pid, job_idx, site_idx] = [
+                    feature_value = [
                         float(site_idx == current_site_idx),
                         min(travel_time / 3600.0, 10.0),
                         min(float(job_obj.time or 0.0) / 3600.0, 10.0),
@@ -3349,9 +4545,32 @@ class AircraftScheduleEnv(gym.Env):
                         future_compatibility,
                         float(job_code in critical_job_codes),
                     ]
-        data.pair_features = torch.tensor(
-            pair_features, dtype=torch.float32
-        )
+                    if dense_pair_features is not None:
+                        dense_pair_features[
+                            global_pid, job_idx, site_idx
+                        ] = feature_value
+                    else:
+                        sparse_pair_feature_values.append(feature_value)
+                        sparse_pair_feature_flat_ids.append(
+                            (global_pid * n_ops + job_idx) * n_sites
+                            + site_idx
+                        )
+        if dense_pair_features is not None:
+            data.pair_features = torch.from_numpy(dense_pair_features)
+        else:
+            sparse_values = np.asarray(
+                sparse_pair_feature_values, dtype=np.float32
+            ).reshape(-1, pair_feature_dim)
+            sparse_flat_ids = np.asarray(
+                sparse_pair_feature_flat_ids, dtype=np.int32
+            )
+            data.pair_feature_values = torch.from_numpy(sparse_values)
+            # ``flat_ids`` deliberately avoids PyG's special ``index`` name:
+            # local plane-pair ids must be concatenated without graph offsets.
+            data.pair_feature_flat_ids = torch.from_numpy(sparse_flat_ids)
+            data.pair_feature_counts = torch.tensor(
+                [len(sparse_pair_feature_flat_ids)], dtype=torch.int32
+            )
         data.agent_current_site_indices = torch.tensor(
             current_site_indices, dtype=torch.long
         )
@@ -3423,6 +4642,11 @@ class AircraftScheduleEnv(gym.Env):
             potential_value = self._iga_potential_value(
                 self.get_iga_potential_features()
             )
+        elif (
+            self.hindsight_reward_mode == 'team_time_resource_potential'
+            and self.iga_potential_beta > 0.0
+        ):
+            potential_value = self._resource_slack_potential_value()
         data.iga_potential_value = torch.tensor(
             [potential_value], dtype=torch.float32
         )
@@ -3462,6 +4686,14 @@ class AircraftScheduleEnv(gym.Env):
         while len(request_features) < self.max_request_num:
             request_features.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0])
         data['request'].x = torch.tensor(request_features, dtype=torch.float32)
+        data.request_is_lookahead = torch.tensor(
+            [
+                bool(request.get('is_lookahead', False))
+                for request in self.request_list
+            ]
+            + [False] * (self.max_request_num - len(self.request_list)),
+            dtype=torch.bool,
+        )
         data.global_features = torch.tensor(
             self._build_global_features(),
             dtype=torch.float32,
@@ -3475,8 +4707,9 @@ class AircraftScheduleEnv(gym.Env):
             request_mask_matrix[agent_idx, 0] = True
             if self._device_is_dispatchable(dev):
                 for req in self.request_list[1:]:
-                    can_serve = self._device_can_serve(dev, req)
-                    request_mask_matrix[agent_idx, req['id']] = can_serve
+                    request_mask_matrix[agent_idx, req['id']] = (
+                        self._device_can_dispatch(dev, req)
+                    )
         for agent_idx in range(n_plane_agents + min(len(device_list), self.max_device_num), n_agents):
             request_mask_matrix[agent_idx, 0] = True
 
@@ -3776,6 +5009,18 @@ class AircraftScheduleEnv(gym.Env):
             # ---------------------------------------------------------
             last_op_indices[pid] = plane.last_job_idx
                     
+        resource_metrics = (
+            self.get_resource_lateness_metrics()
+            if self.done else {
+                'total_wait_seconds': 0.0,
+                'max_wait_seconds_per_aircraft': 0.0,
+                'p95_wait_seconds_per_aircraft': 0.0,
+                'predicted_lateness_seconds': 0.0,
+                'early_arrival_seconds': 0.0,
+                'lookahead_dispatch_count': 0,
+            }
+        )
+        wait_decomposition = resource_metrics.get('wait_decomposition', {})
         return {
             'active_agents': np.array(active_agents), 
             'last_site_indices': np.array(last_site_indices, dtype=np.int32),
@@ -3822,6 +5067,45 @@ class AircraftScheduleEnv(gym.Env):
             ),
             'departed_plane_count': np.array(
                 len(self.departed_agent_ids), dtype=np.int32
+            ),
+            'resource_wait_seconds': np.array(
+                resource_metrics['total_wait_seconds'], dtype=np.float32
+            ),
+            'resource_critical_wait_seconds': np.array(
+                resource_metrics['max_wait_seconds_per_aircraft'],
+                dtype=np.float32,
+            ),
+            'resource_wait_p95_seconds': np.array(
+                resource_metrics['p95_wait_seconds_per_aircraft'],
+                dtype=np.float32,
+            ),
+            'resource_predicted_lateness_seconds': np.array(
+                resource_metrics['predicted_lateness_seconds'],
+                dtype=np.float32,
+            ),
+            'resource_early_arrival_seconds': np.array(
+                resource_metrics['early_arrival_seconds'], dtype=np.float32
+            ),
+            'resource_wait_before_dispatch_seconds': np.array(
+                wait_decomposition.get(
+                    'waiting_before_dispatch_seconds', 0.0
+                ),
+                dtype=np.float32,
+            ),
+            'resource_wait_travel_seconds': np.array(
+                wait_decomposition.get(
+                    'travel_after_dispatch_seconds', 0.0
+                ),
+                dtype=np.float32,
+            ),
+            'resource_wait_post_arrival_seconds': np.array(
+                wait_decomposition.get(
+                    'post_arrival_synchronization_seconds', 0.0
+                ),
+                dtype=np.float32,
+            ),
+            'resource_lookahead_dispatch_count': np.array(
+                resource_metrics['lookahead_dispatch_count'], dtype=np.int32
             ),
         }
     
@@ -4057,6 +5341,15 @@ class AircraftScheduleEnv(gym.Env):
                 self._sync_waiting_sites()
                 self._heuristic_dispatch_departure_pickups()
 
+            # Request refresh is not a read-only operation: it may promote an
+            # arrived R014 lookahead lease into the physical departure
+            # handshake, or synchronously start a job whose resource is
+            # already local.  Settle those zero-time transitions *before*
+            # testing which agents can decide.  Computing the runway plan
+            # first leaves a stale empty plan and can misclassify a newly
+            # enabled ZY-S action as an event deadlock.
+            if self.resource_policy == 'drl':
+                self._refresh_request_pool()
             departure_plan = self._compute_departure_runway_plan()
             if any(
                 self._plane_can_decide(
@@ -4067,7 +5360,6 @@ class AircraftScheduleEnv(gym.Env):
                 break
 
             if self.resource_policy == 'drl':
-                self._refresh_request_pool()
                 has_new_device_decision = any(
                     self._device_can_dispatch(dev, request)
                     for dev in self.device_list[:self.max_device_num]
@@ -4115,6 +5407,16 @@ class AircraftScheduleEnv(gym.Env):
                     if not device.is_idle():
                         left_t = device.left_trans_time if device.is_transporting else device.left_rec_time
                         internal_step_time = min(internal_step_time, left_t)
+
+            if self.resource_policy == 'drl':
+                # A JIT window opening is a real scheduling event.  Without
+                # this wake-up, the event loop could jump straight to job
+                # completion and turn an avoidable dispatch into a late one.
+                internal_step_time = min(
+                    internal_step_time,
+                    self._next_lookahead_dispatch_dt(),
+                    self._next_lookahead_reservation_expiry_dt(),
+                )
                         
             for site in self.sites.values():
                 if site.is_interfered:
@@ -4217,6 +5519,15 @@ class AircraftScheduleEnv(gym.Env):
                     record['end_time'] = self.total_time
                     record['duration'] = self.total_time - record['start_time']
                     self.device_trajectory_log.append(record)
+                    intent_key = tuple(record.get('intent_identity', ()))
+                    intent = self.resource_intent_ledger.get(intent_key)
+                    if intent is not None:
+                        intent['status'] = 'arrived'
+                        intent['arrival_time'] = float(self.total_time)
+                        intent['history'].append({
+                            'status': 'arrived',
+                            'time': float(self.total_time),
+                        })
             
             # -----------------------------------------------------------
             # Phase 5: 检查是否可以退出快进循环
@@ -4224,17 +5535,25 @@ class AircraftScheduleEnv(gym.Env):
             self.done = self.cycle_terminated or self._is_schedule_complete()
             if self.done:
                 break # 环境结束，跳出循环
-                
+
+            # As above, settle zero-time resource transitions before checking
+            # plane availability.  Passing one shared plan also prevents
+            # per-plane checks from observing different mutable snapshots.
+            if self.resource_policy == 'drl':
+                self._refresh_request_pool()
+            departure_plan = self._compute_departure_runway_plan()
+
             # 检查场上是否出现了活跃的（可以做决策的）飞机
             has_active = False
             has_idle_site = False
             has_active_device = False
             for plane in self.planes.values():
-                if self._plane_can_decide(plane):
+                if self._plane_can_decide(
+                    plane, departure_plan=departure_plan
+                ):
                     has_active = True
                     break
             if self.resource_policy == 'drl':
-                self._refresh_request_pool()
                 for dev in self.device_list[:self.max_device_num]:
                     if any(self._device_can_dispatch(dev, req) for req in self.request_list[1:]):
                         has_active_device = True
@@ -4294,6 +5613,8 @@ class AircraftScheduleEnv(gym.Env):
         self.pending_device_actions = {}
         self.request_list = []
         self.request_pool = {}
+        self.resource_intent_ledger = {}
+        self._resource_lateness_metrics_cache = None
         self._deferred_lookahead_requests = set()
         self._lookahead_deferred_at_time = None
         self._last_device_decision_signature = None
@@ -4425,13 +5746,114 @@ class AircraftScheduleEnv(gym.Env):
         self.iga_potential_beta = beta
         return self.iga_potential_beta
 
+    def set_resource_lateness_coef(self, coefficient):
+        """Update the bounded Stage-2 wait multiplier between PPO epochs."""
+        coefficient = float(coefficient)
+        if not np.isfinite(coefficient) or coefficient < 0.0:
+            raise ValueError(
+                'resource_lateness_coef must be finite and non-negative.'
+            )
+        for config in self.data_list:
+            config['resource_lateness_coef'] = coefficient
+        self.config['resource_lateness_coef'] = coefficient
+        self.resource_lateness_coef = coefficient
+        return self.resource_lateness_coef
+
     def _get_episode_rewards(self):
         return self.total_time
+
+    def get_resource_lateness_metrics(self):
+        """Return episode-level observed lateness and anti-hoarding metrics."""
+        if (
+            bool(getattr(self, 'done', False))
+            and self._resource_lateness_metrics_cache is not None
+        ):
+            return dict(self._resource_lateness_metrics_cache)
+        if not hasattr(self, 'job_code_list'):
+            # Lightweight contract/unit-test environments created via
+            # ``__new__`` predate Stage-2 resource tracing.
+            return {
+                'total_wait_seconds': 0.0,
+                'max_wait_seconds_per_aircraft': 0.0,
+                'predicted_lateness_seconds': 0.0,
+                'early_arrival_seconds': 0.0,
+                'lookahead_dispatch_count': 0,
+                'intent_status_counts': {},
+            }
+        from onpolicy.envs.HKBZ.experiment.resource_wait_metrics import (
+            summarize_aircraft_resource_wait,
+        )
+
+        job_resources = {
+            code: self._needed_mobile_types(code)
+            for code in self.job_code_list
+        }
+        summary = summarize_aircraft_resource_wait(
+            self.trajectory_log,
+            self.device_trajectory_log,
+            job_resources,
+            transporter_type=self.TRANSPORTER_RESOURCE_TYPE,
+            aircraft_count=len(self.flights_data),
+        )
+        lookahead_records = [
+            record for record in self.device_trajectory_log
+            if record.get('is_lookahead', False)
+        ]
+        result = {
+            **summary,
+            'predicted_lateness_seconds': float(sum(
+                max(0.0, float(record.get(
+                    'predicted_lateness_at_dispatch', 0.0
+                )))
+                for record in lookahead_records
+            )),
+            'early_arrival_seconds': float(sum(
+                max(0.0, float(record.get(
+                    'predicted_earliness_at_dispatch', 0.0
+                )))
+                for record in lookahead_records
+            )),
+            'lookahead_dispatch_count': int(len(lookahead_records)),
+            'intent_status_counts': {
+                status: sum(
+                    entry.get('status') == status
+                    for entry in self.resource_intent_ledger.values()
+                )
+                for status in (
+                    'soft', 'firm', 'dispatched', 'arrived', 'cancelled'
+                )
+            },
+        }
+        if bool(getattr(self, 'done', False)):
+            self._resource_lateness_metrics_cache = dict(result)
+        return result
 
     def get_training_objective(self):
         """Return the single case-level objective used by team-Cmax PPO."""
         cmax = float(self.total_time)
         team_return = -float(self.hindsight_terminal_cmax_coef) * cmax
+        resource_metrics = self.get_resource_lateness_metrics()
+        resource_wait = float(resource_metrics['total_wait_seconds'])
+        critical_wait = float(
+            resource_metrics['max_wait_seconds_per_aircraft']
+        )
+        early_arrival = float(resource_metrics['early_arrival_seconds'])
+        lateness_penalty = float(getattr(
+            self, 'resource_lateness_coef', 0.0
+        )) * resource_wait
+        critical_lateness_penalty = (
+            float(getattr(
+                self, 'resource_critical_lateness_coef', 0.0
+            )) * critical_wait
+        )
+        earliness_penalty = float(getattr(
+            self, 'resource_earliness_coef', 0.0
+        )) * early_arrival
+        team_return -= (
+            lateness_penalty
+            + critical_lateness_penalty
+            + earliness_penalty
+        )
         cycle_penalty = 0.0
         if self.cycle_terminated:
             cycle_penalty = float(self.plane_cycle_penalty)
@@ -4439,6 +5861,17 @@ class AircraftScheduleEnv(gym.Env):
         return {
             'cmax': cmax,
             'team_return': team_return,
+            'resource_wait_seconds': resource_wait,
+            'resource_critical_wait_seconds': critical_wait,
+            'resource_early_arrival_seconds': early_arrival,
+            'resource_predicted_lateness_seconds': float(
+                resource_metrics['predicted_lateness_seconds']
+            ),
+            'resource_lateness_penalty': float(lateness_penalty),
+            'resource_critical_lateness_penalty': float(
+                critical_lateness_penalty
+            ),
+            'resource_earliness_penalty': float(earliness_penalty),
             'cycle_penalty': cycle_penalty,
             'cycle_terminated': bool(self.cycle_terminated),
             'case_id': str(getattr(self, 'current_case_path', '')),
@@ -4949,7 +6382,12 @@ class AircraftScheduleEnv(gym.Env):
         R014 转运车使用独立 shaping，并对 no-op/错误请求回填额外惩罚。
         """
         mode = getattr(self, 'hindsight_reward_mode', 'shaping')
-        if mode in {'team_cmax', 'team_time', 'team_time_potential'}:
+        if mode in {
+            'team_cmax',
+            'team_time',
+            'team_time_potential',
+            'team_time_resource_potential',
+        }:
             # The runner obtains ``get_training_objective`` once per case and
             # assigns it as a shared Monte Carlo target. Returning an empty
             # action map prevents accidental per-agent terminal duplication.

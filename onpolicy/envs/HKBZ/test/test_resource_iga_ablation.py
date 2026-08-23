@@ -1,4 +1,7 @@
 from pathlib import Path
+import hashlib
+import json
+import tempfile
 import unittest
 
 import numpy as np
@@ -11,7 +14,14 @@ from onpolicy.envs.HKBZ.experiment.evaluate_resource_iga_ablation import (
     TRANSPORTER_TYPE,
     _common_initial_populations,
     _iga_preferences,
+    _resolve_source_command,
     mixed_resource_actions,
+)
+from onpolicy.envs.HKBZ.experiment.generate_stage2_resource_iga_labels import (
+    SEARCH_CONTRACT_VERSION,
+    _AnytimeCaseGA,
+    _initial_population,
+    _load_verified_warm_episode,
 )
 from onpolicy.envs.HKBZ.test.test_device_lookahead_dispatch import (
     _commit_plane_to_future_mobile_job,
@@ -68,6 +78,167 @@ def _create_r008_request(env):
 
 
 class ResourceIGAAblationTest(unittest.TestCase):
+    def test_new_multi_command_manifest_resolves_the_exact_source_key(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "commands.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "commands": {
+                            "seed1": {"argv": ["python", "train.py", "--seed", "1"]},
+                            "seed3": {"shell": "python train.py --seed 3"},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                _resolve_source_command(path, "seed1"),
+                ["python", "train.py", "--seed", "1"],
+            )
+            self.assertEqual(
+                _resolve_source_command(path, "seed3"),
+                ["python", "train.py", "--seed", "3"],
+            )
+            with self.assertRaisesRegex(ValueError, "No command key"):
+                _resolve_source_command(path, "missing")
+
+    def test_stage2_population_keeps_verified_warm_incumbent(self):
+        env = _make_env()
+        try:
+            env.reset()
+            layout = GenomeLayout.from_env(env, ARM_BACKENDS["iga_all"])
+            warm = np.linspace(0.0, 1.0, layout.n_var)
+            _, population = _initial_population(layout, 3, 20260818, warm)
+            np.testing.assert_array_equal(population[0], warm)
+            np.testing.assert_array_equal(
+                population[1, -4:],
+                np.asarray([1.0, 1.0, 0.5, 1.0]),
+            )
+        finally:
+            env.close()
+
+    def test_case_parallel_ga_preserves_incumbent_mid_generation(self):
+        layout = GenomeLayout(
+            selected_device_indices=(0,),
+            n_planes=2,
+            site_codes=("s0",),
+            job_codes=("j0",),
+        )
+        warm = np.linspace(0.0, 1.0, layout.n_var)
+        state = _AnytimeCaseGA(
+            layout,
+            population=3,
+            max_generations=2,
+            seed=7,
+            warm_chromosome=warm,
+            warm_start={"source_makespan": 20.0},
+        )
+        self.assertEqual(state.cursor, 1)
+        self.assertEqual(state.evaluated_candidates, 0)
+        np.testing.assert_array_equal(state.best_chromosome, warm)
+        state.observe({"completed": True, "makespan": 18.0, "error": None})
+        self.assertEqual(state.cursor, 2)
+        self.assertEqual(state.best_objective, 18.0)
+        record = state.search_record(
+            optimization_wall_seconds=5.0,
+            time_budget_seconds=10.0,
+            cumulative_budget_seconds=1800.0,
+            batch_wall_seconds=[5.0],
+            parallel_case_count=72,
+        )
+        self.assertEqual(
+            record["search_contract_version"], SEARCH_CONTRACT_VERSION
+        )
+        self.assertEqual(record["evaluated_candidates"], 1)
+        self.assertEqual(record["inherited_verified_candidates"], 1)
+        self.assertEqual(record["partial_generation_evaluations"], 1)
+        self.assertEqual(record["parallel_axis"], "independent_cases")
+
+    def test_trace_replay_adjustment_keeps_a_verified_improvement(self):
+        layout = GenomeLayout(
+            selected_device_indices=(0,),
+            n_planes=2,
+            site_codes=("s0",),
+            job_codes=("j0",),
+        )
+        warm = np.linspace(0.0, 1.0, layout.n_var)
+        state = _AnytimeCaseGA(
+            layout,
+            population=3,
+            max_generations=2,
+            seed=7,
+            warm_chromosome=warm,
+            warm_start={"source_makespan": 20.0},
+        )
+        candidate = state.candidate.copy()
+        state.observe({"completed": True, "makespan": 18.0, "error": None})
+
+        source = state.reconcile_verified_replay(
+            {"completed": True, "makespan": 19.0, "error": None}
+        )
+
+        self.assertEqual(source, "replayed_search_incumbent")
+        self.assertEqual(state.best_objective, 19.0)
+        np.testing.assert_array_equal(state.best_chromosome, candidate)
+        self.assertEqual(
+            state.replay_verification["status"],
+            "accepted_replay_adjustment",
+        )
+
+    def test_trace_replay_regression_restores_verified_warm_teacher(self):
+        layout = GenomeLayout(
+            selected_device_indices=(0,),
+            n_planes=2,
+            site_codes=("s0",),
+            job_codes=("j0",),
+        )
+        warm = np.linspace(0.0, 1.0, layout.n_var)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "teacher.json"
+            payload = {
+                "completion_verified": True,
+                "completed": True,
+                "makespan": 20.0,
+                "wall_seconds": 1.0,
+                "error": None,
+                "completion": {"completed": True},
+                "decision_trace": [{"step": 0}],
+                "plane_trajectory": [],
+                "resource_trajectory": [],
+                "resource_decision_log": [],
+                "search": {"chromosome": warm.tolist()},
+            }
+            source.write_text(json.dumps(payload), encoding="utf-8")
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            state = _AnytimeCaseGA(
+                layout,
+                population=3,
+                max_generations=2,
+                seed=7,
+                warm_chromosome=warm,
+                warm_start={
+                    "source_makespan": 20.0,
+                    "path": str(source),
+                    "sha256": digest,
+                },
+            )
+            state.observe(
+                {"completed": True, "makespan": 18.0, "error": None}
+            )
+
+            selected = state.reconcile_verified_replay(
+                {"completed": True, "makespan": 21.0, "error": None}
+            )
+            episode = _load_verified_warm_episode(state)
+
+            self.assertEqual(selected, "verified_warm_start")
+            self.assertEqual(state.best_objective, 20.0)
+            np.testing.assert_array_equal(state.best_chromosome, warm)
+            self.assertEqual(episode["makespan"], 20.0)
+            self.assertTrue(episode["reused_verified_warm_start"])
+            self.assertNotIn("search", episode)
+
     def test_three_primary_arms_are_the_requested_role_combinations(self):
         self.assertEqual(
             PRIMARY_ARMS,

@@ -130,6 +130,7 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         self.assertNotIn("--joint_team_ppo", switches)
         self.assertNotIn("--central_team_critic", switches)
         self.assertIn("--device_lookahead_dispatch", switches)
+        self.assertIn("--strict_checkpoint_contract", switches)
         self.assertEqual(
             values["--device_lookahead_safety_margin"], "60.0"
         )
@@ -167,6 +168,34 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         self.assertEqual(
             observed["migration_contract"]["device_lookahead_safety_margin"],
             60.0,
+        )
+        self.assertEqual(
+            observed["migration_contract"]["environment_semantics_version"],
+            "progressive-departure-r014-pipeline-v2",
+        )
+        self.assertEqual(
+            observed["migration_contract"]["observation_schema_id"],
+            "hkbz-global-ad3c0982aef57ac78d1d",
+        )
+
+    def test_keyed_suite_manifest_resolves_exact_source_command(self):
+        command_path = self.root / "suite.json"
+        command_path.write_text(
+            json.dumps(
+                {
+                    "commands": {
+                        "seed1": {"argv": ["python", "train.py", "--seed", "1"]},
+                        "seed3": {"argv": ["python", "train.py", "--seed", "3"]},
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "requires source_command_key"):
+            pipeline._load_source_command(command_path)
+        self.assertEqual(
+            pipeline._load_source_command(command_path, "seed3"),
+            ["python", "train.py", "--seed", "3"],
         )
 
     def test_verified_handoff_resolves_seed_and_semantics(self):

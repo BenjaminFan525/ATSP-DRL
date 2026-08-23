@@ -702,11 +702,19 @@ class SharedReplayBuffer(object):
 
         rand = torch.randperm(n_rollout_threads).numpy()
 
-        for start_id in range(0, n_rollout_threads, mini_batch_size):
-            end_id = min(start_id + mini_batch_size, n_rollout_threads)
-            ind = rand[start_id:end_id]
-
-            for chunk_start in range(0, episode_length, self.data_chunk_length):
+        # Keep all environment slices from the same temporal chunk adjacent.
+        # Gradient accumulation can then reconstruct one complete
+        # ``n_rollout_threads * chunk_length`` effective batch even when the
+        # final environment slice is smaller than ``mini_batch_size``.  The
+        # previous environment-major order grouped several time chunks from
+        # the large slice first and produced highly uneven optimizer steps.
+        environment_slices = [
+            (start_id, min(start_id + mini_batch_size, n_rollout_threads))
+            for start_id in range(0, n_rollout_threads, mini_batch_size)
+        ]
+        for chunk_start in range(0, episode_length, self.data_chunk_length):
+            for start_id, end_id in environment_slices:
+                ind = rand[start_id:end_id]
                 chunk_end = min(chunk_start + self.data_chunk_length, episode_length)
                 active_chunk = self.active_masks[chunk_start:chunk_end, ind]
                 if active_chunk.sum() <= 0:

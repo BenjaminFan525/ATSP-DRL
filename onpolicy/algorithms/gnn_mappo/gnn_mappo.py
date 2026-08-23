@@ -85,6 +85,15 @@ class MAPPO_Trainer():
             if actor_accumulation <= 0
             else actor_accumulation
         )
+        self.grad_accumulation_target_graphs = max(
+            0, int(getattr(args, 'grad_accumulation_target_graphs', 0))
+        )
+        self.actor_grad_accumulation_target_graphs = max(
+            0,
+            int(getattr(
+                args, 'actor_grad_accumulation_target_graphs', 0
+            )),
+        )
         self.target_kl = max(0.0, float(getattr(args, 'target_kl', 0.0)))
         self.bc_reference_kl_coef = max(
             0.0, float(getattr(args, 'bc_reference_kl_coef', 0.0))
@@ -177,6 +186,32 @@ class MAPPO_Trainer():
         if weights.sum() <= 0:
             return masks
         return weights
+
+    def _trainable_actor_roles(self):
+        """Return agent roles connected to at least one trainable actor group.
+
+        A trainable shared encoder makes every role differentiable. Otherwise
+        each backend only makes its own role differentiable. This distinction
+        matters in Stage2, where plane/shared parameters are frozen and some
+        temporal PPO chunks contain only plane decisions.
+        """
+
+        roles = set()
+        group_roles = {
+            'shared_encoder': {0, 1, 2},
+            'plane_actor': {0},
+            'device_actor': {1},
+            'transporter_actor': {2},
+        }
+        for group in self.policy.actor_optimizer.param_groups:
+            if not any(
+                parameter.requires_grad for parameter in group['params']
+            ):
+                continue
+            roles.update(group_roles.get(str(group.get('name', '')), {0, 1, 2}))
+        if self.joint_team_ppo:
+            roles.intersection_update({0})
+        return frozenset(roles)
 
     def _normalize_rollout_advantages(self, advantages, buffer, rollout_steps):
         if not self.normalize_advantages:
@@ -273,6 +308,49 @@ class MAPPO_Trainer():
     def _sample_mass(sample, mask_index):
         mask = np.asarray(sample[mask_index], dtype=np.float64)
         return max(float(np.maximum(mask, 0.0).sum()), 0.0)
+
+    @staticmethod
+    def _role_filtered_sample_mass(
+        sample,
+        mask_index,
+        eligible_roles,
+        agent_type_index=12,
+    ):
+        """Return sample mass belonging to differentiable actor roles only."""
+
+        eligible_roles = tuple(sorted(int(role) for role in eligible_roles))
+        if not eligible_roles:
+            return 0.0
+        mask = np.asarray(sample[mask_index], dtype=np.float64)
+        agent_types = np.asarray(sample[agent_type_index], dtype=np.int64)
+        if mask.ndim == agent_types.ndim + 1 and mask.shape[-1] == 1:
+            mask = mask[..., 0]
+        if mask.shape != agent_types.shape:
+            raise ValueError(
+                'Actor sample mass shape mismatch: '
+                f'mask={mask.shape}, agent_types={agent_types.shape}.'
+            )
+        role_mask = np.isin(agent_types, eligible_roles)
+        return max(
+            float((np.maximum(mask, 0.0) * role_mask).sum()),
+            0.0,
+        )
+
+    @staticmethod
+    def _backward_actor_loss(loss):
+        """Backpropagate a finite differentiable loss, otherwise skip safely."""
+
+        if not bool(torch.isfinite(loss).item()) or not loss.requires_grad:
+            return False
+        loss.backward()
+        return True
+
+    def _actor_has_accumulated_grad(self):
+        return any(
+            parameter.requires_grad and parameter.grad is not None
+            for group in self.policy.actor_optimizer.param_groups
+            for parameter in group['params']
+        )
 
     def _snapshot_actor_parameters(self):
         """Clone trainable Actor parameters immediately before an optimizer step."""
@@ -732,6 +810,7 @@ class MAPPO_Trainer():
         kl_early_stop = gate['kl_early_stop']
 
         actor_update_skipped = 0.0
+        actor_no_grad_sample = 0.0
         actor_optimizer_step = 0.0
         actor_update_metrics = {}
         if update_actor and not kl_early_stop:
@@ -740,10 +819,12 @@ class MAPPO_Trainer():
             loss = (
                 policy_loss - dist_entropy * self.entropy_coef
             ) * float(loss_scale)
-            if torch.isfinite(loss):
-                loss.backward()
-            else:
+            if not self._backward_actor_loss(loss):
                 actor_update_skipped = 1.0
+                actor_no_grad_sample = float(
+                    bool(torch.isfinite(loss).item())
+                    and not loss.requires_grad
+                )
         elif kl_early_stop:
             actor_update_skipped = 1.0
             # Discard any partial accumulation from this group.
@@ -753,6 +834,11 @@ class MAPPO_Trainer():
         
         actor_grad_norm_clipped = torch.tensor(0.0)
         actor_grad_clip_applied = 0.0
+        if perform_step and update_actor and not kl_early_stop:
+            if not self._actor_has_accumulated_grad():
+                actor_update_skipped = 1.0
+                self.policy.actor_optimizer.zero_grad()
+                perform_step = False
         if perform_step and update_actor and not kl_early_stop:
             actor_snapshot = self._snapshot_actor_parameters()
             if self._use_max_grad_norm:
@@ -789,6 +875,7 @@ class MAPPO_Trainer():
             "advantages": _finite_item((adv_targ * sample_weights).sum() / weight_denominator),
             "rewards": _finite_item(rewards),
             "actor_update_skipped": actor_update_skipped,
+            "actor_no_grad_samples": actor_no_grad_sample,
             "actor_optimizer_steps": actor_optimizer_step,
             "kl_early_stop": float(kl_early_stop),
             "old_policy_kl_early_stop": float(old_policy_kl_early_stop),
@@ -932,6 +1019,85 @@ class MAPPO_Trainer():
             "critic_effective_decisions": _finite_item(active_masks_batch.sum()),
         }
 
+    @staticmethod
+    def _sample_graph_count(sample):
+        """Return the physical graph count of one replay microbatch."""
+
+        graphs = sample[0]
+        try:
+            graph_count = len(graphs)
+        except TypeError as error:
+            raise TypeError(
+                'Graph replay samples must expose a sized graph collection.'
+            ) from error
+        if graph_count <= 0:
+            raise RuntimeError('PPO received an empty graph replay sample.')
+        return int(graph_count)
+
+    @classmethod
+    def _accumulation_groups(cls, samples, fixed_steps, target_graphs=0):
+        """Partition whole forwards into optimizer groups.
+
+        A fixed microbatch count makes the effective optimizer batch grow when
+        ``max_graphs_per_forward`` grows.  A positive graph target instead
+        keeps approximately the same number of optimizer steps and average
+        graph mass while retaining each physical forward intact.  Groups are
+        balanced globally because a 1500-graph forward cannot be split safely
+        across parameter updates.
+        """
+
+        samples = list(samples)
+        if not samples:
+            return []
+        fixed_steps = max(1, int(fixed_steps))
+        target_graphs = max(0, int(target_graphs))
+        if target_graphs <= 0:
+            return [
+                samples[start:start + fixed_steps]
+                for start in range(0, len(samples), fixed_steps)
+            ]
+
+        graph_counts = [cls._sample_graph_count(sample) for sample in samples]
+        total_graphs = int(sum(graph_counts))
+        group_count = int(math.floor(
+            float(total_graphs) / float(target_graphs) + 0.5
+        ))
+        group_count = min(len(samples), max(1, group_count))
+
+        groups = []
+        start = 0
+        remaining_graphs = total_graphs
+        for group_index in range(group_count):
+            groups_left = group_count - group_index
+            if groups_left == 1:
+                end = len(samples)
+            else:
+                max_end = len(samples) - (groups_left - 1)
+                desired_graphs = float(remaining_graphs) / float(groups_left)
+                candidate_graphs = 0
+                best_end = start + 1
+                best_error = math.inf
+                for candidate_end in range(start + 1, max_end + 1):
+                    candidate_graphs += graph_counts[candidate_end - 1]
+                    error = abs(float(candidate_graphs) - desired_graphs)
+                    if error < best_error:
+                        best_error = error
+                        best_end = candidate_end
+                    elif candidate_graphs >= desired_graphs:
+                        break
+                end = best_end
+            group = samples[start:end]
+            groups.append(group)
+            group_graphs = sum(
+                graph_counts[index] for index in range(start, end)
+            )
+            remaining_graphs -= int(group_graphs)
+            start = end
+
+        if start != len(samples) or not all(groups):
+            raise RuntimeError('Graph-target accumulation lost replay samples.')
+        return groups
+
     def train(self, buffer, update_actor=True):
         # 🚨 在所有更新开始前，计算出固定的 Advantages。
         # 注意：整个 ppo_epoch 期间，Advantages 必须保持绝对固定！
@@ -1006,13 +1172,21 @@ class MAPPO_Trainer():
             self.actor_grad_accumulation_steps
         )
         train_info['critic_grad_accumulation_steps'] = float(self.grad_accumulation_steps)
+        train_info['actor_grad_accumulation_target_graphs'] = float(
+            self.actor_grad_accumulation_target_graphs
+        )
+        train_info['critic_grad_accumulation_target_graphs'] = float(
+            self.grad_accumulation_target_graphs
+        )
         
         actor_sample_count = 0
         actor_data_sample_count = 0
         actor_accumulation_groups = 0
         actor_planned_optimizer_steps = 0
+        actor_group_graph_counts = []
         post_update_probe_count = 0
         critic_sample_count = 0
+        critic_group_graph_counts = []
         graph_batch_executor = (
             ThreadPoolExecutor(
                 max_workers=1,
@@ -1032,30 +1206,58 @@ class MAPPO_Trainer():
             self.policy.ac.eval()
             self.policy.ac.actor_param_without_gnn.train()
             self.policy.actor_optimizer.zero_grad() # 确保起跑前梯度干净
+            trainable_actor_roles = self._trainable_actor_roles()
 
             for epoch in range(self.ppo_epoch):
                 # 每次 epoch 重新打乱数据
                 data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
                 data_samples = list(data_generator)
-                total_steps = len(data_samples)
-                if total_steps == 0:
+                actor_mass_index = 13 if self.case_balanced_loss else 11
+                actor_groups = self._accumulation_groups(
+                    data_samples,
+                    self.actor_grad_accumulation_steps,
+                    self.actor_grad_accumulation_target_graphs,
+                )
+                if not actor_groups:
                     continue
+                group_trainable_masses = [
+                    [
+                        self._role_filtered_sample_mass(
+                            sample,
+                            actor_mass_index,
+                            trainable_actor_roles,
+                        )
+                        for sample in group
+                    ]
+                    for group in actor_groups
+                ]
 
                 stop_actor_epoch = False
-                actor_data_sample_count += total_steps
-                planned_groups_this_epoch = int(math.ceil(
-                    total_steps / self.actor_grad_accumulation_steps
-                ))
+                planned_groups_this_epoch = sum(
+                    any(mass > 0.0 for mass in trainable_masses)
+                    for trainable_masses in group_trainable_masses
+                )
                 actor_planned_optimizer_steps += planned_groups_this_epoch
-                for group_start in range(0, total_steps, self.actor_grad_accumulation_steps):
+                for group, trainable_masses in zip(
+                    actor_groups, group_trainable_masses
+                ):
+                    actor_group_graph_counts.append(sum(
+                        self._sample_graph_count(sample) for sample in group
+                    ))
+                    if not any(mass > 0.0 for mass in trainable_masses):
+                        train_info['actor_zero_trainable_mass_groups'] += 1.0
+                        train_info['actor_zero_trainable_mass_samples'] += float(
+                            len(group)
+                        )
+                        continue
                     actor_accumulation_groups += 1
-                    group = data_samples[
-                        group_start:group_start + self.actor_grad_accumulation_steps
+                    actor_data_sample_count += len(group)
+                    masses = [
+                        self._sample_mass(sample, actor_mass_index)
+                        for sample in group
                     ]
-                    actor_mass_index = 13 if self.case_balanced_loss else 11
-                    masses = [self._sample_mass(sample, actor_mass_index) for sample in group]
                     group_mass = max(sum(masses), 1e-8)
-                    probe_index = int(np.argmax(masses))
+                    probe_index = int(np.argmax(trainable_masses))
                     probe_sample = group[probe_index]
                     prepared_probe_sample = None
                     group_optimizer_steps = 0.0
@@ -1150,14 +1352,18 @@ class MAPPO_Trainer():
             # 同样每次 epoch 重新打乱数据（用相同的 generator 保证切分维度合法）
             data_generator = buffer.graph_recurrent_generator(advantages, self.mini_batch_size)
             data_samples = list(data_generator)
-            total_steps = len(data_samples)
-            if total_steps == 0:
+            critic_groups = self._accumulation_groups(
+                data_samples,
+                self.grad_accumulation_steps,
+                self.grad_accumulation_target_graphs,
+            )
+            if not critic_groups:
                 continue
 
-            for group_start in range(0, total_steps, self.grad_accumulation_steps):
-                group = data_samples[
-                    group_start:group_start + self.grad_accumulation_steps
-                ]
+            for group in critic_groups:
+                critic_group_graph_counts.append(sum(
+                    self._sample_graph_count(sample) for sample in group
+                ))
                 critic_mass_index = 14 if self.case_balanced_loss else 5
                 masses = [self._sample_mass(sample, critic_mass_index) for sample in group]
                 group_mass = max(sum(masses), 1e-8)
@@ -1314,6 +1520,24 @@ class MAPPO_Trainer():
         train_info['safe_graph_batch_pipeline'] = float(
             self.safe_graph_batch_pipeline
         )
+        for prefix, graph_counts in (
+            ('actor', actor_group_graph_counts),
+            ('critic', critic_group_graph_counts),
+        ):
+            if graph_counts:
+                train_info[f'{prefix}_accumulation_graphs_mean'] = float(
+                    np.mean(graph_counts)
+                )
+                train_info[f'{prefix}_accumulation_graphs_min'] = float(
+                    min(graph_counts)
+                )
+                train_info[f'{prefix}_accumulation_graphs_max'] = float(
+                    max(graph_counts)
+                )
+            else:
+                train_info[f'{prefix}_accumulation_graphs_mean'] = 0.0
+                train_info[f'{prefix}_accumulation_graphs_min'] = 0.0
+                train_info[f'{prefix}_accumulation_graphs_max'] = 0.0
 
         if graph_batch_executor is not None:
             graph_batch_executor.shutdown(wait=True, cancel_futures=True)
