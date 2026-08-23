@@ -110,6 +110,28 @@ microbatch，并用更大的梯度累积近似保持 effective batch。这个单
 
 Stage 2 的 `checkpoint_DeviceBC.pt` 只是同一阶段内部的 resource-BC warm-up 边界，不是第三阶段，也不是新的恢复源。当前不承诺 shard 级精确恢复；中断后应从已验证的 Stage-1 P5 hand-off 重新执行 warm-up。
 
+## Stage2 全量正式训练
+
+Wave 4 的 180-case 结果只用于方法筛选。全量正式入口为：
+
+```bash
+bash onpolicy/scripts/train/launch_stage2_full_formal_gpu0.sh
+```
+
+该入口从同一份 Stage1 P5 seed3 checkpoint 重新开始，选择五个未发生 OOM 的
+稳定配置：soft reservation、hard reservation、IGA-flow BC、wait constraint、
+IGA + wait constraint。训练设置恢复 Stage1 的完整 train600 覆盖；50/45/5
+平衡采样将 600 个唯一案例展开为每 epoch 960 个槽位，即 20 个 rollout worker
+顺序执行 48 个 shard。四轮 DAgger/BC 后执行八轮 PPO，飞机策略和统一共享
+encoder 在全部 S2 PPO epoch 中保持冻结。
+
+五个训练进程仅使用 GPU0。每个训练服务独占六个物理核及其两个 SMT 线程；
+共享验证独占五个物理核；监控/系统预留一个物理核。CPU 集合合计恰好是 NUMA0
+的 72/144 个逻辑 CPU，不跨物理核、NUMA 或训练服务重叠。soft heuristic 与
+wait-constraint 复用一份完整 BC，IGA-flow 与 IGA-constraint 复用另一份；hard
+reservation 单独生成 BC。复用只消除完全相同的监督阶段，五条 PPO 轨迹、优化器
+和 checkpoint 仍相互独立。
+
 ## 迁移契约
 
 `run_hkbz_two_stage_pipeline.py` 会先验证 hand-off 中全部 checkpoint；任一文件缺失、大小变化或 SHA256 不一致都会在启动训练前失败。新版 hand-off 还会在 CPU 上加载 checkpoint，逐一验证新离场语义、观测 schema、validation Best 元数据，以及当前 Stage-2 网络中所有 protected tensor 的名称和 shape。P5 的多命令实验 manifest 通过 `source_command_key` 精确定位对应 seed，不会误继承另一条命令。它生成的原子 manifest 记录：

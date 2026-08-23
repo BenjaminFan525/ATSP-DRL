@@ -104,6 +104,45 @@ class AircraftResourceWaitMetricsTest(unittest.TestCase):
         self.assertEqual(result["total_wait_seconds"], 0.0)
         self.assertTrue(result["fully_eliminated"])
 
+    def test_departure_prepositioning_before_readiness_is_not_wait(self):
+        result = summarize_aircraft_resource_wait(
+            [
+                {
+                    "plane_id": "Plane_0_0",
+                    "target_job_code": "ZY-T",
+                    "action_phase": "post_service_relocation",
+                    "origin_site_code": "3",
+                    "target_site_code": "3",
+                    "waiting_time": 0,
+                    "start_time": 900,
+                    "end_time": 1000,
+                }
+            ],
+            [
+                {
+                    "plane_id": "Plane_0_0",
+                    "job_code": "ZY-T",
+                    "request_kind": "departure_pickup",
+                    # R014 leaves 100 seconds before the aircraft is ready and
+                    # arrives 20 seconds afterwards.  Only those 20 seconds
+                    # are observable aircraft wait, not the full 120-second
+                    # pre-positioning trip.
+                    "start_time": 900,
+                    "trans_time": 120,
+                }
+            ],
+            {"ZY-T": ["R014"]},
+            aircraft_count=1,
+            include_events=True,
+        )
+        self.assertEqual(result["total_wait_seconds"], 20.0)
+        event = next(
+            item for item in result["events"]
+            if item["source"] == "departure_pickup"
+        )
+        self.assertEqual(event["waiting_before_dispatch_seconds"], 0.0)
+        self.assertEqual(event["travel_after_dispatch_seconds"], 20.0)
+
     def test_non_resource_wait_is_excluded_at_the_same_site(self):
         result = summarize_aircraft_resource_wait(
             [

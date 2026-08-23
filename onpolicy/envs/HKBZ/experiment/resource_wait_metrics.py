@@ -205,6 +205,13 @@ def summarize_aircraft_resource_wait(
             request_ready_time = max(0.0, dispatch_time - already_waited)
         else:
             already_waited = max(0.0, dispatch_time - request_ready_time)
+        arrival_time = dispatch_time + travel_time
+        # A lookahead dispatcher may send R014 before the aircraft becomes
+        # departure-ready.  Only the portion after request readiness blocks
+        # the aircraft; counting the complete trip would turn successful
+        # pre-positioning into artificial wait.
+        wait_seconds = max(0.0, arrival_time - request_ready_time)
+        travel_while_waiting = max(0.0, wait_seconds - already_waited)
         events.append(
             {
                 "source": "departure_pickup",
@@ -214,10 +221,10 @@ def summarize_aircraft_resource_wait(
                 "category": "departure_pickup",
                 "resource_types": [transporter_type],
                 "start_time": request_ready_time,
-                "end_time": dispatch_time + travel_time,
-                "wait_seconds": already_waited + travel_time,
+                "end_time": arrival_time,
+                "wait_seconds": wait_seconds,
                 "waiting_before_dispatch_seconds": already_waited,
-                "travel_after_dispatch_seconds": travel_time,
+                "travel_after_dispatch_seconds": travel_while_waiting,
                 "post_arrival_synchronization_seconds": 0.0,
             }
         )
