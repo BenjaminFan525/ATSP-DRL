@@ -1,4 +1,6 @@
 from pathlib import Path
+import subprocess
+import sys
 
 import yaml
 
@@ -6,6 +8,19 @@ from onpolicy.envs.HKBZ.data_generator import AirportScenarioGenerator, PROFILES
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_generator_import_without_site_packages():
+    """A preinstalled optional dependency must not hide import-time coupling."""
+    result = subprocess.run(
+        [sys.executable, "-S", "-c",
+         "from onpolicy.envs.HKBZ.data_generator import AirportScenarioGenerator"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_default_environment_paths_are_portable():
