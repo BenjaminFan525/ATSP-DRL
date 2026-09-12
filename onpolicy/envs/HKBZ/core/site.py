@@ -19,7 +19,14 @@ class Site:
             if self.code in res.sites:
                 self.resources[res.code] = res
         
-        self.target_jobs = [job for job in self.config['jobs'].values() if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']]
+        # The network contract keeps site nodes checkpoint-compatible at
+        # 5 base features + 17 protection-resource flags. Transfer/departure
+        # compatibility is represented by operation-site masks and pair
+        # features, not by widening the site node.
+        self.target_jobs = [
+            job for job in self.config['jobs'].values()
+            if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']
+        ]
         self.avail_job_onehot = [0] * len(self.target_jobs)
         
         self.update_resources()
@@ -100,7 +107,7 @@ class Site:
             assert job.code not in self.onging_jobs, f"Job {job.code} is already being serviced at Site {self.code}!"
             res = None
             # 遍历作业所需资源类型，寻找可用资源
-            for res_code in job.resources:
+            for res_code in sorted(job.resources):
                 if res_code in self.res_avail:
                     # 分配资源并记录
                     self.resources[self.res_avail[res_code][-1]].add_service(self.code)
@@ -189,15 +196,20 @@ class Site:
         '''
         # self.update_resources()
         # 检查是否有运输车资源R014可用
+        transporter = None
         if "R014" in self.res_avail:
             res = self.resources[self.res_avail["R014"][-1]]
             # 在设备列表中查找对应的空闲运输车
             for device in self.devices:
-                if device.resource.code == res.code and not device.is_busy and not device.is_transporting:
+                if (
+                    device.resource.code == res.code
+                    and not device.is_busy
+                    and not device.is_transporting
+                    and getattr(device, 'reserved_for_plane', None) is None
+                ):
                     transporter = device
-            return transporter
-        else:
-            return None
+                    break
+        return transporter
 
     def is_avail_job(self, job):
         '''检查作业是否可以在当前站点执行
@@ -212,7 +224,7 @@ class Site:
         '''
         # self.update_resources()
         # 遍历作业所需资源类型，检查是否有可用资源
-        for res_code in job.resources:
+        for res_code in sorted(job.resources):
             if res_code in self.res_avail:
                 return True
         return False
@@ -277,7 +289,7 @@ class Site:
             site.update_resources()  # 手动刷新可用资源列表
         '''
         self.res_avail = {}
-        for code, res in self.resources.items():
+        for code, res in sorted(self.resources.items()):
             if res.is_available():
                 if res.type in self.res_avail:
                     self.res_avail[res.type].append(code)
@@ -287,7 +299,7 @@ class Site:
         new_onehot = []
         for job in self.target_jobs:
             is_avail = 0
-            for res_code in job.resources:
+            for res_code in sorted(job.resources):
                 if res_code in self.res_avail:
                     is_avail = 1
                     break

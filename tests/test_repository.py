@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from onpolicy.envs.HKBZ.data_generator import build_dataset
+from onpolicy.envs.HKBZ.data_generator import AirportScenarioGenerator, PROFILES, _write_case
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,15 +26,11 @@ def test_default_environment_paths_are_portable():
 def test_generator_is_reproducible(tmp_path):
     first = tmp_path / "first"
     second = tmp_path / "second"
-    kwargs = dict(
-        num_cases=1,
-        num_stands=10,
-        num_planes=6,
-        seed=123,
-        save_layouts=False,
-    )
-    build_dataset(base_dir=first, **kwargs)
-    build_dataset(base_dir=second, **kwargs)
+    for output in (first, second):
+        case, metadata = AirportScenarioGenerator(
+            profile=PROFILES['balanced'], seed=123, split='train', case_id='smoke'
+        ).generate()
+        _write_case(output / 'case_01', case, metadata)
 
     filenames = (
         "job.json",

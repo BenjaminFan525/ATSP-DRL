@@ -21,3 +21,5 @@ jobs:
         env:
           MPLBACKEND: Agg
         run: pytest -q
+      - name: Verify frozen Stage2 artifact bytes
+        run: python scripts/export_stage2_frozen.py --verify-only

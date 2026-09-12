@@ -1,0 +1,712 @@
+{
+  "protocol": "stage2_bc_hf_sensitivity_v1",
+  "complete": true,
+  "development_only": true,
+  "result_type": "frozen_B0_HF_sensitivity_not_retrained_BC",
+  "arms": {
+    "H1_F1": {
+      "summary": {
+        "mean": 8964.783333333333,
+        "maximum": 12552.0,
+        "tail10": 11242.166666666666,
+        "groups": {
+          "iid": 8611.2,
+          "ood_scale": 6362.0,
+          "ood_stress": 9646.851851851852
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 611.8611111111119,
+        "relative_improvement": -0.07325114431010848,
+        "wins": 4,
+        "ties": 0,
+        "losses": 56,
+        "maximum_positive_delta": 2004.9999999999982,
+        "group_deltas": {
+          "iid": 636.0222222222246,
+          "ood_scale": 269.66666666666697,
+          "ood_stress": 623.0370370370383
+        },
+        "maximum_case_delta": 155.00000000000182,
+        "tail10_delta": 106.83333333333212,
+        "case_bootstrap_95ci": [
+          501.6594444444455,
+          727.9352777777775
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1246.0639114710502,
+      "diagnostics": {
+        "observed_case_events": 29238,
+        "real_request_sum": 67109,
+        "lookahead_request_sum": 40506,
+        "maximum_real_requests": 16,
+        "forward_seconds": 870.1196344830096,
+        "ordinary": {
+          "active_rows": 18769,
+          "dispatch": 7843,
+          "wait": 10926,
+          "legal_edges": 40204
+        },
+        "transporter": {
+          "active_rows": 26987,
+          "dispatch": 1394,
+          "wait": 25593,
+          "legal_edges": 59328
+        }
+      },
+      "peak_cuda_allocated_bytes": 593389056
+    },
+    "H1_F2": {
+      "summary": {
+        "mean": 8988.544444444444,
+        "maximum": 12256.0,
+        "tail10": 11324.0,
+        "groups": {
+          "iid": 8649.6,
+          "ood_scale": 6331.333333333333,
+          "ood_stress": 9660.395061728394
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 635.6222222222224,
+        "relative_improvement": -0.07609579082769447,
+        "wins": 3,
+        "ties": 0,
+        "losses": 57,
+        "maximum_positive_delta": 2184.999999999998,
+        "group_deltas": {
+          "iid": 674.4222222222243,
+          "ood_scale": 239.0,
+          "ood_stress": 636.5802469135797
+        },
+        "maximum_case_delta": -140.99999999999818,
+        "tail10_delta": 188.66666666666606,
+        "case_bootstrap_95ci": [
+          519.3933333333339,
+          756.206111111111
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1238.5160835171118,
+      "diagnostics": {
+        "observed_case_events": 29069,
+        "real_request_sum": 71769,
+        "lookahead_request_sum": 43656,
+        "maximum_real_requests": 20,
+        "forward_seconds": 869.5876338742673,
+        "ordinary": {
+          "active_rows": 18115,
+          "dispatch": 7974,
+          "wait": 10141,
+          "legal_edges": 39272
+        },
+        "transporter": {
+          "active_rows": 27623,
+          "dispatch": 1394,
+          "wait": 26229,
+          "legal_edges": 60046
+        }
+      },
+      "peak_cuda_allocated_bytes": 593622528
+    },
+    "H1_F3": {
+      "summary": {
+        "mean": 8983.533333333333,
+        "maximum": 12256.0,
+        "tail10": 11401.166666666666,
+        "groups": {
+          "iid": 8615.4,
+          "ood_scale": 6331.333333333333,
+          "ood_stress": 9687.259259259257
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 630.6111111111111,
+        "relative_improvement": -0.07549586771362793,
+        "wins": 3,
+        "ties": 0,
+        "losses": 57,
+        "maximum_positive_delta": 1596.9999999999982,
+        "group_deltas": {
+          "iid": 640.2222222222235,
+          "ood_scale": 239.0,
+          "ood_stress": 663.4444444444434
+        },
+        "maximum_case_delta": -140.99999999999818,
+        "tail10_delta": 265.8333333333321,
+        "case_bootstrap_95ci": [
+          526.5549999999993,
+          737.2002777777778
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1250.1379966931418,
+      "diagnostics": {
+        "observed_case_events": 29100,
+        "real_request_sum": 74151,
+        "lookahead_request_sum": 46201,
+        "maximum_real_requests": 24,
+        "forward_seconds": 872.9625963363796,
+        "ordinary": {
+          "active_rows": 18293,
+          "dispatch": 8062,
+          "wait": 10231,
+          "legal_edges": 39621
+        },
+        "transporter": {
+          "active_rows": 27617,
+          "dispatch": 1386,
+          "wait": 26231,
+          "legal_edges": 60500
+        }
+      },
+      "peak_cuda_allocated_bytes": 592365056
+    },
+    "H1_F4": {
+      "summary": {
+        "mean": 8970.05,
+        "maximum": 12256.0,
+        "tail10": 11307.0,
+        "groups": {
+          "iid": 8599.266666666666,
+          "ood_scale": 6331.333333333333,
+          "ood_stress": 9675.222222222223
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 617.127777777778,
+        "relative_improvement": -0.0738816621727858,
+        "wins": 5,
+        "ties": 0,
+        "losses": 55,
+        "maximum_positive_delta": 1493.9999999999982,
+        "group_deltas": {
+          "iid": 624.0888888888903,
+          "ood_scale": 239.0,
+          "ood_stress": 651.4074074074088
+        },
+        "maximum_case_delta": -140.99999999999818,
+        "tail10_delta": 171.66666666666606,
+        "case_bootstrap_95ci": [
+          511.410138888889,
+          725.0568055555568
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1241.9212636169977,
+      "diagnostics": {
+        "observed_case_events": 29059,
+        "real_request_sum": 73844,
+        "lookahead_request_sum": 46296,
+        "maximum_real_requests": 30,
+        "forward_seconds": 865.4590468313545,
+        "ordinary": {
+          "active_rows": 18463,
+          "dispatch": 8076,
+          "wait": 10387,
+          "legal_edges": 39981
+        },
+        "transporter": {
+          "active_rows": 27868,
+          "dispatch": 1389,
+          "wait": 26479,
+          "legal_edges": 60784
+        }
+      },
+      "peak_cuda_allocated_bytes": 590415872
+    },
+    "H2_F1": {
+      "summary": {
+        "mean": 8565.688888888888,
+        "maximum": 11881.000000000002,
+        "tail10": 11386.166666666666,
+        "groups": {
+          "iid": 8133.188888888889,
+          "ood_scale": 6122.666666666667,
+          "ood_stress": 9317.691358024693
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 212.766666666667,
+        "relative_improvement": -0.025472123528292867,
+        "wins": 17,
+        "ties": 2,
+        "losses": 41,
+        "maximum_positive_delta": 1464.9999999999982,
+        "group_deltas": {
+          "iid": 158.01111111111277,
+          "ood_scale": 30.33333333333394,
+          "ood_stress": 293.87654320987895
+        },
+        "maximum_case_delta": -515.9999999999964,
+        "tail10_delta": 250.83333333333212,
+        "case_bootstrap_95ci": [
+          119.43861111111201,
+          312.2463888888897
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1213.6308758389205,
+      "diagnostics": {
+        "observed_case_events": 29508,
+        "real_request_sum": 225726,
+        "lookahead_request_sum": 207435,
+        "maximum_real_requests": 27,
+        "forward_seconds": 829.1273553827778,
+        "ordinary": {
+          "active_rows": 16925,
+          "dispatch": 8548,
+          "wait": 8377,
+          "legal_edges": 39189
+        },
+        "transporter": {
+          "active_rows": 31282,
+          "dispatch": 1388,
+          "wait": 29894,
+          "legal_edges": 66545
+        }
+      },
+      "peak_cuda_allocated_bytes": 597105664
+    },
+    "H2_F2": {
+      "summary": {
+        "mean": 8424.483333333334,
+        "maximum": 11858.0,
+        "tail10": 11205.666666666666,
+        "groups": {
+          "iid": 8049.066666666665,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9100.740740740743
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 71.56111111111164,
+        "relative_improvement": -0.008567194714291793,
+        "wins": 29,
+        "ties": 7,
+        "losses": 24,
+        "maximum_positive_delta": 956.9999999999491,
+        "group_deltas": {
+          "iid": 73.88888888888869,
+          "ood_scale": 0.0,
+          "ood_stress": 76.92592592592882
+        },
+        "maximum_case_delta": -538.9999999999982,
+        "tail10_delta": 70.33333333333212,
+        "case_bootstrap_95ci": [
+          0.6195833333361385,
+          149.20597222222386
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1295.7669510012493,
+      "diagnostics": {
+        "observed_case_events": 29172,
+        "real_request_sum": 323380,
+        "lookahead_request_sum": 301722,
+        "maximum_real_requests": 46,
+        "forward_seconds": 872.974598004017,
+        "ordinary": {
+          "active_rows": 14710,
+          "dispatch": 8904,
+          "wait": 5806,
+          "legal_edges": 37281
+        },
+        "transporter": {
+          "active_rows": 34416,
+          "dispatch": 1385,
+          "wait": 33031,
+          "legal_edges": 73833
+        }
+      },
+      "peak_cuda_allocated_bytes": 590806016
+    },
+    "H2_F3": {
+      "summary": {
+        "mean": 8383.272222222224,
+        "maximum": 11965.0,
+        "tail10": 11134.22222222222,
+        "groups": {
+          "iid": 8015.244444444445,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9046.74074074074
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 30.350000000001,
+        "relative_improvement": -0.0036334589491637814,
+        "wins": 24,
+        "ties": 11,
+        "losses": 25,
+        "maximum_positive_delta": 799.0000000000018,
+        "group_deltas": {
+          "iid": 40.066666666669335,
+          "ood_scale": 0.0,
+          "ood_stress": 22.925925925927004
+        },
+        "maximum_case_delta": -431.9999999999982,
+        "tail10_delta": -1.1111111111131322,
+        "case_bootstrap_95ci": [
+          -29.967777777776824,
+          92.85652777777823
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1141.3419425999746,
+      "diagnostics": {
+        "observed_case_events": 28236,
+        "real_request_sum": 355044,
+        "lookahead_request_sum": 333719,
+        "maximum_real_requests": 60,
+        "forward_seconds": 765.2687797504477,
+        "ordinary": {
+          "active_rows": 13402,
+          "dispatch": 8971,
+          "wait": 4431,
+          "legal_edges": 35885
+        },
+        "transporter": {
+          "active_rows": 30961,
+          "dispatch": 1390,
+          "wait": 29571,
+          "legal_edges": 67032
+        }
+      },
+      "peak_cuda_allocated_bytes": 592145408
+    },
+    "H2_F4": {
+      "summary": {
+        "mean": 8352.922222222222,
+        "maximum": 12396.999999999998,
+        "tail10": 11135.333333333334,
+        "groups": {
+          "iid": 7975.177777777776,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9023.814814814814
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 0.0,
+        "relative_improvement": 0.0,
+        "wins": 0,
+        "ties": 60,
+        "losses": 0,
+        "maximum_positive_delta": 0,
+        "group_deltas": {
+          "iid": 0.0,
+          "ood_scale": 0.0,
+          "ood_stress": 0.0
+        },
+        "maximum_case_delta": 0.0,
+        "tail10_delta": 0.0,
+        "case_bootstrap_95ci": [
+          0.0,
+          0.0
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 880.0220768470317,
+      "diagnostics": {
+        "observed_case_events": 28085,
+        "real_request_sum": 374724,
+        "lookahead_request_sum": 353064,
+        "maximum_real_requests": 69,
+        "forward_seconds": 505.86553337424994,
+        "ordinary": {
+          "active_rows": 13281,
+          "dispatch": 9073,
+          "wait": 4208,
+          "legal_edges": 36333
+        },
+        "transporter": {
+          "active_rows": 30904,
+          "dispatch": 1397,
+          "wait": 29507,
+          "legal_edges": 67677
+        }
+      },
+      "peak_cuda_allocated_bytes": 594542080
+    },
+    "H3_F1": {
+      "summary": {
+        "mean": 8580.955555555554,
+        "maximum": 12725.000000000002,
+        "tail10": 11556.0,
+        "groups": {
+          "iid": 8143.966666666666,
+          "ood_scale": 6122.666666666667,
+          "ood_stress": 9339.641975308641
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 228.0333333333337,
+        "relative_improvement": -0.027299827206180627,
+        "wins": 15,
+        "ties": 2,
+        "losses": 43,
+        "maximum_positive_delta": 1464.9999999999982,
+        "group_deltas": {
+          "iid": 168.78888888889014,
+          "ood_scale": 30.33333333333394,
+          "ood_stress": 315.82716049382725
+        },
+        "maximum_case_delta": 328.00000000000364,
+        "tail10_delta": 420.66666666666606,
+        "case_bootstrap_95ci": [
+          143.4659722222222,
+          321.8668055555566
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1195.3798722946085,
+      "diagnostics": {
+        "observed_case_events": 29545,
+        "real_request_sum": 226179,
+        "lookahead_request_sum": 206590,
+        "maximum_real_requests": 27,
+        "forward_seconds": 811.2022180464119,
+        "ordinary": {
+          "active_rows": 16999,
+          "dispatch": 8515,
+          "wait": 8484,
+          "legal_edges": 39382
+        },
+        "transporter": {
+          "active_rows": 31471,
+          "dispatch": 1381,
+          "wait": 30090,
+          "legal_edges": 67186
+        }
+      },
+      "peak_cuda_allocated_bytes": 597103616
+    },
+    "H3_F2": {
+      "summary": {
+        "mean": 8460.611111111111,
+        "maximum": 13648.0,
+        "tail10": 11504.0,
+        "groups": {
+          "iid": 8033.633333333331,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9198.172839506173
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 107.68888888888885,
+        "relative_improvement": -0.012892361023354448,
+        "wins": 28,
+        "ties": 7,
+        "losses": 25,
+        "maximum_positive_delta": 1251.0000000000018,
+        "group_deltas": {
+          "iid": 58.45555555555529,
+          "ood_scale": 0.0,
+          "ood_stress": 174.35802469135888
+        },
+        "maximum_case_delta": 1251.0000000000018,
+        "tail10_delta": 368.66666666666606,
+        "case_bootstrap_95ci": [
+          25.821388888888283,
+          199.04444444444246
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1171.4978354433551,
+      "diagnostics": {
+        "observed_case_events": 28738,
+        "real_request_sum": 317172,
+        "lookahead_request_sum": 295961,
+        "maximum_real_requests": 46,
+        "forward_seconds": 782.0992101137526,
+        "ordinary": {
+          "active_rows": 14444,
+          "dispatch": 8896,
+          "wait": 5548,
+          "legal_edges": 36898
+        },
+        "transporter": {
+          "active_rows": 32067,
+          "dispatch": 1386,
+          "wait": 30681,
+          "legal_edges": 69193
+        }
+      },
+      "peak_cuda_allocated_bytes": 592245248
+    },
+    "H3_F3": {
+      "summary": {
+        "mean": 8392.972222222223,
+        "maximum": 11757.00000000001,
+        "tail10": 11099.555555555557,
+        "groups": {
+          "iid": 8010.222222222223,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9073.876543209877
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 40.05000000000073,
+        "relative_improvement": -0.004794729189917746,
+        "wins": 22,
+        "ties": 11,
+        "losses": 27,
+        "maximum_positive_delta": 799.0000000000018,
+        "group_deltas": {
+          "iid": 35.044444444446526,
+          "ood_scale": 0.0,
+          "ood_stress": 50.061728395063255
+        },
+        "maximum_case_delta": -639.9999999999891,
+        "tail10_delta": -35.777777777777374,
+        "case_bootstrap_95ci": [
+          -27.111111111110166,
+          108.26708333333393
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 1135.2237832625397,
+      "diagnostics": {
+        "observed_case_events": 28206,
+        "real_request_sum": 359941,
+        "lookahead_request_sum": 337590,
+        "maximum_real_requests": 60,
+        "forward_seconds": 752.7414106121287,
+        "ordinary": {
+          "active_rows": 13470,
+          "dispatch": 8992,
+          "wait": 4478,
+          "legal_edges": 36246
+        },
+        "transporter": {
+          "active_rows": 30665,
+          "dispatch": 1386,
+          "wait": 29279,
+          "legal_edges": 66252
+        }
+      },
+      "peak_cuda_allocated_bytes": 589441024
+    },
+    "H3_F4": {
+      "summary": {
+        "mean": 8367.95,
+        "maximum": 12341.000000000004,
+        "tail10": 11207.0,
+        "groups": {
+          "iid": 7964.677777777777,
+          "ood_scale": 6092.333333333333,
+          "ood_stress": 9068.876543209875
+        },
+        "cases": 60
+      },
+      "versus_H2_F4": {
+        "mean_delta": 15.02777777777836,
+        "relative_improvement": -0.001799104238969118,
+        "wins": 12,
+        "ties": 39,
+        "losses": 9,
+        "maximum_positive_delta": 554.3333333333412,
+        "group_deltas": {
+          "iid": -10.49999999999909,
+          "ood_scale": 0.0,
+          "ood_stress": 45.06172839506144
+        },
+        "maximum_case_delta": -55.99999999999454,
+        "tail10_delta": 71.66666666666606,
+        "case_bootstrap_95ci": [
+          -22.361805555555375,
+          56.58361111111151
+        ],
+        "uncertainty_scope": "cases conditional on one frozen model; no selection/multiplicity correction"
+      },
+      "training_gain": false,
+      "independent_confirmation": false,
+      "wall_seconds": 898.2485061003827,
+      "diagnostics": {
+        "observed_case_events": 27971,
+        "real_request_sum": 381519,
+        "lookahead_request_sum": 359231,
+        "maximum_real_requests": 70,
+        "forward_seconds": 525.7198727149516,
+        "ordinary": {
+          "active_rows": 13227,
+          "dispatch": 9066,
+          "wait": 4161,
+          "legal_edges": 36310
+        },
+        "transporter": {
+          "active_rows": 31102,
+          "dispatch": 1395,
+          "wait": 29707,
+          "legal_edges": 68193
+        }
+      },
+      "peak_cuda_allocated_bytes": 594308608
+    }
+  },
+  "observed_deployment_ranking": [
+    "H2_F4",
+    "H3_F4",
+    "H2_F3",
+    "H3_F3",
+    "H2_F2",
+    "H3_F2",
+    "H2_F1",
+    "H3_F1",
+    "H1_F1",
+    "H1_F4",
+    "H1_F3",
+    "H1_F2"
+  ],
+  "predeclared_training_anchors": [
+    "H2_F4",
+    "H2_F2",
+    "H1_F2",
+    "H3_F4"
+  ],
+  "anchors_selected_from_this_ranking": false,
+  "confirmed_scientific_success": false,
+  "automatic_training": false,
+  "automatic_stage3": false,
+  "next_phase": "train_only_teacher_compatibility_and_cost_audit_then_independent_BC",
+  "limitations": [
+    "one H2/F4-trained source",
+    "tune60 repeatedly used",
+    "11 unadjusted exploratory contrasts",
+    "OOD-scale only 3 cases",
+    "does not identify independently retrained BC optimum"
+  ]
+}

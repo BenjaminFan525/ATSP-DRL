@@ -1,0 +1,1208 @@
+{
+  "schema_version": 1,
+  "protocol": "stage2_development_retirement_20260912",
+  "archive": {
+    "path": "artifacts/stage2_frozen/20260912/history/retired_development.tar.gz",
+    "sha256": "8a2f7d8920e4ba65d57ee8987e880183a527987386673c078e1ab57630b2b08e",
+    "size_bytes": 437314,
+    "format": "tar GNU + gzip mtime=0, sorted paths, uid/gid=0, original source bytes and permission modes"
+  },
+  "verification": {
+    "status": "retired_archive_verified",
+    "all_archive_members_byte_verified": true,
+    "verified_member_count": 167,
+    "removed_source_count_verified": 166,
+    "archive_deterministically_reproduced": true,
+    "retained_python_files_checked": 221,
+    "dangling_retired_module_imports": [],
+    "retired_document_count_verified": 39,
+    "historical_entry_document_preserved_in_archive": "TWO_STAGE_TRAINING.md"
+  },
+  "retired_script_count": 106,
+  "retired_test_count": 21,
+  "retained_import_providers": [
+    "onpolicy/scripts/train/run_stage2_bc_hf.py",
+    "onpolicy/scripts/train/run_stage2_resource_manifest_trial.py",
+    "onpolicy/scripts/train/run_stage2_resource_rl.py"
+  ],
+  "notes": [
+    "Archived files are historical provenance, not supported runnable entrypoints after relocation.",
+    "The 39 original root STAGE2 documents were retired after their archived original bytes were reverified; the new STAGE2_FROZEN.md is not a retirement target.",
+    "The archive preserves the original TWO_STAGE_TRAINING.md before its replacement with the frozen entry document.",
+    "All result files and checkpoints remain untouched."
+  ],
+  "files": [
+    {
+      "path": "STAGE2_A3_REPLAY_DIAGNOSIS_20260905.md",
+      "action": "archive_and_retire",
+      "sha256": "7d0fa219b2915375df4c7b18ee8493d5dbc44a141a394e68da56c92813cb1c4c",
+      "size_bytes": 13253,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_B2_EARLY_START_20260905.md",
+      "action": "archive_and_retire",
+      "sha256": "7b8dc2f276d3cae977a973dcd8b689859d70a4381c4146277ad72c80c35a2dce",
+      "size_bytes": 5042,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_BC_HF_RESEARCH_PLAN_20260912.md",
+      "action": "archive_and_retire",
+      "sha256": "dca3da6e5749bda7c325adbbb81a52cfad5d4c14a27c17a8e3d70109cdd998d7",
+      "size_bytes": 8773,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_BC_HF_START_20260912.md",
+      "action": "archive_and_retire",
+      "sha256": "c528a0ac4a16dcaa35c0f413080fcf895d577ca123541b52d387cac98dac64f5",
+      "size_bytes": 2860,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_BC_INJECTION_IMPLEMENTATION_20260905.md",
+      "action": "archive_and_retire",
+      "sha256": "6f5e47149f7d74e3d14b4adf90fe9f2d25c7603b27000d1fb6524ef113f41826",
+      "size_bytes": 13973,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_BC_RL_PROTOCOL_20260908.md",
+      "action": "archive_and_retire",
+      "sha256": "3b470f2db62160b465b1183abf0a3c1d829f8329a8da6c9b58fe3178822807b5",
+      "size_bytes": 16484,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_BLOCKING_AUDIT_FIX_RUN_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "c58180b39740d9d02354c5998dd162830be8ac7423214a564590d4dadf3cb94c",
+      "size_bytes": 8310,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_ACCELERATION_IMPLEMENTATION_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "feb8e1eb20f88ba210ea8f315b5cc71d9927b3bbdeeb6ea398a7b59a975e9997",
+      "size_bytes": 10033,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_ACCELERATION_RESTART_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "ceb8f329a5860459775ae61d8054b47d9569c266922eace7769cd33080250abf",
+      "size_bytes": 7223,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_ACCELERATION_RUN_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "bbe49ee9ee5c5ad17f0a32ab8ae3e20797240c7594c5f252d3f246c6f3a9b825",
+      "size_bytes": 6300,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_ACCELERATION_VERIFICATION_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "ce128194dc5c27c6da415943f44ac513539b27f18e9ea50c155946930c17311f",
+      "size_bytes": 4055,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_FAST_CONTINUATION_RUN_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "99ff2837b6ad4a30fb9a1e6afaebf33069ec5e0964932314cd977f3e95d6a55c",
+      "size_bytes": 5230,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_IMPROVEMENT_IMPLEMENTATION_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "a17bea37089d0567a2b509b5e305cb34176659fd1c216c66b7953dd19e70692a",
+      "size_bytes": 7290,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_IMPROVEMENT_RUN_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "b5b90b38333219c03bcb9c4e1305a1003460598bddd01e81b20e7feabc6f40f2",
+      "size_bytes": 4195,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_COST_TIMEOUT_FIX_20260907.md",
+      "action": "archive_and_retire",
+      "sha256": "9ad31ed90ea2526e47f7230f872fb4fb642c02737494db670c31cfa34b65b435",
+      "size_bytes": 8497,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_IGA_TARGET_REVISION_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "43405c73b959ac6b194b195642bc2f14e4167750aacdb30d5d3891d947d92d50",
+      "size_bytes": 15443,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_MATCHING_GAP_IMPLEMENTATION_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "648c94e27f08266c2965aad76a54b17de0833c19889ec651ca86db765167e238",
+      "size_bytes": 8285,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_MATCHING_GAP_RUN_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "6a6431d4633b54cff2f999ff36dc04a73c735027b80c9d4fd26eecb8d1cc0505",
+      "size_bytes": 4107,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_MATCHING_RULE_FIX_RUN_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "c5d6e659b4bd8f47a7a4492d42bec5c04e04cce017f86d52279d0ad2b38379ab",
+      "size_bytes": 7209,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_POLICY_TRANSFER_IMPLEMENTATION_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "c41c5342d6e8f0129ff54e569ed69df3c158b83eed194cbcd0ea979e57cfdf90",
+      "size_bytes": 5855,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_READY_HEAD_RELIABILITY_PLAN_20260904.md",
+      "action": "archive_and_retire",
+      "sha256": "ba4fe088ba6c9c73fa49ac098d42c4e0e8b7cb1991c1d7798be9eb80f0b5c911",
+      "size_bytes": 3425,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_READY_HEAD_RESEARCH_PLAN_20260903.md",
+      "action": "archive_and_retire",
+      "sha256": "5e5e14269e2d66018f813aeec36aa37b37218c66a7a98ddf579b2c173905fe1a",
+      "size_bytes": 5564,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_RL_IMPLEMENTATION_20260908.md",
+      "action": "archive_and_retire",
+      "sha256": "7a78bac0a3a3b624a9c19beec5d45f37ff6790e2030bd1fdd375a0aeca684e49",
+      "size_bytes": 7082,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_RL_V4_20260908.md",
+      "action": "archive_and_retire",
+      "sha256": "1903af008791e1af7ea8a3d4a36d21792b32defd52c1663eb7e30855cfa9d0bf",
+      "size_bytes": 6468,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_RL_V4_ACCELERATION_20260908.md",
+      "action": "archive_and_retire",
+      "sha256": "081dd6725580a7c6909bde557a0bc88e875f089cc7e19157a90451f469067bbe",
+      "size_bytes": 8228,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_RL_V4_IMPLEMENTATION_20260908.md",
+      "action": "archive_and_retire",
+      "sha256": "4f62fe025361300c0536bf1ce38001cbb870be015399ddc47648af05bbdb5adf",
+      "size_bytes": 5360,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_V6_20260910.md",
+      "action": "archive_and_retire",
+      "sha256": "30d88006bbe4be13b72587af6dc35e873cc890f5174dfaf97e2e99b19bddaebf",
+      "size_bytes": 5020,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_V6_IMPLEMENTATION_20260910.md",
+      "action": "archive_and_retire",
+      "sha256": "831a3aec8964e43b882f1c69328b8ba318983483f0f65e834f0bbb1dfed0f398",
+      "size_bytes": 3047,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_V6_TRAIN240_20260911.md",
+      "action": "archive_and_retire",
+      "sha256": "862f54d2e2174731cacce7c37233c63f041c1a45815e869a295a8dc503c7f5b0",
+      "size_bytes": 3330,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_RESOURCE_V6_TRAIN240_IMPLEMENTATION_20260911.md",
+      "action": "archive_and_retire",
+      "sha256": "0a39887ae0249d8f3bf844fc269ea14387cea5cfb61c8b2a92f56a083861f9e9",
+      "size_bytes": 2757,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "6ab696f9a229dc0c683fb642eba09dd5ad542f71b09bf8cb2f53c74c191896b4",
+      "size_bytes": 4797,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_BUDGET_CONTINUATION_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "ae8508701ee449e79466b1a75aeb43818880e8c8932f196a30e00fd7b628e6a8",
+      "size_bytes": 2972,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_FOUR_ARM_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "62a1449b9bcf5dd4e0e17b358817fe5dcc2114c9fa15f2296eb091ddf6e6dede",
+      "size_bytes": 3853,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_IMPLEMENTATION_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "254b42f6c22e0e319eee6922bacbb7dd3c552a4b576a31c5adf1bc2698cef2da",
+      "size_bytes": 20843,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_TIME_LIMIT_REMOVAL_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "0e17c52b52c7f3e0c8943a849faf809d34c8ab8cb888e6396b2599ffd6ba037a",
+      "size_bytes": 3697,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_SPLIT_ENCODER_V5_ZERO_AUDIT_REPAIR_20260909.md",
+      "action": "archive_and_retire",
+      "sha256": "eace2f9a8f65e72300b109ac94faec6b5bea624bc1f89ab948620d42258fad9e",
+      "size_bytes": 4462,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_TO_STAGE3_RESEARCH_PLAN_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "e03351f68217bca9093422c6fac956d836c28e3a0b9671d1f141dafc133dc42d",
+      "size_bytes": 12754,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_VERIFIED_WAIT_RUN_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "22cc17a99dede0975917117fda93c4667d6ca08dec9d9b11cd9363439b03d5f2",
+      "size_bytes": 8281,
+      "mode": 436
+    },
+    {
+      "path": "STAGE2_WAIT_ACCELERATION_RUN_20260906.md",
+      "action": "archive_and_retire",
+      "sha256": "11a0db452046e3d79f0c8d2fe8b91402b01ac61d3154fc9af870e98d4a9680e4",
+      "size_bytes": 8632,
+      "mode": 436
+    },
+    {
+      "path": "TWO_STAGE_TRAINING.md",
+      "action": "archive_before_entrypoint_replacement",
+      "sha256": "3718c90317a0ff1106defd60e45c9fd8c05a102f2f34f9b9a478527f3a51e587",
+      "size_bytes": 17359,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_bc_injection.py",
+      "action": "archive_and_retire",
+      "sha256": "44107388af318cb5fa004bb44271e0c7d1f4439b93bcbdb563ee20300cf16f80",
+      "size_bytes": 14277,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_cost_analysis.py",
+      "action": "archive_and_retire",
+      "sha256": "1bdd87800a8824fb3d5b1431f3eb698a05dda22d870e2713742ebaa89ae7e4f2",
+      "size_bytes": 4191,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_cost_launcher.py",
+      "action": "archive_and_retire",
+      "sha256": "7b2bdfdea083d8f7de1a053eb02299273b94586cdeb405bfe4cf095ce2448dd4",
+      "size_bytes": 5751,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_event_credit_wave.py",
+      "action": "archive_and_retire",
+      "sha256": "1e5bda6e292e62f0471f3141375827d947ec771e0e17ef310ab2182fb7d31355",
+      "size_bytes": 6926,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_full_formal.py",
+      "action": "archive_and_retire",
+      "sha256": "59f2cc4a69f75cfdaa8c0532f43a43da39d6946d4fe3dc6d6e140e4301edb595",
+      "size_bytes": 3778,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_full_formal_three.py",
+      "action": "archive_and_retire",
+      "sha256": "c00bb33c0b311bffc5aad07ba109aae61336a5bf1bb2615d7b879eb4c34e9c94",
+      "size_bytes": 7504,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_iga_distill_ppo.py",
+      "action": "archive_and_retire",
+      "sha256": "8c4cf4620e6a855289ff05aa09aa0e422eec8f76a684b696cc5fb094c0f995e1",
+      "size_bytes": 7229,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_legacy_baselines.py",
+      "action": "archive_and_retire",
+      "sha256": "24e95c2257a0ead498d4bcfda0c2eed86a40a7073c262adc98714505513d3336",
+      "size_bytes": 3274,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_matching_gap.py",
+      "action": "archive_and_retire",
+      "sha256": "5b92aaf3c101b4b9e0f00fe9181b110399226ff1ac4136c74e0d11d0a96390e5",
+      "size_bytes": 20322,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_mc_cf_timing_tail.py",
+      "action": "archive_and_retire",
+      "sha256": "636f3754873563c573e114ff211ad1bb9a03499fd2321733ebf5567d540af53b",
+      "size_bytes": 6598,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_policy_transfer.py",
+      "action": "archive_and_retire",
+      "sha256": "406eef6882cab54951a3961e8c6bbbadccf246384d5cfe49599745a2e3e95c03",
+      "size_bytes": 15500,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_research.py",
+      "action": "archive_and_retire",
+      "sha256": "f07d129b5e9bf7ac85f4b90c432fb07507c0ff69d9c64476aee9b05c0146fe6d",
+      "size_bytes": 38016,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v4.py",
+      "action": "archive_and_retire",
+      "sha256": "55d0d7098f7125d0ad9aba82a1a883a8bdfbeda942f53e2b2dd29e102eac96f5",
+      "size_bytes": 12526,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "16dcb42887bd993cc7ec2a46f6472b060805f65b27570a4c40c02dc309404f75",
+      "size_bytes": 13779,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v5_continuation.py",
+      "action": "archive_and_retire",
+      "sha256": "bd317c3e8c4e1aad2e295237c2d345be0ee29fa031c8549ce28ed83fd1a40be6",
+      "size_bytes": 10247,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v5_four.py",
+      "action": "archive_and_retire",
+      "sha256": "65a632feb4d2727995d41983d12e0b4d4fb0bb12053ff223ce34b2a07861e9e3",
+      "size_bytes": 13452,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v5_repair.py",
+      "action": "archive_and_retire",
+      "sha256": "6a45220c97e0db169a03dbb4daf614360f85bb01737761d0e4be51c888f13072",
+      "size_bytes": 4995,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_rl_v5_unlimited.py",
+      "action": "archive_and_retire",
+      "sha256": "d7a95076e28318256f2ca89edc8866e5618161d58f3c897cceb74f4a6295fc64",
+      "size_bytes": 19058,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_v6.py",
+      "action": "archive_and_retire",
+      "sha256": "40c3c2ac3d2622ffae936c92de8c507c5d0f6e09fc660999ce0c6b13e6798e54",
+      "size_bytes": 12950,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_resource_v6_full.py",
+      "action": "archive_and_retire",
+      "sha256": "c699fd96bccd87748f95d18b097571e2d980ebda49f5776f79876794c2b45012",
+      "size_bytes": 13415,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/envs/HKBZ/test/test_stage2_structured_credit.py",
+      "action": "archive_and_retire",
+      "sha256": "0c9edae4b37169167c09d49f10a87f77b0dc0525018d881cbf5ed99d44bc4f9a",
+      "size_bytes": 8828,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_bc_injection.py",
+      "action": "archive_and_retire",
+      "sha256": "114fa07acb7c9a0a28104156ab7173c953bb61c781bd58c7b58cae691ef4097d",
+      "size_bytes": 9129,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_cost_accelerated.py",
+      "action": "archive_and_retire",
+      "sha256": "c04cfdbd43eeeb9f3ad5caa9a0ac3195935ddfac8f6c98bf33b04d3ddc4a4695",
+      "size_bytes": 11810,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_cost_improvement.py",
+      "action": "archive_and_retire",
+      "sha256": "15781c034cbe37f13ecacaba3dc423f51cfa1b61fdf4ba48d219e402686dfdbf",
+      "size_bytes": 4902,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_matching_gap.py",
+      "action": "archive_and_retire",
+      "sha256": "836c24963394fbf2c3e0708af3228ce719c6d5b1fc1ce92d406e8f0afe7a28a0",
+      "size_bytes": 12695,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_policy_transfer.py",
+      "action": "archive_and_retire",
+      "sha256": "6faa6bebca1a7fcf9914b4ba72b0145f9a806ff876d9922827e8d5edbcb5c6a0",
+      "size_bytes": 9805,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/analyze_stage2_ready_head_reliability.py",
+      "action": "archive_and_retire",
+      "sha256": "fd008d7b90879e58aa9c95ed8dd2b438d192bcaa7677c9f3145bba3ef8ec2efc",
+      "size_bytes": 8878,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/benchmark_stage2_cost_execution.py",
+      "action": "archive_and_retire",
+      "sha256": "2b4958ab45fb98e2242ff49f3c53546dd73368f860407da22cbdbbfffb968538",
+      "size_bytes": 16471,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/benchmark_stage2_cost_inference.py",
+      "action": "archive_and_retire",
+      "sha256": "a8f469c29cde9bd718c380fcf4740b5438e316a2ccfe0e6bf6a20802b9fe6f53",
+      "size_bytes": 4771,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/check_stage2_bc_hf.py",
+      "action": "archive_and_retire",
+      "sha256": "95ca8d81a4b6d424963affd4be3289ef0641bec40decfe4b34d7a8436d5b8a31",
+      "size_bytes": 5569,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/check_stage2_resource_rl_v5_gpu.py",
+      "action": "archive_and_retire",
+      "sha256": "7345502a82395f16c375adad91cb391a1a8add7abea926576415fc10b884a7f0",
+      "size_bytes": 3735,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/check_stage2_resource_rl_v5_zero.py",
+      "action": "archive_and_retire",
+      "sha256": "b3f0304c310109da36f50ec9c4df18ced89a10306711b1a42586a4a4c6739408",
+      "size_bytes": 7327,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/check_stage2_resource_v6.py",
+      "action": "archive_and_retire",
+      "sha256": "711899e92a0d7866aa70887649ea09267e86aed505de6e3105e4f7170c5e90d1",
+      "size_bytes": 10056,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/check_stage2_resource_v6_full.py",
+      "action": "archive_and_retire",
+      "sha256": "f4872bfc834a1e41925f6f9ca66202d907a5fe2b2f2c15c189e3178ea57b31c5",
+      "size_bytes": 2185,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/continue_stage2_resource_rl_v4.py",
+      "action": "archive_and_retire",
+      "sha256": "b1fded932a705344e7833ecb26ff602c61a9132a6ecbabbeb16525406b4b01c0",
+      "size_bytes": 16822,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/continue_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "92b1fc283913a07fc0354c9ff8af84549abf73bb55a59ec0e02c634fb10504d3",
+      "size_bytes": 13267,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/continue_stage2_resource_rl_v5_unlimited.py",
+      "action": "archive_and_retire",
+      "sha256": "72537527020239a8e794e2780d0ca0629745d3c2c8795540e88ad62505c5dd79",
+      "size_bytes": 34623,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/control_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "5af5c88f511e30c6201dcd5e3666400558f35e93eb889d1346693a2c4ce2a1b9",
+      "size_bytes": 12813,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/diagnose_stage2_a3_replay.py",
+      "action": "archive_and_retire",
+      "sha256": "6770fde69c137c8ddf57d2e3e06c079c2a9244f22c263f7ef86a4d82928b4f7f",
+      "size_bytes": 9716,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/diagnose_stage2_cost_accelerated.py",
+      "action": "archive_and_retire",
+      "sha256": "66004a4a017785ae6f8b96b18aeec32ce6ba43688cee636465157744bda57e54",
+      "size_bytes": 10753,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/diagnose_stage2_cost_improvement.py",
+      "action": "archive_and_retire",
+      "sha256": "aa8ed8e9813ea6368e3f55868d60b1d563700d9c8ec118047d65fcf09247c3e2",
+      "size_bytes": 17245,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/diagnose_stage2_resource_rl_v5_zero.py",
+      "action": "archive_and_retire",
+      "sha256": "8e7adbcc5c5a47747e9a8ec5ffb0e593f1ae249c0c3686309758b42ba8529f38",
+      "size_bytes": 15472,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/expedite_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "5dd4c77e7474403fabbf94aa3af81d85eb0db06bb31e7428dad3accd5ad8ca73",
+      "size_bytes": 22293,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/handoff_stage2_full_formal_three_ppo30.py",
+      "action": "archive_and_retire",
+      "sha256": "05f19547f8a098dae101a0b262609a23b335025cc720c77f3bb4c7494ad4b982",
+      "size_bytes": 22253,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_adaptive_trust_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "5e36dbccd3f86be0650f800ad08a9851eff4db1a02836d9999cc1549ec7bbe36",
+      "size_bytes": 19179,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_bc_hf_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "7af8dad0ba996dd296359f93aabe747d6ae494f9095280dba686caa612c3a4dc",
+      "size_bytes": 1485,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_bc_injection_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "4839b26bcd9a33886262de4d567268ab809251c861e521aeb3f1bbd98191dbcd",
+      "size_bytes": 2881,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_cost_accelerated_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "4b8ef67cb5d5a22b41b554838d5234ac22655cc77bf75a7fdd506970a4489778",
+      "size_bytes": 3526,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_cost_improvement_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "413e8d276f9b8776a39d4a65be2fbe7eea4613769aa4814b84a9a82e6ac46c41",
+      "size_bytes": 2125,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_critical_wave3_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "3ce32205ecd26bf14804d5ae6ebe5a3b08b6b504bc4ae5410afe67b1d6b73ad0",
+      "size_bytes": 16501,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_event_credit_wave_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "29ae1381ba3a7b36d52c54c7110d065d915e08413462fc293ccdc7956835a7ac",
+      "size_bytes": 14755,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_full_formal_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "46f9da8b9209668642db416bbff75bb758edbe7f753cfa9baae84172b895dd5b",
+      "size_bytes": 14667,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_full_formal_three_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "2fa16f6a98d1bf9cc1afd5a1098a439c9ebd9409c27a1a7e4e302accfda930f7",
+      "size_bytes": 13393,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_iga_distill_ppo_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "a954e2c783d6e52a57381b483ff36b378b7c09b177a04d42a3a508f77d42f1d3",
+      "size_bytes": 19321,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_lateness_wave2_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "20fa31ec040b34ec89774482bb03b575855536006f871cb64fedfe8e75aaccb3",
+      "size_bytes": 12601,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_legacy_baselines_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "245f42b3d18edaf047a8bd456e8fca988ea64e61d3f191975e13f74a5214c65a",
+      "size_bytes": 11991,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_matched_iga_tune60_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "cffbc202b4585da6b048e857f043686a9592fd42bf700d1e199a45abdc20df4a",
+      "size_bytes": 9483,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_matching_gap_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "d25b07d44bbb3e603e359745c1ba2905138b60bffb13d6e842d6ccf5b970b1b8",
+      "size_bytes": 2328,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_matching_wave1_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "5ddd5ef7b147c89bcc7648ed6042144f38141eb7dcc99b96690be53bebcb55f0",
+      "size_bytes": 11375,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_mc_cf_timing_tail_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "64d0844670054fc8d2953ced71a2697a5d907b420e7a83e4c7168efab0864702",
+      "size_bytes": 14844,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_planning_wave4_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "713d514aaceb0fe2a21afef2deb8cac26fff12db5771d54a3cb0e5591ab41d65",
+      "size_bytes": 18110,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_policy_transfer_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "cadd8594ef507f5299047bae209f1918c0f66b035b6fd696a2dbaed694669123",
+      "size_bytes": 2116,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_ready_head_reliability_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "28e9679bb91a83e400ce30a854ba95c633befb2bf54e131e4f7846101dc8a946",
+      "size_bytes": 10351,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_ready_head_wave1_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "3df541d934063df5ca24ca53799daf565eee4c7ce9d9c72f27fb48814d242840",
+      "size_bytes": 6309,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_iga_labels.sh",
+      "action": "archive_and_retire",
+      "sha256": "df56b5862b4e4f041f03a3a8639e01e746e8982f790f5ac186969ccf1122198b",
+      "size_bytes": 13825,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_m0_lowmem_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "8924341aa80d0720a0d17315d38a68a28a94db820a2a8abece500e982c242cc7",
+      "size_bytes": 4421,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_research_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "6aec7cba2dbfeb1b73e8a0a188849e24681b6ab84d2fdfbad99da41c1834eeda",
+      "size_bytes": 13062,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_resume1500_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "b5f4ef532bb41ca8ad6490638d47ed243630363abb25c3858686723fe2e4871a",
+      "size_bytes": 8593,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "80a7413cb186b62ec66eeb7ea6cfd9cf3bdf72983ba929f95a0ba0b921de7189",
+      "size_bytes": 1977,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v4_continuation_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "76d35782acc6a44ce50b83d423934ec6b279e00dd519cf38266b43cd7436203b",
+      "size_bytes": 1952,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v4_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "b604aa29f15e1b25f9bc6a82488a28256dc42354adc6de3bcdf8e00cc69056ae",
+      "size_bytes": 2154,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v5_continuation_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "8837c8be1ff45c6cd5aa3c4457f7abb79ccc70a7cd4793d260c77b9b3351f6aa",
+      "size_bytes": 1918,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v5_four_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "84c2b0765353929cbe6c868bad7019ea16935a2b24c0447a016561eba0937f29",
+      "size_bytes": 1743,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v5_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "2e544fd52379f6f698783cf88b8375989695b573da712baa8aa28702ea7455bf",
+      "size_bytes": 1959,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v5_repair_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "e991f9633e00e07e24261c26ee2f3f74acc497e21dd1eabe39624bb50e19bf10",
+      "size_bytes": 2036,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_rl_v5_unlimited_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "025a50476a320e0a1d89c7ad645834999017a077aecf62a9b34ed51a63ce54cb",
+      "size_bytes": 1977,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_v6_full_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "fb53333c166e2c020ffe57b790767ea8e2774231c7b01fd71c46482fd3a65e91",
+      "size_bytes": 1491,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_resource_v6_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "c5c0d656d04f895f2c4471099c8511a53c9607a9c9b2a8a8045ba70902bf00a9",
+      "size_bytes": 1465,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_stable_ppo_heads_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "9de0f09e98c33d28caaef59ceaaeb1f00ae641a3c75c90f7b95b5c5f9b4c7e3e",
+      "size_bytes": 15986,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/launch_stage2_structured_credit_dual_gpu.sh",
+      "action": "archive_and_retire",
+      "sha256": "0cc1c6e4e4871f358ba70e7312567f58777aa63a4afae8650b38bc19f4383d23",
+      "size_bytes": 14097,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_adaptive_trust.py",
+      "action": "archive_and_retire",
+      "sha256": "4b5f69dd154c10b9b2bf8a107fc11df28a34c852262ddafaba9935da65a3e973",
+      "size_bytes": 20114,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_bc_hf.py",
+      "action": "archive_and_retire",
+      "sha256": "b0265232070931f8cac4286585062154e9e8684d549f010fbee0bda8730c4498",
+      "size_bytes": 4997,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_bc_injection.py",
+      "action": "archive_and_retire",
+      "sha256": "f72816cba9bb7e96adca957946bf257d6e4d28314ffa940903219a4db3a42ff3",
+      "size_bytes": 12861,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_cost_accelerated.py",
+      "action": "archive_and_retire",
+      "sha256": "e3d7bc826a93cd627cc9de40d578b29ed2205dbd088f9fa01d65d66ad5986f2f",
+      "size_bytes": 11961,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_cost_improvement.py",
+      "action": "archive_and_retire",
+      "sha256": "35369f854fcfd3cca6c8935a70fb6d7f11a2824e025d47e5ad0fbfd3214b9bad",
+      "size_bytes": 12404,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_event_credit_wave.py",
+      "action": "archive_and_retire",
+      "sha256": "d1961526b555161d344736a81ed07be682f330ecf65fca2b5ab007845bd673cc",
+      "size_bytes": 17215,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_full_formal.py",
+      "action": "archive_and_retire",
+      "sha256": "ea8e4f25878cef94b38a44691f35a3ed84edf6294049bed461336d4e43e3ea5d",
+      "size_bytes": 13628,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_full_formal_three.py",
+      "action": "archive_and_retire",
+      "sha256": "c0b97c960a5ae29287b78eb866f933bfc50ac913e2ecaba40fb121c6b953e047",
+      "size_bytes": 17070,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_iga_distill_ppo.py",
+      "action": "archive_and_retire",
+      "sha256": "dc500e88269b4cf681ded249df0c2b756d544473a481b9dc14b6ea05b5a20484",
+      "size_bytes": 28355,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_legacy_baselines.py",
+      "action": "archive_and_retire",
+      "sha256": "597f1f26916e4ec18bae8e2ac069cd3b9d68ab13219dd8b5b70d3cba271373ca",
+      "size_bytes": 10470,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_matching_gap.py",
+      "action": "archive_and_retire",
+      "sha256": "0a1b859d06420e95614a0bbdbe7208220ea0b937c5ac7afc7c9768c870bef2d8",
+      "size_bytes": 14348,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_matching_wave1.py",
+      "action": "archive_and_retire",
+      "sha256": "9eb977a24374a66150cd4d7a254b5eaa39cf4aa1a25ca60d58d2ccf70f5af150",
+      "size_bytes": 10297,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_mc_cf_timing_tail.py",
+      "action": "archive_and_retire",
+      "sha256": "e44702c0abcce939912afa7a5d836dce7376970e879950b8bdd599c5e0cd62ec",
+      "size_bytes": 17579,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_policy_transfer.py",
+      "action": "archive_and_retire",
+      "sha256": "a7eeeb711c7798b0689efef61c595e090bba313b4069bb2daa2d79f0cb2f9954",
+      "size_bytes": 9775,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_ready_head_reliability.py",
+      "action": "archive_and_retire",
+      "sha256": "eb2e0824189cbdc8e890f16d977730c2eee287cc48188109d80de32da9c5a20e",
+      "size_bytes": 17677,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_ready_head_wave1.py",
+      "action": "archive_and_retire",
+      "sha256": "820b4078a6008d58b5fe66977b451b21eb0a345c28c8637771bc57731ab9f23a",
+      "size_bytes": 10247,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_research.py",
+      "action": "archive_and_retire",
+      "sha256": "f2c18385f4309f4b0845b82f818c9ab1be9976e5a6e2ade54213296b0a8a7737",
+      "size_bytes": 44710,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_rl.py",
+      "action": "archive_and_retire",
+      "sha256": "07dd335d6ad922e8cbed8c9dc71728d16d0c6c77331975c8cd354d24c177a247",
+      "size_bytes": 6846,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_rl_v4.py",
+      "action": "archive_and_retire",
+      "sha256": "08dfe9cf8ce689d895bb626019efc7a5d6af8cbd926d1e638ba1e4502cc1b411",
+      "size_bytes": 11327,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_rl_v4_continuation.py",
+      "action": "archive_and_retire",
+      "sha256": "1344c5f2ebd1ed3ed93cec0d59e2054c3d15b5ef45ce2ab9e7896f360841b4fe",
+      "size_bytes": 7383,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "c57c23830b5f35ad0657038e7af973b433cabc585379aed45dd8b4d37727162c",
+      "size_bytes": 6810,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_v6.py",
+      "action": "archive_and_retire",
+      "sha256": "0123704468414d71b3e00fd06f76c0a3da21817f701f4d6ac521555c8f9eeb66",
+      "size_bytes": 8395,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_resource_v6_full.py",
+      "action": "archive_and_retire",
+      "sha256": "2f4a4793400ab03b62ad1848ee270fce097a8576cc4821175ceb44e65fd21c8a",
+      "size_bytes": 7996,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_stable_ppo_heads.py",
+      "action": "archive_and_retire",
+      "sha256": "47783a6d56796a1ad2c5ffb8081f7a00ff47060809d18bc78c3cc13b50723ab3",
+      "size_bytes": 18993,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/prepare_stage2_structured_credit.py",
+      "action": "archive_and_retire",
+      "sha256": "c84ad85943e88ba1d51eb6911e94d2374350ec0f06696abee06c593786c9a655",
+      "size_bytes": 25435,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/probe_stage2_a3_numerics.py",
+      "action": "archive_and_retire",
+      "sha256": "c93d6875d72a465664cf16859db62bac7211f8745624e9e6637427957659bc65",
+      "size_bytes": 7418,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/queue_stage2_legacy_baselines_after_matching.sh",
+      "action": "archive_and_retire",
+      "sha256": "307297e9a8ce41496841904a5756421e516b1ed83b8f182d043bf3f63a6c5b1d",
+      "size_bytes": 3653,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/queue_stage2_ready_head_reliability_gpu0.sh",
+      "action": "archive_and_retire",
+      "sha256": "15b005857986e0c51e2cc832ff9a69620ac9c830cc4ecc998115de9465f174f2",
+      "size_bytes": 3231,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/repair_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "3d61db1aefbf885235db9ee87da2b63860d6d9e1f792605c1168d836c74d3c8b",
+      "size_bytes": 14592,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_bc_external_job.py",
+      "action": "archive_and_retire",
+      "sha256": "99aee1eb834720eef673b1fd08a7c1448edb6103eb5755db0a07e8331ffdb2c0",
+      "size_bytes": 12905,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_bc_injection_suite.py",
+      "action": "archive_and_retire",
+      "sha256": "bbfd100e4644c8128a9385acbc098af9ba346da7ff7e6c9236af991136fa01ea",
+      "size_bytes": 17916,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_cost_accelerated_pipeline.py",
+      "action": "archive_and_retire",
+      "sha256": "e4a2e61941b7124ac3b63feee302591c46b66b30416e53178412568127ccc33a",
+      "size_bytes": 9566,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_cost_improvement_pipeline.py",
+      "action": "archive_and_retire",
+      "sha256": "7ca8d3acc26fe2b536a035474db06c22d02020a4d9917d8af3be4d1466f7501c",
+      "size_bytes": 4943,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_hf_search_and_label.py",
+      "action": "archive_and_retire",
+      "sha256": "598e7df787f61fe91917e10b99f25b98e2e56458954e3e2a0b5eca57e45a6dcf",
+      "size_bytes": 25830,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_ready_head_trial.py",
+      "action": "archive_and_retire",
+      "sha256": "752f295a1d329784a8e5ae6bbe360dc92d157edbf9b28a20a821e0fcd3928eb5",
+      "size_bytes": 3837,
+      "mode": 509
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_resource_rl_v4.py",
+      "action": "archive_and_retire",
+      "sha256": "0002bc6a15e4b0e67d1ea1ca282bfbca00419aead24256de7b0efbd04435f423",
+      "size_bytes": 25939,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_resource_rl_v5.py",
+      "action": "archive_and_retire",
+      "sha256": "5522eccc6a56f144d8d3a0ba144116fe024c437c25eb9f6ac4ef6371394ac4e7",
+      "size_bytes": 24911,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_resource_rl_v5_unlimited.py",
+      "action": "archive_and_retire",
+      "sha256": "13210906558c805449e8b0a92b580c2c0476bac8cde7a759d0b6ab35c42001d6",
+      "size_bytes": 5622,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_resource_v6.py",
+      "action": "archive_and_retire",
+      "sha256": "caeb4fe8b53b3bc5c9c4e35144679c0e900ad29d92ce956e4ea772cd15a9d7ce",
+      "size_bytes": 19195,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/run_stage2_resource_v6_full.py",
+      "action": "archive_and_retire",
+      "sha256": "f2891efb1e48e3b4550ca4654cb12f7597074653441a671701b2147e4495ef88",
+      "size_bytes": 21776,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/smoke_stage2_cost_improvement.py",
+      "action": "archive_and_retire",
+      "sha256": "c6c9b18581b91d4b660f9a8ba51ae74539e7b521e0b92a648f2b737330da5846",
+      "size_bytes": 6500,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/smoke_stage2_resource_rl.py",
+      "action": "archive_and_retire",
+      "sha256": "45333849d889f9579ba04d056fbdfd99329836b57cf760a69bbb6e9236ad9bb6",
+      "size_bytes": 4265,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/smoke_stage2_resource_rl_v4.py",
+      "action": "archive_and_retire",
+      "sha256": "46ca1cc84d3eb5f736ac3815bc536ef4f8cdd9700d5842e1f6a7da6fe8325eff",
+      "size_bytes": 10319,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/smoke_stage2_resource_rl_v4_fast.py",
+      "action": "archive_and_retire",
+      "sha256": "c5fa7a85e29404c0688ce1eca370d5d9eff50d5cccbb8e529424f7c2919a5795",
+      "size_bytes": 11144,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/stage2_event_credit_autopilot.py",
+      "action": "archive_and_retire",
+      "sha256": "4ab64bda7f30018625c88772385cd6237b0f921af0b11bd0220960acdf5ed4ce",
+      "size_bytes": 48665,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/train_stage2_cost_accelerated.py",
+      "action": "archive_and_retire",
+      "sha256": "4400f78bc31abc5a352ed70dcb1b8287f3430e178427c07cb2dd515aa6409c38",
+      "size_bytes": 1057,
+      "mode": 436
+    },
+    {
+      "path": "onpolicy/scripts/train/verify_stage2_cost_timeout.py",
+      "action": "archive_and_retire",
+      "sha256": "35ddb56b49843cb87d7b622586f5fc4ce1cf60affca84cf853e1fbcee8cb582c",
+      "size_bytes": 9162,
+      "mode": 436
+    }
+  ],
+  "provenance_document_count": 40,
+  "retired_document_count": 39,
+  "replaced_entry_document_count": 1
+}

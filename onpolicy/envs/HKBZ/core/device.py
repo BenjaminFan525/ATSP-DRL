@@ -14,6 +14,17 @@ class Device:
         self.is_busy = False  # 设备是否忙碌（资源被占用）
         self.left_rec_time = 0
         self.is_disable = False
+        # Environment-level dispatch may reserve an idle transporter for one
+        # aircraft while it is pre-positioning (or waiting at the pickup
+        # stand).  A reserved device is physically idle after arrival, but it
+        # must not be consumed by another waiting aircraft.
+        self.reserved_for_plane = None
+        # Ordinary mobile resources may be pre-positioned for a future job.
+        # Keep this separate from ``reserved_for_plane`` because the latter is
+        # the physical R014/aircraft departure handshake.  The environment
+        # owns the lease lifecycle and stores only JSON-like scalar metadata
+        # here so reset/deepcopy remain deterministic.
+        self.lookahead_reservation = None
         # 将设备注册到站点设备列表中
         self.site.devices.append(self)
 
@@ -133,6 +144,7 @@ class Device:
             self.site.devices.append(self)
             
         # 4. 重置绑定资源的站点位置
+        self.resource.reset()
         self.resource.sites = [self.site.code]
         
         # 5. 清除所有的状态标志位和倒计时
@@ -141,3 +153,5 @@ class Device:
         self.is_busy = False
         self.is_disable = False
         self.left_rec_time = 0
+        self.reserved_for_plane = None
+        self.lookahead_reservation = None

@@ -3,7 +3,10 @@ Modified from OpenAI Baselines code to work with multi-agent envs
 """
 import numpy as np
 import torch
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from multiprocessing import Process, Pipe
+from multiprocessing.connection import wait as wait_connections
 from abc import ABC, abstractmethod
 from onpolicy.utils.util import tile_images
 
@@ -175,6 +178,9 @@ def worker(remote, parent_remote, env_fn_wrapper):
             remote.send(env.calculate_hindsight_rewards())
         elif cmd == 'get_episode_rewards':
             remote.send(env._get_episode_rewards())
+        elif cmd == 'call':
+            method_name, args, kwargs = data
+            remote.send(getattr(env, method_name)(*args, **kwargs))
         elif cmd == 'shuffer_data':
             env.shuffer_data()
         else:
@@ -240,12 +246,25 @@ class GuardSubprocVecEnv(ShareVecEnv):
 
 from torch_geometric.loader.dataloader import Batch
 class GraphSubprocVecEnv(ShareVecEnv):
-    def __init__(self, env_fns, spaces=None):
+    def __init__(
+        self,
+        env_fns,
+        spaces=None,
+        ipc_timeout_seconds=300.0,
+        async_graph_clone_workers=0,
+    ):
         """
         envs: list of gym environments to run in subprocesses
         """
         self.waiting = False
         self.closed = False
+        self._pending_remote_indices = set()
+        self.ipc_timeout_seconds = float(ipc_timeout_seconds)
+        if self.ipc_timeout_seconds <= 0.0:
+            raise ValueError("ipc_timeout_seconds must be positive")
+        self.async_graph_clone_workers = int(async_graph_clone_workers)
+        if self.async_graph_clone_workers < 0:
+            raise ValueError("async_graph_clone_workers must be non-negative")
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
@@ -256,48 +275,276 @@ class GraphSubprocVecEnv(ShareVecEnv):
         for remote in self.work_remotes:
             remote.close()
 
+        # Workers must be forked before any parent-side threads are created.
+        # The executor only clones already-received CPU tensors and never
+        # touches environment state or random-number generators.
+        self._graph_clone_executor = None
+        self.resume_async_graph_cloning()
+
         
         ShareVecEnv.__init__(self, len(env_fns), None, None, None)
 
     def step_async(self, actions):
-        for remote, action in zip(self.remotes, actions):
-            remote.send(('step', action.tolist()))
-        self.waiting = True
+        self._ensure_idle("step_async")
+        sent_indices = set()
+        try:
+            for index, (remote, action) in enumerate(zip(self.remotes, actions)):
+                remote.send(('step', action.tolist()))
+                sent_indices.add(index)
+        finally:
+            self._pending_remote_indices = sent_indices
+            self.waiting = bool(sent_indices)
+
+    @staticmethod
+    def _clone_graph_payload(payload):
+        """Detach graph tensors from multiprocessing shared-memory handles.
+
+        A 20-worker HKBZ observation contains roughly 600 tensor storages.
+        Retaining the previous shared observation while receiving the next can
+        exceed the default 1024-FD soft limit.  Cloning immediately makes the
+        graph private to the parent and releases the IPC descriptors before
+        the next vector step.
+        """
+        if isinstance(payload, tuple) and payload:
+            observation = payload[0]
+            clone = getattr(observation, 'clone', None)
+            if callable(clone):
+                observation = clone()
+            return (observation, *payload[1:])
+        clone = getattr(payload, 'clone', None)
+        return clone() if callable(clone) else payload
+
+    def _recv_all(self, clone_graph_payload=False):
+        pending = set(self._pending_remote_indices)
+        if not pending:
+            return []
+
+        # Test doubles and legacy remote implementations may not expose a file
+        # descriptor.  Keep their deterministic sequential behavior.
+        if not all(callable(getattr(self.remotes[i], 'fileno', None)) for i in pending):
+            results = []
+            try:
+                for index in sorted(pending):
+                    remote = self.remotes[index]
+                    try:
+                        result = remote.recv()
+                    finally:
+                        self._pending_remote_indices.discard(index)
+                    if clone_graph_payload:
+                        result = self._clone_graph_payload(result)
+                    results.append(result)
+            finally:
+                if not self._pending_remote_indices:
+                    self.waiting = False
+            return results
+
+        deadline = time.monotonic() + self.ipc_timeout_seconds
+        results = {}
+        clone_executor = getattr(self, '_graph_clone_executor', None)
+        remote_index = {id(self.remotes[i]): i for i in pending}
+        try:
+            while pending:
+                dead = [
+                    index for index in sorted(pending)
+                    if not self.ps[index].is_alive()
+                    and not self.remotes[index].poll()
+                ]
+                if dead:
+                    details = [
+                        {
+                            'index': index,
+                            'pid': self.ps[index].pid,
+                            'exitcode': self.ps[index].exitcode,
+                        }
+                        for index in dead
+                    ]
+                    raise RuntimeError(
+                        f"Vector-environment workers exited before replying: {details}"
+                    )
+
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.0:
+                    details = [
+                        {
+                            'index': index,
+                            'pid': self.ps[index].pid,
+                            'alive': self.ps[index].is_alive(),
+                            'exitcode': self.ps[index].exitcode,
+                        }
+                        for index in sorted(pending)
+                    ]
+                    raise TimeoutError(
+                        "Timed out waiting for vector-environment IPC replies "
+                        f"after {self.ipc_timeout_seconds:.1f}s: {details}"
+                    )
+
+                ready = wait_connections(
+                    [self.remotes[index] for index in pending],
+                    timeout=min(1.0, remaining),
+                )
+                for remote in ready:
+                    index = remote_index[id(remote)]
+                    try:
+                        result = remote.recv()
+                    except BaseException as error:
+                        raise RuntimeError(
+                            "Vector-environment IPC receive failed for "
+                            f"worker index={index}, pid={self.ps[index].pid}, "
+                            f"exitcode={self.ps[index].exitcode}: {error}"
+                        ) from error
+                    finally:
+                        pending.discard(index)
+                        self._pending_remote_indices.discard(index)
+                    if clone_graph_payload and clone_executor is not None:
+                        result = clone_executor.submit(
+                            self._clone_graph_payload, result
+                        )
+                    elif clone_graph_payload:
+                        result = self._clone_graph_payload(result)
+                    results[index] = result
+        finally:
+            if not self._pending_remote_indices:
+                self.waiting = False
+        ordered = []
+        for index in sorted(results):
+            result = results[index]
+            if clone_graph_payload and clone_executor is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.0:
+                    raise TimeoutError(
+                        "Timed out waiting for asynchronous graph cloning "
+                        f"after {self.ipc_timeout_seconds:.1f}s."
+                    )
+                try:
+                    result = result.result(timeout=remaining)
+                except FutureTimeoutError as error:
+                    raise TimeoutError(
+                        "Timed out waiting for asynchronous graph cloning "
+                        f"after {self.ipc_timeout_seconds:.1f}s."
+                    ) from error
+            ordered.append(result)
+        return ordered
+
+    def _ensure_idle(self, operation):
+        if self._pending_remote_indices:
+            raise RuntimeError(
+                f"Cannot start {operation} while replies are pending for "
+                f"workers={sorted(self._pending_remote_indices)}."
+            )
+
+    def _send_all(self, command, data=None):
+        self._ensure_idle(command)
+        sent_indices = set()
+        try:
+            for index, remote in enumerate(self.remotes):
+                remote.send((command, data))
+                sent_indices.add(index)
+        finally:
+            self._pending_remote_indices = sent_indices
+            self.waiting = bool(sent_indices)
+
+    def _request_all(self, command, data=None, clone_graph_payload=False):
+        self._send_all(command, data)
+        return self._recv_all(clone_graph_payload=clone_graph_payload)
 
     def step_wait(self):
-        results = [remote.recv() for remote in self.remotes]
-        self.waiting = False
+        results = self._recv_all(clone_graph_payload=True)
         obs, rews, dones, infos = zip(*results)
         return obs, np.stack(rews), np.stack(dones), self.stack_infos(infos)
 
     def reset(self):
-        for remote in self.remotes:
-            remote.send(('reset', None))
-        results = [remote.recv() for remote in self.remotes]
+        self._send_all('reset')
+        results = self._recv_all(clone_graph_payload=True)
         obs, dones, infos = zip(*results)
         return obs, np.stack(dones), self.stack_infos(infos)
-    
+
     def get_graph(self):
-        for remote in self.remotes:
-            remote.send(('get_graph', None))
-        results = [remote.recv() for remote in self.remotes]
-        return results
-    
+        return self._request_all('get_graph', clone_graph_payload=True)
+
     def shuffer_data(self):
         for remote in self.remotes:
             remote.send(('shuffer_data', None))
 
     def get_rewards(self):
-        for remote in self.remotes:
-            remote.send(('get_rewards', None))
-        results = [remote.recv() for remote in self.remotes]
-        return results
+        return self._request_all('get_rewards')
 
     def get_episode_rewards(self):
-        for remote in self.remotes:
-            remote.send(('get_episode_rewards', None))
-        results = [remote.recv() for remote in self.remotes]
-        return np.stack(results)
+        return np.stack(self._request_all('get_episode_rewards'))
+
+    def call(self, method_name, *args, **kwargs):
+        return self._request_all('call', (method_name, args, kwargs))
+
+    def call_each(self, method_name, args_by_worker, kwargs_by_worker=None):
+        """Call one environment method with worker-specific arguments.
+
+        Shared evaluators reuse a fixed process pool across training seeds.
+        Reseeding must preserve the historical ``seed + rank`` mapping rather
+        than broadcasting one seed to every worker.
+        """
+        args_by_worker = list(args_by_worker)
+        if len(args_by_worker) != len(self.remotes):
+            raise ValueError(
+                "call_each argument count must match worker count: "
+                f"args={len(args_by_worker)}, workers={len(self.remotes)}"
+            )
+        if kwargs_by_worker is None:
+            kwargs_by_worker = [{} for _ in self.remotes]
+        else:
+            kwargs_by_worker = list(kwargs_by_worker)
+        if len(kwargs_by_worker) != len(self.remotes):
+            raise ValueError(
+                "call_each keyword count must match worker count: "
+                f"kwargs={len(kwargs_by_worker)}, workers={len(self.remotes)}"
+            )
+        self._ensure_idle('call_each')
+        sent_indices = set()
+        try:
+            for index, (remote, worker_args, worker_kwargs) in enumerate(zip(
+                self.remotes, args_by_worker, kwargs_by_worker
+            )):
+                remote.send((
+                    'call',
+                    (method_name, tuple(worker_args), dict(worker_kwargs)),
+                ))
+                sent_indices.add(index)
+        finally:
+            self._pending_remote_indices = sent_indices
+            self.waiting = bool(sent_indices)
+        return self._recv_all()
+
+    def call_async(self, method_name, *args, **kwargs):
+        """Start an ordered read-only environment RPC batch."""
+        self._send_all('call', (method_name, args, kwargs))
+
+    def call_wait(self):
+        """Finish the RPC started by :meth:`call_async` in worker order."""
+        if not self._pending_remote_indices:
+            raise RuntimeError("call_wait requires a pending asynchronous call")
+        return self._recv_all()
+
+    def suspend_async_graph_cloning(self):
+        """Stop parent clone threads before lazily forking another env pool."""
+        self._ensure_idle("suspend_async_graph_cloning")
+        clone_executor = getattr(self, '_graph_clone_executor', None)
+        if clone_executor is None:
+            return False
+        clone_executor.shutdown(wait=True, cancel_futures=True)
+        self._graph_clone_executor = None
+        return True
+
+    def resume_async_graph_cloning(self):
+        """Restart the parent-only clone executor after a safe fork window."""
+        if getattr(self, 'closed', False):
+            raise RuntimeError("Cannot resume graph cloning on a closed env pool")
+        if getattr(self, '_graph_clone_executor', None) is not None:
+            return False
+        if int(getattr(self, 'async_graph_clone_workers', 0)) <= 0:
+            return False
+        self._graph_clone_executor = ThreadPoolExecutor(
+            max_workers=self.async_graph_clone_workers,
+            thread_name_prefix="hkbz-graph-clone",
+        )
+        return True
     
     def stack_infos(self, infos):
         stacked_infos = {}
@@ -306,20 +553,44 @@ class GraphSubprocVecEnv(ShareVecEnv):
         return stacked_infos
 
     def reset_task(self):
-        for remote in self.remotes:
-            remote.send(('reset_task', None))
-        return np.stack([remote.recv() for remote in self.remotes])
+        return np.stack(self._request_all('reset_task'))
 
     def close(self):
         if self.closed:
             return
-        if self.waiting:
-            for remote in self.remotes:
-                remote.recv()
+        # A worker with a pending reply may be blocked inside tensor
+        # serialization.  Do not queue a close command behind that reply.
+        for index, remote in enumerate(self.remotes):
+            if index in self._pending_remote_indices:
+                continue
+            try:
+                remote.send(('close', None))
+            except (BrokenPipeError, EOFError, OSError):
+                pass
+        deadline = time.monotonic() + 10.0
+        for process in self.ps:
+            process.join(timeout=max(0.0, deadline - time.monotonic()))
+        for process in self.ps:
+            if process.is_alive():
+                process.terminate()
+        for process in self.ps:
+            process.join(timeout=5.0)
+        for process in self.ps:
+            if process.is_alive() and hasattr(process, 'kill'):
+                process.kill()
+        for process in self.ps:
+            process.join(timeout=2.0)
         for remote in self.remotes:
-            remote.send(('close', None))
-        for p in self.ps:
-            p.join()
+            try:
+                remote.close()
+            except OSError:
+                pass
+        clone_executor = getattr(self, '_graph_clone_executor', None)
+        if clone_executor is not None:
+            clone_executor.shutdown(wait=True, cancel_futures=True)
+            self._graph_clone_executor = None
+        self._pending_remote_indices.clear()
+        self.waiting = False
         self.closed = True
 
     def render(self, save_dir):

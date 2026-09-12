@@ -1,0 +1,62 @@
+{
+  "schema_version": "hkbz-fjsp-v3.0",
+  "case_id": "train_0046",
+  "split": "train",
+  "seed": 772458879,
+  "profile": "bursty",
+  "distribution": "iid",
+  "parameters": {
+    "plane_count": 24,
+    "max_plane_agents": 24,
+    "service_stands": 40,
+    "takeoff_sites": 3,
+    "cluster_count": 6,
+    "target_fixed_coverage": 0.510873,
+    "flexibility_class": "edata",
+    "precedence_template": "balanced",
+    "arrival_mode": "bursty",
+    "duration_scale": 1.110071,
+    "depot_bias": 0.311965,
+    "mobile_device_budget": 44,
+    "transporter_count": 7
+  },
+  "statistics": {
+    "num_planes": 24,
+    "num_service_stands": 40,
+    "num_fixed_resources": 19,
+    "num_mobile_resources": 44,
+    "num_service_jobs": 17,
+    "num_resource_jobs": 8,
+    "arrival_horizon": 2650,
+    "arrival_gap_mean": 115.217391,
+    "arrival_gap_min": 20,
+    "arrival_gap_max": 381,
+    "short_arrival_gap_fraction": 0.73913,
+    "fixed_coverage_ratio": 0.432143,
+    "ordinary_mobile_required_pair_fraction": 0.715625,
+    "mean_eligible_resource_instances": 5.159375,
+    "mobile_type_counts": {
+      "R001": 3,
+      "R002": 4,
+      "R003": 2,
+      "R005": 2,
+      "R006": 5,
+      "R007": 6,
+      "R008": 5,
+      "R011": 3,
+      "R012": 4,
+      "R013": 3,
+      "R014": 7
+    }
+  },
+  "fingerprints": {
+    "case_sha256": "af50358fd5d403f5ba861430d9c81be3b04d98689f48525fe8072a1b41581300",
+    "files": {
+      "job.json": "b7df9b79ce8fa1d4b4e0572645bf4146573b0b4abbe5fa0970d8d96dde6d8d8f",
+      "fixed_resources.json": "292290d2ab8d989d396f6f61426eed04fb47e746384791f3ec8b6258d864feeb",
+      "mobile_resources.json": "20aad1039ef4954b60cf9ee8dc914e38b0d81c94e66f973f45611c64d21d1a55",
+      "sites.json": "03b97f6700c9a8be0d89e30fbcb7b672316b65ccb0dc64e2e8c6bf9879dc601f",
+      "flights.json": "f640cff75803abbaa30c7b588f029cb7290c0385fbe2835744e8b9ff0cb72d1c"
+    }
+  }
+}

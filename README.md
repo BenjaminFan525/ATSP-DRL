@@ -1,5 +1,15 @@
 # HKBZ Scheduling Environment
 
+## Stage2 冻结版本（2026-09-12）
+
+本分支将 Stage2 冻结为 B0 + Hungarian、H2/F4，供下一阶段显式加载。
+使用与验证入口见 [STAGE2_FROZEN.md](STAGE2_FROZEN.md)。
+归档保留原始 B0/Stage1/R1 checkpoint 与历史结果，Stage2 新训练和自动实验入口禁用。
+本版本没有宣称已达到 IGA180/IGA1800 目标，也不会自动启动 Stage3。
+
+下文是原主分支的通用说明。其“权重不纳入 Git”不适用于本分支经过审计的
+`artifacts/stage2_frozen/20260912/` 交接包；新研究仍需独立数据配置和实验授权。
+
 面向飞机地面保障协同调度的研究代码。当前主线使用异构图神经网络编码作业、机位和设备状态，以 GNN-MAPPO 学习联合的“作业—机位”决策，并提供 IGA、NSGA-II、优先派工规则和 Gurobi 基线。
 
 本分支由 HKBZ 快照 `cbaef8ed78f15d0516dee900e054b7fac2e671ab` 整理而来，仅保留 HKBZ 研究主线。数据集、模型权重和训练日志不纳入 Git，需单独生成或分发。
@@ -43,20 +53,17 @@ pip install -r requirements-optional.txt
 每个算例目录包含 `job.json`、`fixed_resources.json`、`mobile_resources.json`、`sites.json` 和 `flights.json`。例如：
 
 ```bash
-python -m onpolicy.envs.HKBZ.data_generator \
-  --output onpolicy/envs/HKBZ/dataset/train_large \
-  --num-cases 100 --num-stands 40 --num-planes 24 \
-  --seed 42 --no-layouts
-
-python -m onpolicy.envs.HKBZ.data_generator \
-  --output onpolicy/envs/HKBZ/dataset/test_large \
-  --num-cases 20 --num-stands 40 --num-planes 24 \
-  --seed 1042 --no-layouts
+python -m onpolicy.envs.HKBZ.data_generator build \
+  --output onpolicy/envs/HKBZ/dataset/new_benchmark \
+  --train-cases 600 --validation-cases 120 --test-cases 60 --seed 42
 ```
 
 随后检查 [环境配置](onpolicy/config/env.yaml) 中的数据集路径。相对路径统一以仓库根目录为基准。数据格式和划分建议见 [docs/DATASETS.md](docs/DATASETS.md)。
 
 ## 训练
+
+本分支的 Stage2 已冻结；以下是旧版通用示例，不用于启动本轮 Stage2 或正式 Stage3。
+Stage3 显式初始化接口及其配置边界见 [交接说明](STAGE2_FROZEN.md)。
 
 下面的线程数必须分别整除训练集和测试集的算例数：
 

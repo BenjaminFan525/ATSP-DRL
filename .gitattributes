@@ -1,0 +1,4 @@
+# These files are SHA-bound originals: never normalize line endings or repair
+# historical whitespace during checkout/publication.
+artifacts/stage2_frozen/20260912/** -text -whitespace
+onpolicy/envs/HKBZ/test/fixtures/** -text -whitespace

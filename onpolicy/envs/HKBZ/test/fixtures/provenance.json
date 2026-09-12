@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "purpose": "Portable synthetic regression fixtures only; not a training dataset or evaluation evidence.",
+  "provenance": "Exact bytes copied from two generated original TRAIN cases; no tuned or blind evaluation cases are included.",
+  "cases": {
+    "train_case_0012": {
+      "directory": "train_case_0012",
+      "original_split": "train",
+      "original_case_directory": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012",
+      "source_metadata": {
+        "schema_version": "hkbz-fjsp-v3.0",
+        "case_id": "train_0012",
+        "split": "train",
+        "seed": 1870439145,
+        "profile": "stress_arrival",
+        "distribution": "ood_stress",
+        "parameters": {
+          "plane_count": 24,
+          "max_plane_agents": 24,
+          "service_stands": 40,
+          "takeoff_sites": 3,
+          "cluster_count": 8,
+          "target_fixed_coverage": 0.439762,
+          "flexibility_class": "rdata",
+          "precedence_template": "balanced",
+          "arrival_mode": "waves",
+          "duration_scale": 1.112456,
+          "depot_bias": 0.419906,
+          "mobile_device_budget": 44,
+          "transporter_count": 7
+        },
+        "statistics": {
+          "num_planes": 24,
+          "num_service_stands": 40,
+          "num_fixed_resources": 24,
+          "num_mobile_resources": 44,
+          "num_service_jobs": 17,
+          "num_resource_jobs": 8,
+          "arrival_horizon": 2218,
+          "arrival_gap_mean": 96.434783,
+          "arrival_gap_min": 15,
+          "arrival_gap_max": 416,
+          "short_arrival_gap_fraction": 0.826087,
+          "fixed_coverage_ratio": 0.435714,
+          "ordinary_mobile_required_pair_fraction": 0.571875,
+          "mean_eligible_resource_instances": 5.303125,
+          "mobile_type_counts": {
+            "R001": 2,
+            "R002": 2,
+            "R003": 4,
+            "R005": 5,
+            "R006": 3,
+            "R007": 5,
+            "R008": 2,
+            "R011": 6,
+            "R012": 3,
+            "R013": 5,
+            "R014": 7
+          }
+        },
+        "fingerprints": {
+          "case_sha256": "ad415429a8d6ce4071b6df502922708478cc1eb0010c9c88c142b7ef581f753f",
+          "files": {
+            "job.json": "b2cb11f1cc900a147b6fb31e772d0e212cad6256ae0aaf0a6cc39450e8458486",
+            "fixed_resources.json": "7e1cad3a2f9ac9834222d57c363fff293093f982ae389bb071bf7baf981a996d",
+            "mobile_resources.json": "91eb7fea4af2497b52919fe6c6b4c9abcdcaf7fd368012bae0e07f5192d3aae2",
+            "sites.json": "f31f1a89f4d0b926b32f3f4143d240623671d7ffe2ce0a35a13c9f70c2713dc5",
+            "flights.json": "1263e6ca1587e9014d850fe77ffe89c04a580bc6c599c1421db521217f434fcf"
+          }
+        }
+      },
+      "files": [
+        {
+          "filename": "fixed_resources.json",
+          "sha256": "74e3b0858e5704fe65ee7e66023d695ce6db0a44778a10cc7cad68722b95f1fc",
+          "size_bytes": 2176,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/fixed_resources.json"
+        },
+        {
+          "filename": "flights.json",
+          "sha256": "b8fd806d5932af1aea38224db30cee77b854a2407a0c86c70e56f302681476a9",
+          "size_bytes": 2245,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/flights.json"
+        },
+        {
+          "filename": "job.json",
+          "sha256": "a8c1f261285188bf1324398687e4f2b84cd94df5265fb9b7d4d45bb23f355b89",
+          "size_bytes": 4745,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/job.json"
+        },
+        {
+          "filename": "metadata.json",
+          "sha256": "785e756d5a9bc9a5723643cef6eb55eb98bd0bf2d26b26ab014a553c50e3d1fa",
+          "size_bytes": 1895,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/metadata.json"
+        },
+        {
+          "filename": "mobile_resources.json",
+          "sha256": "654c86c6041c314f8be9b0e9baf89d6a5be466c985726a887b0bc531ac99d2d6",
+          "size_bytes": 3853,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/mobile_resources.json"
+        },
+        {
+          "filename": "sites.json",
+          "sha256": "ac0cfb72cb1291d875ce2ba82056f4aa41f08d873674a7826f80de92b250ca72",
+          "size_bytes": 1999,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012/sites.json"
+        }
+      ]
+    },
+    "train_case_0046": {
+      "directory": "train_case_0046",
+      "original_split": "train",
+      "original_case_directory": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046",
+      "source_metadata": {
+        "schema_version": "hkbz-fjsp-v3.0",
+        "case_id": "train_0046",
+        "split": "train",
+        "seed": 772458879,
+        "profile": "bursty",
+        "distribution": "iid",
+        "parameters": {
+          "plane_count": 24,
+          "max_plane_agents": 24,
+          "service_stands": 40,
+          "takeoff_sites": 3,
+          "cluster_count": 6,
+          "target_fixed_coverage": 0.510873,
+          "flexibility_class": "edata",
+          "precedence_template": "balanced",
+          "arrival_mode": "bursty",
+          "duration_scale": 1.110071,
+          "depot_bias": 0.311965,
+          "mobile_device_budget": 44,
+          "transporter_count": 7
+        },
+        "statistics": {
+          "num_planes": 24,
+          "num_service_stands": 40,
+          "num_fixed_resources": 19,
+          "num_mobile_resources": 44,
+          "num_service_jobs": 17,
+          "num_resource_jobs": 8,
+          "arrival_horizon": 2650,
+          "arrival_gap_mean": 115.217391,
+          "arrival_gap_min": 20,
+          "arrival_gap_max": 381,
+          "short_arrival_gap_fraction": 0.73913,
+          "fixed_coverage_ratio": 0.432143,
+          "ordinary_mobile_required_pair_fraction": 0.715625,
+          "mean_eligible_resource_instances": 5.159375,
+          "mobile_type_counts": {
+            "R001": 3,
+            "R002": 4,
+            "R003": 2,
+            "R005": 2,
+            "R006": 5,
+            "R007": 6,
+            "R008": 5,
+            "R011": 3,
+            "R012": 4,
+            "R013": 3,
+            "R014": 7
+          }
+        },
+        "fingerprints": {
+          "case_sha256": "af50358fd5d403f5ba861430d9c81be3b04d98689f48525fe8072a1b41581300",
+          "files": {
+            "job.json": "b7df9b79ce8fa1d4b4e0572645bf4146573b0b4abbe5fa0970d8d96dde6d8d8f",
+            "fixed_resources.json": "292290d2ab8d989d396f6f61426eed04fb47e746384791f3ec8b6258d864feeb",
+            "mobile_resources.json": "20aad1039ef4954b60cf9ee8dc914e38b0d81c94e66f973f45611c64d21d1a55",
+            "sites.json": "03b97f6700c9a8be0d89e30fbcb7b672316b65ccb0dc64e2e8c6bf9879dc601f",
+            "flights.json": "f640cff75803abbaa30c7b588f029cb7290c0385fbe2835744e8b9ff0cb72d1c"
+          }
+        }
+      },
+      "files": [
+        {
+          "filename": "fixed_resources.json",
+          "sha256": "1cde9d92747c948286324b4954441225f8951c6caf24f58b93e5144023117510",
+          "size_bytes": 1718,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/fixed_resources.json"
+        },
+        {
+          "filename": "flights.json",
+          "sha256": "e6e7008f165bb872a625ba216722853e1c1e9313090e5b86489fa9eb497dd9dd",
+          "size_bytes": 2249,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/flights.json"
+        },
+        {
+          "filename": "job.json",
+          "sha256": "b1b605f1aac295d93487414a0130a1eea62676bd0f9be2736fc30fafbe1a5d0b",
+          "size_bytes": 4731,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/job.json"
+        },
+        {
+          "filename": "metadata.json",
+          "sha256": "779ef33a1ad2f422d629b75825a37b044a0ea27759f052cabf5a7073c9b6a1e3",
+          "size_bytes": 1880,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/metadata.json"
+        },
+        {
+          "filename": "mobile_resources.json",
+          "sha256": "3e066547c41c183a23443c8339f9a0be4a8ed06c98aad786a0722c3217e0ce13",
+          "size_bytes": 3855,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/mobile_resources.json"
+        },
+        {
+          "filename": "sites.json",
+          "sha256": "b05fea24b95f99679850679bf23add2238df48892b593ef16defd1f4abc7c499",
+          "size_bytes": 2002,
+          "original_path": "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0046/sites.json"
+        }
+      ]
+    }
+  },
+  "test_fixture_changes": {
+    "test_departure_flow": "Historically loaded tune/case_0001; now uses train_case_0012 and manufactures the same departure states; all assertion semantics are unchanged."
+  }
+}

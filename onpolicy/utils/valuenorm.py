@@ -18,9 +18,10 @@ class ValueNorm(nn.Module):
         self.per_element_update = per_element_update
         self.tpdv = dict(dtype=torch.float32, device=device)
 
-        self.running_mean = nn.Parameter(torch.zeros(input_shape), requires_grad=False).to(**self.tpdv)
-        self.running_mean_sq = nn.Parameter(torch.zeros(input_shape), requires_grad=False).to(**self.tpdv)
-        self.debiasing_term = nn.Parameter(torch.tensor(0.0), requires_grad=False).to(**self.tpdv)
+        # Persist running statistics in checkpoints and move them with the module.
+        self.register_buffer("running_mean", torch.zeros(input_shape, **self.tpdv))
+        self.register_buffer("running_mean_sq", torch.zeros(input_shape, **self.tpdv))
+        self.register_buffer("debiasing_term", torch.tensor(0.0, **self.tpdv))
         
         self.reset_parameters()
 
@@ -36,17 +37,37 @@ class ValueNorm(nn.Module):
         return debiased_mean, debiased_var
 
     @torch.no_grad()
-    def update(self, input_vector):
+    def update(self, input_vector, weights=None):
         if type(input_vector) == np.ndarray:
             input_vector = torch.from_numpy(input_vector)
         input_vector = input_vector.to(**self.tpdv)
+        input_vector = torch.nan_to_num(input_vector, nan=0.0, posinf=1e4, neginf=-1e4)
 
-        batch_mean = input_vector.mean(dim=tuple(range(self.norm_axes)))
-        batch_sq_mean = (input_vector ** 2).mean(dim=tuple(range(self.norm_axes)))
+        reduce_axes = tuple(range(self.norm_axes))
+        if weights is None:
+            batch_mean = input_vector.mean(dim=reduce_axes)
+            batch_sq_mean = (input_vector ** 2).mean(dim=reduce_axes)
+            effective_batch_size = np.prod(input_vector.size()[:self.norm_axes])
+        else:
+            if type(weights) == np.ndarray:
+                weights = torch.from_numpy(weights)
+            weights = weights.to(**self.tpdv)
+            weights = torch.nan_to_num(weights, nan=0.0, posinf=0.0, neginf=0.0)
+            weights = weights.clamp_min(0.0)
+            try:
+                weights = torch.broadcast_to(weights, input_vector.shape)
+            except RuntimeError as error:
+                raise ValueError(
+                    f"ValueNorm weights {tuple(weights.shape)} cannot broadcast to "
+                    f"inputs {tuple(input_vector.shape)}."
+                ) from error
+            weight_sum = weights.sum(dim=reduce_axes).clamp_min(self.epsilon)
+            batch_mean = (input_vector * weights).sum(dim=reduce_axes) / weight_sum
+            batch_sq_mean = ((input_vector ** 2) * weights).sum(dim=reduce_axes) / weight_sum
+            effective_batch_size = float(weights.sum().item())
 
         if self.per_element_update:
-            batch_size = np.prod(input_vector.size()[:self.norm_axes])
-            weight = self.beta ** batch_size
+            weight = self.beta ** effective_batch_size
         else:
             weight = self.beta
 
@@ -59,20 +80,23 @@ class ValueNorm(nn.Module):
         if type(input_vector) == np.ndarray:
             input_vector = torch.from_numpy(input_vector)
         input_vector = input_vector.to(**self.tpdv)
+        input_vector = torch.nan_to_num(input_vector, nan=0.0, posinf=1e4, neginf=-1e4)
 
         mean, var = self.running_mean_var()
         out = (input_vector - mean[(None,) * self.norm_axes]) / torch.sqrt(var)[(None,) * self.norm_axes]
         
-        return out
+        return torch.nan_to_num(out, nan=0.0, posinf=1e4, neginf=-1e4)
 
     def denormalize(self, input_vector):
         """ Transform normalized data back into original distribution """
         if type(input_vector) == np.ndarray:
             input_vector = torch.from_numpy(input_vector)
         input_vector = input_vector.to(**self.tpdv)
+        input_vector = torch.nan_to_num(input_vector, nan=0.0, posinf=1e4, neginf=-1e4)
 
         mean, var = self.running_mean_var()
         out = input_vector * torch.sqrt(var)[(None,) * self.norm_axes] + mean[(None,) * self.norm_axes]
+        out = torch.nan_to_num(out, nan=0.0, posinf=1e4, neginf=-1e4)
         
         out = out.cpu().numpy()
         

@@ -4,7 +4,6 @@ import os
 import json
 import numpy as np
 import time
-import argparse
 
 # ================= 1. 路径与模块引入 =================
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +11,7 @@ root_dir = os.path.abspath(os.path.join(current_dir, '../../../../'))
 sys.path.insert(0, root_dir)
 
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv 
+from onpolicy.envs.HKBZ.experiment.eval_common import legal_plane_candidates
 
 # 💡 将 NSGA2 替换为单目标的 GA (Genetic Algorithm)
 from pymoo.algorithms.soo.nonconvex.ga import GA
@@ -25,73 +25,86 @@ from pymoo.core.callback import Callback # <--- 引入 Callback 用于控制时�
 # ================= 2. 染色体解码与策略执行 =================
 def GA_Policy(env, info, job_priorities, site_priorities):
     """
-    根据遗传算法传入的基因权重，为当前活跃的智能体分配动作。
+    Decode genes through the environment's authoritative joint-action masks.
+
+    The environment owns all temporal semantics (including post-service
+    staging, the global departure barrier and the runway/R014 requirement).
+    Reconstructing legality from ``Plane.get_avail_jobs`` would silently use
+    the pre-departure semantics and can leave an otherwise feasible chromosome
+    stuck after service completion.
     """
-    n_agents = env.n_agents
-    actions = np.zeros((n_agents, 2), dtype=np.int32)
-    actions[:] = [-1, -1]
-    active_agents = info['active_agents']
-    
-    candidates = []
-    pid_to_plane = {}
-    avail_sites = env.get_avail_sites()
-    
-    # 1. 收集合法候选动作池
+    active_agents = np.asarray(info['active_agents'], dtype=bool)
+    preferences = {}
+    priority_keys = {}
+
     for plane in env.planes.values():
-        pid = int(plane.code.split('_')[2])
-        pid_to_plane[pid] = plane
-        
-        if not active_agents[pid]: continue
-            
-        current_site = plane.site.code
-        current_site_jobs = plane.get_avail_jobs(plane.site)
-        
-        if current_site != 'Z' and len(current_site_jobs) > 0:
-            for j_code in current_site_jobs:
-                j_idx = env.job_code_list.index(j_code)
-                s_idx = env.site_code_list.index(current_site)
-                score = job_priorities[pid, j_idx] + site_priorities[pid, s_idx]
-                candidates.append({'pid': pid, 'site': current_site, 'job': j_code, 'score': score, 'is_move': False})
-                
-        else:
-            for s_code in avail_sites:
-                next_site_jobs = plane.get_avail_jobs(env.sites[s_code])
-                for j_code in next_site_jobs:
-                    j_idx = env.job_code_list.index(j_code)
-                    s_idx = env.site_code_list.index(s_code)
-                    score = job_priorities[pid, j_idx] + site_priorities[pid, s_idx]
-                    candidates.append({'pid': pid, 'site': s_code, 'job': j_code, 'score': score, 'is_move': True})
+        pid = int(plane.code.split('_')[-1])
+        if pid >= active_agents.size or not active_agents[pid]:
+            continue
+        candidates = []
+        for candidate in legal_plane_candidates(env, pid):
+            candidate = dict(candidate)
+            candidate['score'] = float(
+                job_priorities[pid, candidate['job_idx']]
+                + site_priorities[pid, candidate['site_idx']]
+            )
+            candidates.append(candidate)
+        if not candidates:
+            raise RuntimeError(
+                f'Active plane {pid} has no legal joint action at step '
+                f'{env.steps}.'
+            )
+        candidates.sort(
+            key=lambda item: (
+                -item['score'], item['job_idx'], item['site_idx']
+            )
+        )
+        preferences[pid] = candidates
+        priority_keys[pid] = -candidates[0]['score']
 
-    # 2. 根据基因解码出的 Score 进行降序排列
-    candidates.sort(key=lambda x: x['score'], reverse=True)
+    # A greedy global candidate list can strand a later plane even when a
+    # collision-free assignment exists.  Augmenting-path matching preserves
+    # each plane's chromosome ordering while guaranteeing unique sites.
+    site_matches = {}
 
-    # 3. 贪婪动作分配 (已同步机位抢占修复)
-    assigned_pids = set()
-    claimed_sites = set()
-    
-    for cand in candidates:
-        pid, site, job = cand['pid'], cand['site'], cand['job']
-        if pid in assigned_pids: continue
-        if site in claimed_sites: continue 
-            
-        assigned_pids.add(pid)
-        claimed_sites.add(site)
-            
-        job_idx = env.job_code_list.index(job) + pid * len(env.job_code_list)
-        site_idx = env.site_code_list.index(site)
-        actions[pid][0] = job_idx
-        actions[pid][1] = site_idx
+    def augment(pid, seen_sites):
+        for candidate in preferences[pid]:
+            site_idx = candidate['site_idx']
+            if site_idx in seen_sites:
+                continue
+            seen_sites.add(site_idx)
+            previous = site_matches.get(site_idx)
+            if previous is None or augment(previous[0], seen_sites):
+                site_matches[site_idx] = (pid, candidate)
+                return True
+        return False
 
-    # 4. 兜底容错
-    for pid in range(n_agents):
-        if active_agents[pid] and pid not in assigned_pids:
-            plane = pid_to_plane.get(pid)
-            if plane:
-                job_idx = pid * len(env.job_code_list) 
-                site_idx = env.site_code_list.index(plane.site.code)
-                actions[pid][0] = job_idx
-                actions[pid][1] = site_idx
-                
+    pid_order = sorted(
+        preferences, key=lambda pid: (priority_keys[pid], pid)
+    )
+    for pid in pid_order:
+        if not augment(pid, set()):
+            counts = {
+                active_pid: len(items)
+                for active_pid, items in preferences.items()
+            }
+            raise RuntimeError(
+                'No collision-free site matching exists for active planes; '
+                f'failed_pid={pid}, candidate_counts={counts}.'
+            )
+
+    selected = {
+        pid: candidate for pid, candidate in site_matches.values()
+    }
+    if set(selected) != set(preferences):
+        raise RuntimeError(
+            f'Incomplete action matching: selected={sorted(selected)}, '
+            f'active={sorted(preferences)}.'
+        )
+    actions = np.full((env.n_agents, 2), -1, dtype=np.int32)
+    for pid, candidate in selected.items():
+        actions[pid, 0] = candidate['op_global_idx']
+        actions[pid, 1] = candidate['site_idx']
     return actions
 
 
@@ -106,6 +119,11 @@ class AircraftSchedulingProblem(ElementwiseProblem):
         self.n_agents = temp_env.n_agents
         self.n_jobs = len(temp_env.job_code_list)
         self.n_sites = len(temp_env.site_code_list)
+        # A time limit can stop pymoo in the middle of a generation.  Keep an
+        # explicit anytime incumbent so extending the budget cannot forget a
+        # feasible solution already evaluated in the same run.
+        self.best_feasible_makespan = np.inf
+        self.best_feasible_chromosome = None
         
         n_var = self.n_agents * self.n_jobs + self.n_agents * self.n_sites
         super().__init__(n_var=n_var, n_obj=1, n_ieq_constr=0,
@@ -145,6 +163,15 @@ class AircraftSchedulingProblem(ElementwiseProblem):
             f1_makespan += 100000 
             
         out["F"] = [f1_makespan]
+        if (
+            np.isfinite(f1_makespan)
+            and f1_makespan < 100000.0
+            and f1_makespan < self.best_feasible_makespan
+        ):
+            self.best_feasible_makespan = float(f1_makespan)
+            self.best_feasible_chromosome = np.asarray(
+                x, dtype=np.float64
+            ).reshape(-1).copy()
 
 
 # ================= 新增：超时安全拦截器 =================
@@ -166,86 +193,131 @@ class TimeLimitCallback(Callback):
 
 
 # ================= 4. 封装单次评估逻辑 =================
-def test_iga_on_case(case_path, time_limit=1800, pop_size=20,
-                     generations=20, seed=1):
+def test_iga_on_case(
+    case_path,
+    max_time_seconds=1800,
+    pop_size=20,
+    n_gen=20,
+    seed=1,
+    return_solution=False,
+):
+    """Run IGA with an explicit anytime budget and optionally return genes."""
     flights_path = os.path.join(case_path, 'flights.json')
-    n_agents = 12 
+    n_agents = 12
     if os.path.exists(flights_path):
         try:
             with open(flights_path, 'r', encoding='utf-8') as f:
-                n_agents = len(json.load(f)) 
+                n_agents = len(json.load(f))
         except Exception:
             pass
-
     config = {
-        'batch_num': 1,               
-        'plane_num_per_batch': n_agents,    
-        'n_agents': n_agents,               
+        'batch_num': 1,
+        'plane_num_per_batch': n_agents,
+        'n_agents': n_agents,
         'jobs_path': os.path.join(case_path, 'job.json'),
         'fixed_res_path': os.path.join(case_path, 'fixed_resources.json'),
         'mobile_res_path': os.path.join(case_path, 'mobile_resources.json'),
         'sites_path': os.path.join(case_path, 'sites.json'),
         'flights_path': flights_path,
         'seed': 42,
-        'interfere': [-1, [], 0],     
-        'force_chosen': [-1, '', 0]   
+        'interfere': [-1, [], 0],
+        'force_chosen': [-1, '', 0],
     }
-    
-    # ⏰ 全局统一计时起点 (使用挂钟时间监控，使用 CPU 时间出报告)
+    max_time_seconds = float(max_time_seconds)
+    if max_time_seconds <= 0.0:
+        raise ValueError('max_time_seconds must be positive.')
+    pop_size = int(pop_size)
+    n_gen = int(n_gen)
+    seed = int(seed)
+    if pop_size <= 1 or n_gen <= 0:
+        raise ValueError('IGA pop_size must exceed one and n_gen must be positive.')
+
     global_start_time = time.time()
     start_cpu = time.process_time()
-    
     try:
-        # 把时间戳传进物理推演环境里
-        problem = AircraftSchedulingProblem(config, global_start_time,
-                                             max_time_seconds=time_limit)
-    except Exception as e:
-        print(f"环境初始化失败 (Case: {os.path.basename(case_path)}): {e}")
+        problem = AircraftSchedulingProblem(
+            config,
+            global_start_time,
+            max_time_seconds=max_time_seconds,
+        )
+    except Exception as error:
+        print(
+            f"环境初始化失败 (Case: {os.path.basename(case_path)}): {error}"
+        )
+        if return_solution:
+            return {
+                'makespan': None,
+                'cpu_seconds': None,
+                'wall_seconds': time.time() - global_start_time,
+                'chromosome': None,
+                'error': f'{type(error).__name__}: {error}',
+            }
         return None, None
-        
+
     algorithm = GA(
         pop_size=pop_size,
         eliminate_duplicates=True,
         sampling=FloatRandomSampling(),
         crossover=SBX(prob=0.9, eta=15),
-        mutation=PM(eta=20)
+        mutation=PM(eta=20),
     )
-
-    # 🛡️ 注册宏观的代数回调时间锁
-    time_limit_cb = TimeLimitCallback(global_start_time,
-                                      max_time_seconds=time_limit)
-    
+    time_limit_cb = TimeLimitCallback(
+        global_start_time,
+        max_time_seconds=max_time_seconds,
+    )
     res = minimize(
-        problem, 
-        algorithm, 
-        ('n_gen', generations),
-        callback=time_limit_cb, 
+        problem,
+        algorithm,
+        ('n_gen', n_gen),
+        callback=time_limit_cb,
         seed=seed,
-        verbose=False
+        verbose=False,
     )
-    
-    end_cpu = time.process_time()
-    cpu_time = end_cpu - start_cpu
-    
-    best_cmax = res.F[0] if res.F is not None else None
-    
-    return best_cmax, cpu_time
+    cpu_time = time.process_time() - start_cpu
+    wall_time = time.time() - global_start_time
+    best_cmax = (
+        float(np.asarray(res.F).reshape(-1)[0])
+        if res.F is not None else None
+    )
+    chromosome = (
+        np.asarray(res.X, dtype=np.float64).reshape(-1)
+        if res.X is not None else None
+    )
+    incumbent_preserved = False
+    if (
+        problem.best_feasible_chromosome is not None
+        and (
+            best_cmax is None
+            or not np.isfinite(best_cmax)
+            or problem.best_feasible_makespan < best_cmax
+        )
+    ):
+        best_cmax = float(problem.best_feasible_makespan)
+        chromosome = problem.best_feasible_chromosome.copy()
+        incumbent_preserved = True
+    if not return_solution:
+        return best_cmax, cpu_time
+    return {
+        'makespan': best_cmax,
+        'cpu_seconds': float(cpu_time),
+        'wall_seconds': float(wall_time),
+        'chromosome': (
+            chromosome.tolist() if chromosome is not None else None
+        ),
+        'n_agents': int(problem.n_agents),
+        'n_jobs': int(problem.n_jobs),
+        'n_sites': int(problem.n_sites),
+        'pop_size': pop_size,
+        'n_gen': n_gen,
+        'seed': seed,
+        'time_budget_seconds': max_time_seconds,
+        'incumbent_preserved': incumbent_preserved,
+    }
 
 
 # ================= 5. 批量执行与指标计算 =================
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Evaluate the IGA baseline.")
-    parser.add_argument(
-        "--dataset-dir",
-        default=os.path.join(root_dir, "onpolicy/envs/HKBZ/dataset/test_large"),
-    )
-    parser.add_argument("--time-limit", type=float, default=1800.0,
-                        help="Wall-clock limit in seconds for each case.")
-    parser.add_argument("--population-size", type=int, default=20)
-    parser.add_argument("--generations", type=int, default=20)
-    parser.add_argument("--seed", type=int, default=1)
-    args = parser.parse_args()
-    dataset_test_dir = os.path.abspath(os.path.expanduser(args.dataset_dir))
+    dataset_test_dir = "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v2_t480_v60_test60/test"
     
     if not os.path.exists(dataset_test_dir):
         print(f"❌ 找不到测试集目录: {dataset_test_dir}")
@@ -283,20 +355,14 @@ if __name__ == "__main__":
     metrics = {'c_max_sum': 0.0, 'cpu_sum': 0.0, 'gap_sum': 0.0, 'valid_count': 0, 'gap_count': 0}
 
     print(f"\n🚀 开始 IGA 批量评估，共检测到 {len(case_folders)} 个测试用例...")
-    print(f"⚠️ 提示：进化算法计算量较大，每个算例限时 {args.time_limit:g} 秒。")
+    print("⚠️ 提示：进化算法计算量较大，已加装全局 1800 秒超时安全锁。")
     print("="*60)
 
     for case_name in case_folders:
         case_path = os.path.join(dataset_test_dir, case_name)
         print(f"⚙️ 正在求解用例: {case_name} ...", end="", flush=True)
         
-        c_max, cpu_time = test_iga_on_case(
-            case_path,
-            time_limit=args.time_limit,
-            pop_size=args.population_size,
-            generations=args.generations,
-            seed=args.seed,
-        )
+        c_max, cpu_time = test_iga_on_case(case_path)
         
         if c_max is not None:
             all_cmax_results[case_name] = c_max

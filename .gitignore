@@ -44,3 +44,17 @@ events.out.tfevents.*
 build/
 dist/
 *.egg-info/
+
+# Audited, byte-bound Stage2 handoff is the only checkpoint publication exception.
+!artifacts/stage2_frozen/20260912/checkpoints/b0.pt
+!artifacts/stage2_frozen/20260912/checkpoints/stage1.pt
+!artifacts/stage2_frozen/20260912/checkpoints/r1.pt
+
+# Local credentials and migration-only material must remain private.
+/id_rsa
+/id_rsa.pub
+/.arts/
+/gnc-template/
+/migration/
+/lnvgy_utl_lxce_onecli01g-5.6.0_linux_indiv.tgz
+/relocation-report.tsv

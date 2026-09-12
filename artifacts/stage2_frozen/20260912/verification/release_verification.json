@@ -1,0 +1,82 @@
+{
+  "protocol": "stage2_frozen_release_verification_v1",
+  "date": "2026-09-12",
+  "publication_base": "dafbbf405342d4cc454f092167ff57c15c1589e8",
+  "publication_branch": "stage2-frozen-20260912",
+  "publication_method": "Reviewed HKBZ dependency snapshot on origin/main; no unrelated-history merge or force push",
+  "test_environment": {
+    "python": "3.11",
+    "torch": "2.6.0+cu124",
+    "torch_geometric": "2.7.0",
+    "numpy": "1.26.4",
+    "scipy": "1.14.1",
+    "gymnasium": "1.2.3",
+    "PyYAML": "6.0.1",
+    "imageio": "2.37.2",
+    "CUDA_VISIBLE_DEVICES": "",
+    "cpu_affinity": "30-31,94-95",
+    "OMP_NUM_THREADS": 1,
+    "OPENBLAS_NUM_THREADS": 1,
+    "MKL_NUM_THREADS": 1
+  },
+  "clean_worktree_regression": {
+    "command": "python -m unittest discover -s onpolicy/envs/HKBZ/test -p 'test_*.py'",
+    "tests_run": 201,
+    "passed": 201,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "scope": "Independent origin-based worktree, without original dataset tree or uncommitted source imports; local IPC permitted",
+    "preliminary_failures": "The initial sandbox run found missing historical dataset paths, a canary test fixture missing a constructor default, and blocked local IPC. Minimal checksum-pinned TRAIN fixtures and test-only setup fixed portability; the final full run used permitted local IPC. No algorithm assertions were removed."
+  },
+  "final_guard_and_fixture_followup": {
+    "command": "python -m unittest onpolicy.envs.HKBZ.test.test_stage2_freeze_guard onpolicy.envs.HKBZ.test.test_regression_fixtures",
+    "tests_run": 11,
+    "passed": 11,
+    "note": "Includes one label-generator freeze guard test added after full discovery. Across the full run and this followup, all 202 current regression tests were exercised successfully."
+  },
+  "repository_smoke": {
+    "passed": 2,
+    "checks": ["portable default environment paths", "current generator deterministic case output"],
+    "invocation": "Executed both tests/test_repository.py test functions directly with a temporary directory; pytest is not installed in the validation environment"
+  },
+  "frozen_handoff": {
+    "passed": true,
+    "command": "python onpolicy/scripts/train/verify_stage2_frozen.py",
+    "production_loader": "HKBZ_Runner._restore_stage2_joint_finetune",
+    "original_and_relocated_bundle": true,
+    "original_artifact_reads_forbidden": true,
+    "exact_model_tensors": 508,
+    "exact_model_elements": 1099079,
+    "model_sha256": "7f1b409e9dbea86b66321eec581a873311730e92124efc1f6f0a43d3c8fec111",
+    "protected_stage1_tensors": 367,
+    "r1_predictor_provenance_verified": true,
+    "fresh_optimizers_and_value_normalizers": true,
+    "source_checkpoint_bytes_changed": false,
+    "environment_rollout_verified": false
+  },
+  "artifact_verification": {
+    "passed": true,
+    "command": "python scripts/export_stage2_frozen.py --verify-only",
+    "manifest_files_verified": 19,
+    "exact_archived_result_records": 2943,
+    "result_source_bytes": 275503655,
+    "compressed_result_bytes": 28650777,
+    "original_checkpoint_bytes": 22793069,
+    "retirement_archive_original_members": 167
+  },
+  "freeze_state": {
+    "new_stage2_training": false,
+    "new_stage3_training": false,
+    "active_hkbz_stage2_services_found": 0,
+    "stage2_timers_found": 0,
+    "unrelated_maia_services": "Not modified or stopped",
+    "scientific_goal_confirmed": false
+  },
+  "boundaries": [
+    "Only a small synthetic TRAIN-case regression fixture is published; complete datasets and teacher trajectories remain external.",
+    "The checkpoint is an engineering-verified Stage3 starting point, not a claim of successful Stage3 training or IGA superiority.",
+    "Old local master history and unrelated uncommitted Stage1/Stage3 work are preserved, not pushed into this new branch.",
+    "Whitespace-only formatting was applied to selected legacy source files in the publication worktree; model and archived source bytes remain unchanged."
+  ]
+}

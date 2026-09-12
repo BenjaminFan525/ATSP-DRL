@@ -3,6 +3,10 @@ import numpy as np
 
 # 飞机类：定义飞机的各项属性和行为，用于管理飞机的作业流程、移动和状态转换
 class Plane:
+    LONG_OCCUPANCY_JOBS = frozenset({'ZY02', 'ZY03'})
+    TRANSFER_JOB_CODE = 'ZY-T'
+    DEPARTURE_JOB_GROUP = '出场'
+
     def __init__(self, code, config):
         self.code = code  # 飞机唯一标识码
         self.config = config  # 飞机配置字典
@@ -24,12 +28,32 @@ class Plane:
         self.last_site_idx = -1  # 记录刚才选的机位
         self.last_job_idx = -1    # 记录刚才选的工序 (如果是对象，取其 code)
         self.pending_job = None
+        # ZY02/ZY03 can be reset by relocation, so they are not irreversible
+        # progress. These counters make repeated relocation observable.
+        self.ever_finished_jobs = set()
+        self.relocations_since_progress = 0
+        self.total_relocations = 0
+        self.no_progress_decisions = 0
+        self.last_departed_site_code = None
+        self.last_transport_reset_jobs = ()
+        self.transport_purpose = None
+        self.pending_transport_purpose = None
+        self.departure_staging_decided = False
+        self.takeoff_site_codes = frozenset(
+            str(code) for code in config.get('takeoff_site_codes', ())
+        )
+        self.decision_signature_counts = {}
 
         # 初始化飞机作业字典，过滤和配置作业参数
         self.jobs = {}
         for job in config['jobs']:
-            # 只保留'保障'组作业，排除特定代码
-            if job.group == '保障' and job.code not in ['ZY01', 'ZY-L']:
+            # Plane jobs contain persistent service/departure operations. ZY-T
+            # is a repeatable scheduling action managed by the environment and
+            # therefore deliberately does not enter ``left_jobs``.
+            if (
+                (job.group == '保障' and job.code not in ['ZY01', 'ZY-L'])
+                or job.group == self.DEPARTURE_JOB_GROUP
+            ):
                 self.jobs[job.code] = job
             # 为特定作业设置计算时间
             if job.time is None:
@@ -38,6 +62,13 @@ class Plane:
             # 将前驱和资源转换为集合，便于集合运算
             job.predecessor = set(job.predecessor)
             job.resources = set(job.resources)
+        self.service_job_codes = frozenset(
+            code for code, job in self.jobs.items() if job.group == '保障'
+        )
+        self.departure_job_codes = tuple(
+            code for code, job in self.jobs.items()
+            if job.group == self.DEPARTURE_JOB_GROUP
+        )
         self.left_jobs = list(self.jobs.keys())  # 初始剩余作业列表
         self.current_avail_jobs = self.get_avail_jobs(self.site)
 
@@ -116,7 +147,7 @@ class Plane:
         self.job_time = self.jobs[job_code].time
         return self.jobs[job_code].time
 
-    def start_transport(self, destination, transporter):
+    def start_transport(self, destination, transporter, purpose=None):
         '''启动飞机运输任务
         
         输入:
@@ -132,6 +163,19 @@ class Plane:
             trans_time = plane.start_transport(target_site, transporter_device)  # 启动运输
         '''
         # assert self.is_busy is False and self.is_transporting is False, "Plane must be idle to start transporting."
+        if destination.code in self.takeoff_site_codes and transporter is None:
+            raise RuntimeError(
+                f"Plane {self.code} cannot enter takeoff site "
+                f"{destination.code} without an R014 transporter."
+            )
+        self.last_departed_site_code = self.site.code
+        self.transport_purpose = purpose
+        self.pending_transport_purpose = None
+        self.last_transport_reset_jobs = tuple(
+            sorted(self.LONG_OCCUPANCY_JOBS.intersection(self.finished_jobs))
+        )
+        self.relocations_since_progress += 1
+        self.total_relocations += 1
         self.site.remove_plane()
         # 计算曼哈顿距离和基础运输时间
         distance = abs(self.site.pos[0]-destination.pos[0]) + abs(self.site.pos[1]-destination.pos[1])
@@ -139,8 +183,10 @@ class Plane:
         # 根据起止站点类型添加固定准备时间
         if self.site.code == 'Z':
             time += 1*60  # 加上固定的时间
-        elif destination.code in ['29', '30', '31']:
-            time += 5*60  # 解固+调整姿态+起飞
+        elif destination.code in self.takeoff_site_codes:
+            # Only release/unfix is part of the transport. ZY-S and ZY-F are
+            # explicit operations and account for the remaining four minutes.
+            time += 1*60
         else:
             time += 2*60  # 解固+固定
         self.is_transporting = True
@@ -152,8 +198,8 @@ class Plane:
             # 转运车准备时间比飞机短
             if self.site.code == 'Z':
                 transporter.left_trans_time = time - 1*60
-            elif destination.code in ['29', '30', '31']:
-                transporter.left_trans_time = time - 4*60
+            elif destination.code in self.takeoff_site_codes:
+                transporter.left_trans_time = time
             else:
                 transporter.left_trans_time = time - 2*60
         
@@ -184,15 +230,30 @@ class Plane:
         if self.transporter:
             # self.transporter.finish_transport()
             self.transporter = None
-        # 如果还有剩余作业，重置长占作业（ZY02、ZY03）
-        if not self.is_completed_all_jobs():
-            self.finished_jobs = [item for item in self.finished_jobs if item not in ['ZY02', 'ZY03']]
-            for job_code in ['ZY02', 'ZY03']:
+        preserve_service = self.transport_purpose in {
+            'post_service_relocation',
+            'departure',
+        }
+        # Mid-service relocation invalidates long-occupancy work. Once all
+        # service work is complete, staging/departure transport must not undo
+        # operations that have already been accepted as complete.
+        if not preserve_service and not self.is_completed_all_jobs():
+            self.finished_jobs = [
+                item for item in self.finished_jobs
+                if item not in self.LONG_OCCUPANCY_JOBS
+            ]
+            for job_code in sorted(self.LONG_OCCUPANCY_JOBS):
                 if job_code not in self.left_jobs:
                     self.left_jobs.append(job_code)
         self.is_transporting = False
-    
-    def start_waiting(self, pending_job=None):
+        self.transport_purpose = None
+
+    @property
+    def irreversible_progress_count(self):
+        """Number of first-time completions that relocation cannot reset."""
+        return len(self.ever_finished_jobs.difference(self.LONG_OCCUPANCY_JOBS))
+
+    def start_waiting(self, pending_job=None, transport_purpose=None):
         '''启动飞机等待状态
         
         作用:
@@ -205,6 +266,7 @@ class Plane:
         assert self.is_busy is False and self.is_transporting is False, "Plane must be idle to start waiting."
         self.is_waiting = True
         self.pending_job = pending_job
+        self.pending_transport_purpose = transport_purpose
         self.waiting_time = 0
 
     def finish_waiting(self):
@@ -220,7 +282,30 @@ class Plane:
         assert self.is_waiting is True, "Plane must be waiting to finish waiting."
         self.is_waiting = False
         self.pending_job = None
+        self.pending_transport_purpose = None
         self.waiting_time = 0
+
+    def has_completed_service_jobs(self):
+        """Return whether every selected protection operation is complete."""
+        unfinished = set(self.left_jobs).union(self.current_jobs)
+        return self.service_job_codes.isdisjoint(unfinished)
+
+    def has_started_departure(self):
+        """Return whether at least one explicit departure job has started."""
+        return any(
+            code in self.finished_jobs or code in self.current_jobs
+            for code in self.departure_job_codes
+        )
+
+    def has_completed_departure(self):
+        """Return whether the complete explicit departure sequence finished."""
+        return bool(self.departure_job_codes) and set(
+            self.departure_job_codes
+        ).issubset(self.finished_jobs)
+
+    def mark_departure_staging_decided(self):
+        """Allow at most one post-service stand-selection decision."""
+        self.departure_staging_decided = True
 
     def is_completed_all_jobs(self):
         '''检查飞机是否完成所有作业
@@ -243,6 +328,52 @@ class Plane:
                 plane.start_waiting()
         '''
         return not self.is_busy and not self.is_transporting and not self.is_waiting
+
+    def _next_unfinished_predecessor(self, job_code):
+        """Return a ready-frontier predecessor that must run before ``job_code``.
+
+        Relocation resets the long-occupancy jobs ZY02/ZY03. A previously
+        selected downstream job can therefore become unavailable on arrival.
+        Walking the dependency graph prevents the plane from waiting forever
+        on that downstream job while one of its predecessors is still undone.
+        """
+        visiting = set()
+
+        def visit(code):
+            if code in visiting or code not in self.jobs:
+                return None
+            visiting.add(code)
+            for predecessor in sorted(self.jobs[code].predecessor):
+                if predecessor in self.finished_jobs:
+                    continue
+                nested = visit(predecessor)
+                if nested is not None:
+                    return nested
+                if predecessor in self.left_jobs:
+                    return predecessor
+            return None
+
+        return visit(job_code)
+
+    def _resume_selected_job(self):
+        """Resume the selected job, automatically restoring prerequisites."""
+        if not self.choosed_job:
+            return np.inf
+
+        avail_jobs = self.get_avail_jobs(self.site)
+        if self.choosed_job in avail_jobs:
+            ret = self.choose_job(self.choosed_job)
+            if self.choosed_job in self.current_jobs:
+                self.choosed_job = None
+            return ret
+
+        prerequisite = self._next_unfinished_predecessor(self.choosed_job)
+        pending_job = prerequisite or self.choosed_job
+        if pending_job in avail_jobs:
+            return self.choose_job(pending_job)
+
+        self.start_waiting(pending_job)
+        return np.inf
     
     def update(self, time):
         '''更新飞机状态（时间推进）
@@ -264,18 +395,32 @@ class Plane:
         # 等待状态更新
         if self.is_waiting:
             self.waiting_time += time
+            chosen_job = None
             # 检查是否可以结束等待（有目的地且有可用运输车）
             if self.destination and self.destination != self.site:
                 if self.site.get_avail_transporter() is not None:
+                    transport_purpose = self.pending_transport_purpose
                     self.finish_waiting()
                     self.transporter = self.site.get_avail_transporter()
-                    ret = self.start_transport(self.destination, self.transporter)
+                    ret = self.start_transport(
+                        self.destination,
+                        self.transporter,
+                        purpose=transport_purpose,
+                    )
                     self.destination = None
-            # 检查是否可以结束等待（有选择的作业且可用）
-            elif self.choosed_job and self.choosed_job in self.get_avail_jobs(self.site):
+            # 检查是否可以结束等待（等待的资源已到位，或原选择作业已可用）
+            else:
+                avail_jobs = self.get_avail_jobs(self.site)
+                if self.pending_job and self.pending_job in avail_jobs:
+                    chosen_job = self.pending_job
+                elif not self.pending_job and self.choosed_job and self.choosed_job in avail_jobs:
+                    chosen_job = self.choosed_job
+
+            if self.is_waiting and chosen_job is not None:
                 self.finish_waiting()
-                ret = self.choose_job(self.choosed_job)
-                self.choosed_job = None
+                ret = self.choose_job(chosen_job)
+                if self.choosed_job in self.current_jobs:
+                    self.choosed_job = None
                     
         # 运输状态更新
         elif self.is_transporting:
@@ -286,16 +431,7 @@ class Plane:
                 self.current_avail_jobs = self.get_avail_jobs(self.site)
                 # 运输完成后，如果有预选的作业则立即启动
                 if self.choosed_job:
-                    if self.choosed_job in self.current_avail_jobs:
-                        ret = self.choose_job(self.choosed_job)
-                        self.choosed_job = None
-                    elif 'ZY02' in self.left_jobs:
-                        if 'ZY02' in self.current_avail_jobs:
-                            ret = self.choose_job('ZY02')
-                        else:
-                            self.start_waiting('ZY02')
-                    else:  
-                        self.start_waiting(self.choosed_job)
+                    ret = self._resume_selected_job()
             else:
                 ret = self.left_trans_time
 
@@ -304,17 +440,20 @@ class Plane:
             # 通过站点更新推进作业进度
             ret = self.site.update(time)
             if self.site.is_all_finished():
+                completed_jobs = set(self.current_jobs)
+                new_first_completions = completed_jobs.difference(self.ever_finished_jobs)
+                self.ever_finished_jobs.update(completed_jobs)
                 self.finished_jobs += self.current_jobs
                 self.current_jobs = []
                 self.is_busy = False
+                if new_first_completions.difference(self.LONG_OCCUPANCY_JOBS):
+                    self.relocations_since_progress = 0
+                    self.no_progress_decisions = 0
+                    self.decision_signature_counts.clear()
                 self.current_avail_jobs = self.get_avail_jobs(self.site)
                 # 作业完成后，如果有预选的作业则立即启动
                 if self.choosed_job:
-                    if self.choosed_job in self.get_avail_jobs(self.site):
-                        ret = self.choose_job(self.choosed_job)
-                        self.choosed_job = None
-                    else:
-                        self.start_waiting(self.choosed_job)
+                    ret = self._resume_selected_job()
         return ret
 
     def reset(self):
@@ -342,6 +481,9 @@ class Plane:
         self.choosed_job = None
         self.destination = None
         self.transporter = None
+        self.transport_purpose = None
+        self.pending_transport_purpose = None
+        self.departure_staging_decided = False
         self.current_jobs = []
         self.finished_jobs = []
         
@@ -358,6 +500,13 @@ class Plane:
         # 5. 强化学习 (RL) 动作记忆锚点复位 (极其重要，用于处理冷启动)
         self.last_site_idx = -1
         self.last_job_idx = -1
+        self.ever_finished_jobs = set()
+        self.relocations_since_progress = 0
+        self.total_relocations = 0
+        self.no_progress_decisions = 0
+        self.last_departed_site_code = None
+        self.last_transport_reset_jobs = ()
+        self.decision_signature_counts = {}
         
         # 6. 重置作业清单
         self.left_jobs = list(self.jobs.keys())
