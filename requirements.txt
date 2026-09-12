@@ -4,6 +4,7 @@ torch-geometric>=2.4
 numpy>=1.24,<2.0
 scipy>=1.10
 gymnasium>=0.29
+absl-py>=2.0
 PyYAML>=6.0
 matplotlib>=3.6
 pandas>=2.0
