@@ -132,7 +132,7 @@ class HKBZ_Runner(Runner):
             config.get('release_eval_envs_after_eval', False)
         )
         if config.__contains__("render_envs"):
-            self.render_envs = config['render_envs']
+            self.render_envs = config['render_envs']       
 
         # parameters
         self.env_name = self.all_args.env_name
@@ -292,9 +292,12 @@ class HKBZ_Runner(Runner):
         self.paired_case_baselines = self._load_paired_case_baselines(
             self.paired_case_baseline_path
         )
-        if self.role_event_credit_mode not in {'elapsed', 'critical_path'}:
+        if self.role_event_credit_mode not in {
+            'elapsed', 'critical_path', 'critical_path_v2'
+        }:
             raise ValueError(
-                '--role_event_credit_mode must be elapsed or critical_path.'
+                '--role_event_credit_mode must be elapsed, critical_path, '
+                'or critical_path_v2.'
             )
         if not 0.0 <= self.role_event_credit_uniform_mix <= 1.0:
             raise ValueError(
@@ -495,6 +498,10 @@ class HKBZ_Runner(Runner):
         self.bc_reference_kl_coef = float(
             getattr(self.all_args, 'bc_reference_kl_coef', 0.0)
         )
+        self.bc_reference_checkpoint = str(getattr(
+            self.all_args, 'bc_reference_checkpoint', ''
+        ) or '').strip()
+        self.bc_reference_resolved_path = ''
         self.bc_reference_kl_coef_schedule = self._parse_epoch_schedule(
             getattr(self.all_args, 'bc_reference_kl_coef_schedule', ''),
             'bc_reference_kl_coef_schedule',
@@ -510,6 +517,29 @@ class HKBZ_Runner(Runner):
         self.current_iga_potential_beta = float(
             getattr(self.all_args, 'iga_potential_beta', 0.0)
         )
+        self.counterfactual_baseline_mix_schedule = (
+            self._parse_epoch_schedule(
+                getattr(
+                    self.all_args,
+                    'counterfactual_baseline_mix_schedule',
+                    '',
+                ),
+                'counterfactual_baseline_mix_schedule',
+            )
+        )
+        if any(
+            value > 1.0
+            for value in self.counterfactual_baseline_mix_schedule
+        ):
+            raise ValueError(
+                '--counterfactual_baseline_mix_schedule values must be in '
+                '[0, 1].'
+            )
+        self.current_counterfactual_baseline_mix = float(getattr(
+            self.all_args, 'counterfactual_baseline_mix', 1.0
+        ))
+        if not 0.0 <= self.current_counterfactual_baseline_mix <= 1.0:
+            raise ValueError('--counterfactual_baseline_mix must be in [0, 1].')
         self.bc_reference_target_kl = float(
             getattr(self.all_args, 'bc_reference_target_kl', 0.0)
         )
@@ -860,7 +890,7 @@ class HKBZ_Runner(Runner):
         from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
         # share_observation_space = self.envs.share_observation_space[0] if self.use_centralized_V else self.envs.observation_space[0]
-
+        
         # policy network
         self.policy = Policy(self.all_args, self.ac_config,
                             device = self.device)
@@ -899,7 +929,7 @@ class HKBZ_Runner(Runner):
                     f"[Info] Restored persisted {mode} ValueNorm statistics "
                     "from checkpoint."
                 )
-
+        
         # Deterministic evaluation and supervised-only Stage2 need only the
         # recurrent-state tail shape.  Avoid allocating a multi-gigabyte PPO
         # replay buffer for a stage that can never collect a PPO rollout.
@@ -923,7 +953,7 @@ class HKBZ_Runner(Runner):
 
     @staticmethod
     def _load_paired_case_baselines(path_value):
-        """Load a compact map or verified per-case IGA result directory."""
+        """Load a compact map or verified per-case reference-result directory."""
         if not str(path_value or '').strip():
             return {}
         path = Path(path_value).expanduser().resolve()
@@ -1024,10 +1054,16 @@ class HKBZ_Runner(Runner):
                     '--plane_pair_decoder joint_pair for the common action '
                     'contract.'
                 )
-            if self.plane_bc_pretrain_epochs > 0:
+            if (
+                self.plane_bc_pretrain_epochs > 0
+                and getattr(self, 'baseline_initialization_protocol', '')
+                != 'new_semantics_budget_matched'
+            ):
                 raise ValueError(
                     'Published learning-baseline arms use PPO without the '
-                    'proposed IGA behavior-cloning warm start.'
+                    'proposed IGA behavior-cloning warm start. '
+                    'An explicitly selected P5-aligned runner is required '
+                    'for budget-matched baseline initialization.'
                 )
         resume_stage1 = bool(getattr(self.all_args, 'resume_stage1', False))
         resume_stage2 = bool(getattr(self.all_args, 'resume_stage2', False))
@@ -1357,6 +1393,24 @@ class HKBZ_Runner(Runner):
                 )
         if self.bc_reference_kl_coef < 0.0 or self.bc_reference_target_kl < 0.0:
             raise ValueError("BC-reference KL settings must be non-negative.")
+        reference_enabled = (
+            self.bc_reference_kl_coef > 0.0
+            or self.bc_reference_target_kl > 0.0
+            or any(value > 0.0 for value in self.bc_reference_kl_coef_schedule)
+        )
+        if self.bc_reference_checkpoint:
+            reference_path = Path(
+                self.bc_reference_checkpoint
+            ).expanduser().resolve()
+            if not reference_enabled:
+                raise ValueError(
+                    '--bc_reference_checkpoint requires an enabled '
+                    'BC-reference KL coefficient or monitoring target.'
+                )
+            if not reference_path.is_file():
+                raise FileNotFoundError(reference_path)
+            self.bc_reference_checkpoint = str(reference_path)
+            self.all_args.bc_reference_checkpoint = str(reference_path)
         if self.bc_reference_hard_gate and self.bc_reference_target_kl <= 0.0:
             raise ValueError(
                 "--bc_reference_hard_gate requires a positive "
@@ -3085,6 +3139,15 @@ class HKBZ_Runner(Runner):
             'role_event_credit_uniform_mix': float(
                 self.role_event_credit_uniform_mix
             ),
+            'counterfactual_q_baseline': bool(getattr(
+                self.all_args, 'counterfactual_q_baseline', False
+            )),
+            'counterfactual_baseline_mix': float(
+                self.current_counterfactual_baseline_mix
+            ),
+            'counterfactual_baseline_mix_schedule': list(
+                self.counterfactual_baseline_mix_schedule
+            ),
             'protected_parameter_summary': (
                 self._protected_resource_joint_summary()
                 if hasattr(self, 'policy') else None
@@ -3254,6 +3317,18 @@ class HKBZ_Runner(Runner):
             'role_event_credit_uniform_mix': float(
                 self.role_event_credit_uniform_mix
             ),
+            'counterfactual_q_baseline': bool(getattr(
+                self.all_args, 'counterfactual_q_baseline', False
+            )),
+            'counterfactual_baseline_mix': float(
+                self.current_counterfactual_baseline_mix
+            ),
+            'counterfactual_baseline_mix_schedule': list(
+                self.counterfactual_baseline_mix_schedule
+            ),
+            'actor_grad_clip_mode': str(getattr(
+                self.all_args, 'actor_grad_clip_mode', 'global'
+            )),
             'role_event_gae_lambda': float(getattr(
                 self.all_args, 'role_event_gae_lambda', 1.0
             )),
@@ -3383,6 +3458,27 @@ class HKBZ_Runner(Runner):
             'stage2_checkpoint_summary': stage2_checkpoint_summary,
             'stage2_policy_warmstart': getattr(self, 'stage2_policy_warmstart', None),
             'stage2_policy_warmstart_replay': getattr(self, 'stage2_policy_warmstart_replay', None),
+            'bc_reference_checkpoint': str(getattr(
+                self, 'bc_reference_checkpoint', ''
+            ) or ''),
+            'bc_reference_resolved_path': str(getattr(
+                self, 'bc_reference_resolved_path', ''
+            ) or ''),
+            'paired_case_baseline_path': str(getattr(
+                self, 'paired_case_baseline_path', ''
+            ) or ''),
+            'paired_case_baseline_count': int(len(getattr(
+                self, 'paired_case_baselines', {}
+            ))),
+            'paired_case_baseline_coef': float(getattr(
+                self, 'paired_case_baseline_coef', 0.0
+            )),
+            'paired_case_baseline_scope': str(getattr(
+                self, 'paired_case_baseline_scope', 'returns'
+            )),
+            'cvar_case_metric': str(getattr(
+                self, 'cvar_case_metric', 'cmax'
+            )),
             'epoch': int(getattr(self, 'current_epoch', -1)),
             'shard': int(getattr(self, 'current_shard', -1)),
             'total_num_steps': int(getattr(self, 'total_num_steps', 0)),
@@ -3540,18 +3636,28 @@ class HKBZ_Runner(Runner):
         )
         if not enabled or self.policy.has_bc_reference():
             return
+        explicit_reference = str(
+            getattr(self, 'bc_reference_checkpoint', '') or ''
+        ).strip()
         resource_reference = (
             self.resource_bc_checkpoint
             if self.training_stage == CANONICAL_RESOURCE_JOINT
             and self.resource_bc_checkpoint
             else None
         )
-        if not resource_reference and not self.checkpoint_dir:
+        if not explicit_reference and not resource_reference and not self.checkpoint_dir:
             raise RuntimeError(
                 'BC-reference PPO is enabled but no BC snapshot is available.'
             )
-        checkpoint_path = str(resource_reference or self.checkpoint_dir)
-        if resource_reference:
+        checkpoint_path = str(
+            explicit_reference or resource_reference or self.checkpoint_dir
+        )
+        if explicit_reference:
+            # Stage3 source-relative trust regions must refer to the exact
+            # hand-off checkpoint, not the historical PlaneBC sibling.
+            candidates = [str(Path(explicit_reference).expanduser().resolve())]
+            reference_name = 'checkpoint_ExplicitPolicyReference.pt'
+        elif resource_reference:
             # Resource PPO must stay close to the selected post-DeviceBC
             # policy, not the much earlier Stage1 PlaneBC sibling.
             candidates = [checkpoint_path]
@@ -3575,6 +3681,9 @@ class HKBZ_Runner(Runner):
             )
         payload = torch.load(reference_path, map_location='cpu')
         self.policy.capture_bc_reference(payload['model'])
+        self.bc_reference_resolved_path = str(
+            Path(reference_path).expanduser().resolve()
+        )
         local_reference_path = os.path.join(
             self.save_dir, reference_name
         )
@@ -3588,7 +3697,10 @@ class HKBZ_Runner(Runner):
                 '[Info] Copied the BC reference into the current run for '
                 f'resumable PPO: {local_reference_path}.'
             )
-        print(f'[Info] Restored frozen BC reference from {reference_path}.')
+        print(
+            '[Info] Restored frozen BC reference from '
+            f'{self.bc_reference_resolved_path}.'
+        )
 
     @staticmethod
     def _parse_epoch_schedule(raw, name):
@@ -3631,6 +3743,20 @@ class HKBZ_Runner(Runner):
         shared_lr_metrics = self.policy.set_shared_actor_lr_scale(
             shared_actor_lr_scale
         )
+        counterfactual_mix = self._epoch_schedule_value(
+            self.counterfactual_baseline_mix_schedule,
+            episode,
+            getattr(self.all_args, 'counterfactual_baseline_mix', 1.0),
+        )
+        if not 0.0 <= counterfactual_mix <= 1.0:
+            raise RuntimeError(
+                'Scheduled counterfactual baseline mix left [0, 1].'
+            )
+        self.current_counterfactual_baseline_mix = float(
+            self.policy.set_counterfactual_baseline_mix(
+                counterfactual_mix
+            )
+        )
         observed = self.envs.call('set_iga_potential_beta', potential_beta)
         if any(not np.isclose(float(value), potential_beta) for value in observed):
             raise RuntimeError('Training workers rejected potential-beta schedule.')
@@ -3655,6 +3781,9 @@ class HKBZ_Runner(Runner):
             iga_potential_beta=float(potential_beta),
             bc_reference_kl_coef=float(bc_kl_coef),
             resource_wait_dual_value=float(self.resource_wait_dual_value),
+            counterfactual_baseline_mix=float(
+                self.current_counterfactual_baseline_mix
+            ),
             **shared_lr_metrics,
         )
         print(
@@ -3662,6 +3791,8 @@ class HKBZ_Runner(Runner):
             f'iga_potential_beta={potential_beta:.6g} '
             f'bc_reference_kl_coef={bc_kl_coef:.6g} '
             f'resource_wait_dual={self.resource_wait_dual_value:.6g} '
+            f'counterfactual_mix='
+            f'{self.current_counterfactual_baseline_mix:.6g} '
             f'shared_lr_scale={shared_actor_lr_scale:.6g} '
             f"shared_lr={shared_lr_metrics['shared_actor_lr']:.6g}.",
             flush=True,
@@ -3700,10 +3831,10 @@ class HKBZ_Runner(Runner):
         )
         return self.resource_wait_dual_value
 
-    def run(self):
+    def run(self):   
         from onpolicy.utils.stage2_freeze_guard import guard_training_stage
         guard_training_stage(self.training_stage)
-
+        
         start = time.time()
         episodes = self.num_episodes
         self.total_num_steps = int(self.resume_total_num_steps)
@@ -4079,9 +4210,9 @@ class HKBZ_Runner(Runner):
 
         first_episode = int(self.resume_epoch) if exact_resume else 0
         pbar = tqdm(range(first_episode, episodes),
-              desc="Training",
-              unit="episode",
-              total=episodes,
+              desc="Training",    
+              unit="episode",     
+              total=episodes,       
               initial=first_episode,
               ncols=160)
         for episode in pbar:
@@ -4181,13 +4312,14 @@ class HKBZ_Runner(Runner):
                 self.current_shard = shard_idx
                 self._report_progress('shard_started', total_shards=int(self.num_envs))
                 self.warmup()
+                self.policy.reset_counterfactual_diagnostics()
                 training_rewards = []
                 rollout_steps = 0
                 env_done_flags = np.zeros(self.n_rollout_threads, dtype=bool)
                 for step in range(self.episode_length):
                     # Sample actions
                     values, actions, action_log_probs, rnn_states, policy_masks = self.collect(step)
-
+                        
                     # Obser reward and next obs
                     obs, rewards, dones, infos = self.envs.step(actions)
 
@@ -4290,6 +4422,9 @@ class HKBZ_Runner(Runner):
                     self.adaptive_actor_min_step_completion,
                 )
                 train_infos.update(lr_decision)
+                train_infos.update(
+                    self.policy.consume_counterfactual_diagnostics()
+                )
                 train_infos['actor_lr_incomplete_downshift'] = 0.0
                 if self.adaptive_actor_kl and actor_update_enabled:
                     if lr_decision['actor_lr_update_eligible'] > 0.0:
@@ -4385,7 +4520,7 @@ class HKBZ_Runner(Runner):
                         'resource_predicted_lateness_seconds_mean'
                     ] = self.last_resource_predicted_lateness_mean
                     train_infos['team_cycle_count'] = float(self.last_team_cycle_count)
-
+                
                 self.total_num_steps += self.n_rollout_threads * rollout_steps
                 self.log_train(train_infos, self.total_num_steps)
                 if self.team_return_mode:
@@ -4498,6 +4633,66 @@ class HKBZ_Runner(Runner):
                     ),
                     actor_update_health=self._actor_update_health_snapshot(),
                     actor_grad_norm=float(train_infos.get('actor_grad_norm', 0.0)),
+                    actor_grad_norm_clipped=float(train_infos.get(
+                        'actor_grad_norm_clipped', 0.0
+                    )),
+                    actor_grad_clip_applied=float(train_infos.get(
+                        'actor_grad_clip_applied', 0.0
+                    )),
+                    actor_group_grad_norms={
+                        group: {
+                            'raw': float(train_infos.get(
+                                f'actor_{group}_grad_norm', 0.0
+                            )),
+                            'clipped': float(train_infos.get(
+                                f'actor_{group}_grad_norm_clipped', 0.0
+                            )),
+                            'clip_applied': float(train_infos.get(
+                                f'actor_{group}_grad_clip_applied', 0.0
+                            )),
+                        }
+                        for group in (
+                            'shared_encoder', 'plane_actor',
+                            'device_actor', 'transporter_actor',
+                        )
+                    },
+                    counterfactual_baseline_mix=float(train_infos.get(
+                        'counterfactual_baseline_mix',
+                        self.current_counterfactual_baseline_mix,
+                    )),
+                    counterfactual_topk_mass_count=float(train_infos.get(
+                        'counterfactual_topk_mass_count', 0.0
+                    )),
+                    counterfactual_topk_mass_mean=float(train_infos.get(
+                        'counterfactual_topk_mass_mean', 0.0
+                    )),
+                    counterfactual_topk_mass_min=float(train_infos.get(
+                        'counterfactual_topk_mass_min', 0.0
+                    )),
+                    counterfactual_topk_mass_p10=float(train_infos.get(
+                        'counterfactual_topk_mass_p10', 0.0
+                    )),
+                    counterfactual_topk_mass_target_fraction=float(
+                        train_infos.get(
+                            'counterfactual_topk_mass_target_fraction', 0.0
+                        )
+                    ),
+                    role_sequential_macro_steps=float(train_infos.get(
+                        'role_sequential_macro_steps', 0.0
+                    )),
+                    role_sequential_min_ess=float(train_infos.get(
+                        'role_sequential_min_ess', 1.0
+                    )),
+                    actor_optimizer_substeps=float(train_infos.get(
+                        'actor_optimizer_substeps', 0.0
+                    )),
+                    shared_encoder_frozen=bool(freeze_shared),
+                    cuda_peak_allocated_gib=float(train_infos.get(
+                        'cuda_peak_allocated_gib', 0.0
+                    )),
+                    cuda_peak_reserved_gib=float(train_infos.get(
+                        'cuda_peak_reserved_gib', 0.0
+                    )),
                     post_update_probe_approx_kl=float(
                         train_infos.get('post_update_probe_approx_kl', 0.0)
                     ),
@@ -4513,6 +4708,34 @@ class HKBZ_Runner(Runner):
                             self.bc_reference_kl_coef,
                         )
                     ),
+                    post_update_bc_reference_approx_kl=float(
+                        train_infos.get(
+                            'post_update_bc_reference_approx_kl', 0.0
+                        )
+                    ),
+                    adaptive_bc_reference_enabled=bool(
+                        train_infos.get(
+                            'adaptive_bc_reference_enabled', 0.0
+                        )
+                    ),
+                    paired_case_delta_mean=float(
+                        train_infos.get(
+                            'paired_case_delta_mean',
+                            self.last_paired_case_delta_mean,
+                        )
+                    ),
+                    cvar_policy_enabled=bool(train_infos.get(
+                        'cvar_policy_enabled', 0.0
+                    )),
+                    cvar_tail_case_count=float(train_infos.get(
+                        'cvar_tail_case_count', 0.0
+                    )),
+                    cvar_mass_conservation_error=float(train_infos.get(
+                        'cvar_mass_conservation_error', 0.0
+                    )),
+                    cvar_case_metric_paired_delta=bool(train_infos.get(
+                        'cvar_case_metric_paired_delta', 0.0
+                    )),
                     post_update_plane_approx_kl=float(
                         train_infos.get('post_update_plane_approx_kl', 0.0)
                     ),
@@ -4906,7 +5129,8 @@ class HKBZ_Runner(Runner):
                     event_credit_weights = None
                     if self.role_event_credit_mode != 'elapsed':
                         event_credit_payloads = self.envs.call(
-                            'get_role_event_credit_weights'
+                            'get_role_event_credit_weights',
+                            self.role_event_credit_mode,
                         )
                         event_credit_weights = (
                             self._role_event_credit_tensor(
@@ -5110,7 +5334,7 @@ class HKBZ_Runner(Runner):
         self.buffer.potential_values[0] = self._graph_potential_values(obs)
 
         self.buffer.rnn_states[0] = np.zeros((self.n_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
-
+        
         self.buffer.masks[0] = np.ones((self.n_rollout_threads, self.num_agents), dtype=np.float32).reshape(self.n_rollout_threads, self.num_agents, 1)
         self.buffer.masks[0][dones == True] = np.zeros(((dones == True).sum(), 1), dtype=np.float32)
 
@@ -9152,7 +9376,7 @@ class HKBZ_Runner(Runner):
 
         active_masks = np.zeros((self.n_rollout_threads, self.num_agents), dtype=np.float32)
         active_masks[infos['active_agents'] == True] = np.ones(((infos['active_agents'] == True).sum()), dtype=np.float32)
-
+        
         self.buffer.graph_insert(
             obs,
             rnn_states,
@@ -10057,7 +10281,7 @@ class HKBZ_Runner(Runner):
     def render(self):
         """Visualize the env."""
         envs = self.envs
-
+        
         all_frames = []
         for episode in range(self.all_args.render_episodes):
             obs = envs.reset()
@@ -10074,7 +10298,7 @@ class HKBZ_Runner(Runner):
 
 
             episode_rewards = []
-
+            
             for step in range(self.episode_length):
                 calc_start = time.time()
 
@@ -10324,8 +10548,20 @@ class HKBZ_Runner(Runner):
                 )),
                 'entropy_coef': float(self.all_args.entropy_coef),
                 'max_grad_norm': float(self.all_args.max_grad_norm),
+                'actor_grad_clip_mode': str(getattr(
+                    self.all_args, 'actor_grad_clip_mode', 'global'
+                )),
+                'actor_group_max_grad_norm': dict(
+                    self.trainer.actor_group_max_grad_norm
+                ),
                 'bc_reference_kl_coef': float(
                     self.bc_reference_kl_coef
+                ),
+                'bc_reference_checkpoint': str(
+                    self.bc_reference_checkpoint
+                ),
+                'bc_reference_resolved_path': str(
+                    self.bc_reference_resolved_path
                 ),
                 'bc_reference_kl_coef_schedule': list(
                     self.bc_reference_kl_coef_schedule
@@ -10473,6 +10709,15 @@ class HKBZ_Runner(Runner):
                 'role_event_credit_mode': self.role_event_credit_mode,
                 'role_event_credit_uniform_mix': float(
                     self.role_event_credit_uniform_mix
+                ),
+                'counterfactual_q_baseline': bool(getattr(
+                    self.all_args, 'counterfactual_q_baseline', False
+                )),
+                'counterfactual_baseline_mix': float(
+                    self.current_counterfactual_baseline_mix
+                ),
+                'counterfactual_baseline_mix_schedule': list(
+                    self.counterfactual_baseline_mix_schedule
                 ),
                 'role_event_gae_lambda': float(getattr(
                     self.all_args, 'role_event_gae_lambda', 1.0
@@ -10797,6 +11042,8 @@ class HKBZ_Runner(Runner):
             ),
             'plane_bc_tail_final_weight': self.plane_bc_tail_final_weight,
             'bc_reference_kl_coef': self.bc_reference_kl_coef,
+            'bc_reference_checkpoint': self.bc_reference_checkpoint,
+            'bc_reference_resolved_path': self.bc_reference_resolved_path,
             'bc_reference_target_kl': self.bc_reference_target_kl,
             'bc_reference_hard_gate': self.bc_reference_hard_gate,
             'adaptive_bc_reference_kl': self.adaptive_bc_reference_kl,

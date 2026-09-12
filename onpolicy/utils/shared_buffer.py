@@ -499,7 +499,8 @@ class SharedReplayBuffer(object):
         terminal bootstrap is always zero and the complete terminal team-cost
         residual is attached to the last event on every role clock.
 
-        ``critical_path`` credit changes only the decomposition of the fixed
+        ``critical_path`` and ``critical_path_v2`` credit change only the
+        decomposition of the fixed
         role return: post-episode non-negative event scores receive
         ``1-uniform_mix`` of the elapsed Cmax cost, while ``uniform_mix`` keeps
         the physical-time decomposition as a variance floor.  The total is
@@ -532,9 +533,12 @@ class SharedReplayBuffer(object):
         if not np.isfinite(coef) or coef <= 0.0:
             raise ValueError('Role-event cmax_coef must be finite and positive.')
         event_credit_mode = str(event_credit_mode)
-        if event_credit_mode not in {'elapsed', 'critical_path'}:
+        if event_credit_mode not in {
+            'elapsed', 'critical_path', 'critical_path_v2'
+        }:
             raise ValueError(
-                'event_credit_mode must be elapsed or critical_path.'
+                'event_credit_mode must be elapsed, critical_path, or '
+                'critical_path_v2.'
             )
         event_credit_uniform_mix = float(event_credit_uniform_mix)
         if (
@@ -683,7 +687,9 @@ class SharedReplayBuffer(object):
                     )
                 )
                 distribution = elapsed_distribution
-                if event_credit_mode == 'critical_path':
+                if event_credit_mode in {
+                    'critical_path', 'critical_path_v2'
+                }:
                     credit_sequence_count += 1
                     raw_credit = np.asarray([
                         float(event_credit_weights[
@@ -812,6 +818,9 @@ class SharedReplayBuffer(object):
             'gae_lambda': float(gae_lambda),
             'event_credit_mode_critical_path': float(
                 event_credit_mode == 'critical_path'
+            ),
+            'event_credit_mode_critical_path_v2': float(
+                event_credit_mode == 'critical_path_v2'
             ),
             'event_credit_uniform_mix': float(event_credit_uniform_mix),
             'event_credit_sequence_count': int(credit_sequence_count),

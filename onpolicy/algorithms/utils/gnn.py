@@ -133,7 +133,7 @@ class HeteroGraphEncoder(Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, data: HeteroData):
+    def _prepare_graph(self, data: HeteroData):
         """
         前向传播
         """
@@ -181,6 +181,11 @@ class HeteroGraphEncoder(Module):
             edge_index_dict[('request', 'rev_can_serve', 'device')] = edge_index_dict[('device', 'can_serve', 'request')].flip([0])
             edge_attr_dict[('request', 'rev_can_serve', 'device')] = edge_attr_dict[('device', 'can_serve', 'request')]
 
+        return x_dict, edge_index_dict, edge_attr_dict
+
+    def _message_pass(self, x_dict, edge_index_dict, edge_attr_dict):
+        # Never modify a shared prefix's dictionary when executing private tails.
+        x_dict = dict(x_dict)
         # 3. 通过 HeteroConv 层传递消息
         for conv, norm_op, norm_site, norm_dev, norm_req in zip(self.convs, self.norms_op, self.norms_site, self.norms_dev, self.norms_req):
             # out_dict 将包含本次卷积更新后的各类节点特征
@@ -220,6 +225,9 @@ class HeteroGraphEncoder(Module):
                     neginf=-1e4,
                 )
 
+        return x_dict
+
+    def _readout(self, data, x_dict):
         # 4. 全局特征提取 (Global Readout)
         # 获取 Batch index (处理单独输入 1 张图 和 PPO Batch 输入 n 张图兼容)
         op_batch = data['operation'].batch if hasattr(data['operation'], 'batch') else None
@@ -258,7 +266,9 @@ class HeteroGraphEncoder(Module):
                 return zero, zero.clone()
             return (
                 global_mean_pool(x, batch, size=batch_size),
-                global_max_pool(x, batch, size=batch_size),
+                # Opt-in Stage3 numerical contract; baseline/legacy callers
+                # retain their existing backend and state_dict unchanged.
+                getattr(self, '_stage3_max_pool', global_max_pool)(x, batch, size=batch_size),
             )
 
         op_presence = data['operation'].x[:, -1] > 0.5
@@ -345,3 +355,8 @@ class HeteroGraphEncoder(Module):
             "device_nodes": torch.nan_to_num(dev_dense, nan=0.0, posinf=1e4, neginf=-1e4),
             "request_nodes": torch.nan_to_num(req_dense, nan=0.0, posinf=1e4, neginf=-1e4)
         }
+
+    def forward(self, data: HeteroData):
+        # Public behavior and state_dict names remain unchanged for Stage1/2.
+        nodes, edges, attributes = self._prepare_graph(data)
+        return self._readout(data, self._message_pass(nodes, edges, attributes))

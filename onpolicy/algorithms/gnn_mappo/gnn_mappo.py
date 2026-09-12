@@ -65,7 +65,31 @@ class MAPPO_Trainer():
         self.data_chunk_length = args.data_chunk_length
         self.value_loss_coef = args.value_loss_coef
         self.entropy_coef = args.entropy_coef
-        self.max_grad_norm = args.max_grad_norm       
+        self.max_grad_norm = args.max_grad_norm
+        self.actor_grad_clip_mode = str(getattr(
+            args, 'actor_grad_clip_mode', 'global'
+        ))
+        if self.actor_grad_clip_mode not in {'global', 'per_group'}:
+            raise ValueError(
+                '--actor_grad_clip_mode must be global or per_group.'
+            )
+        self.actor_group_max_grad_norm = {}
+        for group_name, argument_name in (
+            ('shared_encoder', 'shared_actor_max_grad_norm'),
+            ('plane_actor', 'plane_actor_max_grad_norm'),
+            ('device_actor', 'device_actor_max_grad_norm'),
+            ('transporter_actor', 'transporter_actor_max_grad_norm'),
+        ):
+            configured = float(getattr(args, argument_name, -1.0))
+            resolved = (
+                float(self.max_grad_norm) if configured <= 0.0 else configured
+            )
+            if not np.isfinite(resolved) or resolved <= 0.0:
+                raise ValueError(
+                    f'--{argument_name} must be positive or <=0 to inherit '
+                    '--max_grad_norm.'
+                )
+            self.actor_group_max_grad_norm[group_name] = resolved
         self.huber_delta = args.huber_delta
         self.n_rollout_threads = args.n_rollout_threads
 
@@ -1199,13 +1223,20 @@ class MAPPO_Trainer():
 
         if not self._actor_has_accumulated_grad():
             self.policy.actor_optimizer.zero_grad()
-            return {
+            metrics = {
                 'actor_grad_norm': 0.0,
                 'actor_grad_norm_clipped': 0.0,
                 'actor_grad_clip_applied': 0.0,
                 'actor_optimizer_steps': 0.0,
                 'actor_update_skipped': 1.0,
             }
+            for group_name in self.actor_group_max_grad_norm:
+                metrics.update({
+                    f'actor_{group_name}_grad_norm': 0.0,
+                    f'actor_{group_name}_grad_norm_clipped': 0.0,
+                    f'actor_{group_name}_grad_clip_applied': 0.0,
+                })
+            return metrics
         grad_divisor = float(grad_divisor)
         if not np.isfinite(grad_divisor) or grad_divisor <= 0.0:
             raise ValueError('Actor gradient divisor must be finite and positive.')
@@ -1225,22 +1256,14 @@ class MAPPO_Trainer():
             self._snapshot_actor_step_state(actor_snapshot)
             if keep_atomic_state else None
         )
-        if self._use_max_grad_norm:
-            actor_grad_norm = nn.utils.clip_grad_norm_(
-                self.policy.ac.actor_param.parameters(), self.max_grad_norm
-            )
-            actor_grad_norm_clipped = torch.clamp(
-                actor_grad_norm.detach(), max=self.max_grad_norm
-            )
-            actor_grad_clip_applied = float(
-                actor_grad_norm.detach().item() > self.max_grad_norm
-            )
-        else:
-            actor_grad_norm = get_gard_norm(
-                self.policy.ac.actor_param.parameters()
-            )
-            actor_grad_norm_clipped = actor_grad_norm
-            actor_grad_clip_applied = 0.0
+        clip_metrics = self._clip_actor_gradients()
+        actor_grad_norm = clip_metrics.pop('actor_grad_norm')
+        actor_grad_norm_clipped = clip_metrics.pop(
+            'actor_grad_norm_clipped'
+        )
+        actor_grad_clip_applied = clip_metrics.pop(
+            'actor_grad_clip_applied'
+        )
 
         if self._last_actor_step_state is not None:
             # Capture the normalized/clipped gradient once.  Every retry is
@@ -1264,6 +1287,7 @@ class MAPPO_Trainer():
             'actor_optimizer_steps': 0.0,
             'actor_update_skipped': 0.0,
         }
+        metrics.update(clip_metrics)
         if np.isfinite(_finite_item(actor_grad_norm)):
             self.policy.actor_optimizer.step()
             metrics['actor_optimizer_steps'] = 1.0
@@ -1272,6 +1296,107 @@ class MAPPO_Trainer():
             metrics['actor_update_skipped'] = 1.0
             self._last_actor_step_state = None
         self.policy.actor_optimizer.zero_grad()
+        return metrics
+
+    @staticmethod
+    def _parameter_grad_norm(parameters):
+        squared = 0.0
+        for parameter in parameters:
+            if parameter.grad is None:
+                continue
+            value = float(parameter.grad.detach().float().norm(2).item())
+            squared += value * value
+        return math.sqrt(squared)
+
+    def _clip_actor_gradients(self):
+        """Clip actor optimizer groups without cross-role norm suppression."""
+        clip_mode = str(getattr(self, 'actor_grad_clip_mode', 'global'))
+        group_limits = dict(getattr(self, 'actor_group_max_grad_norm', {}))
+        groups = []
+        for group_idx, group in enumerate(
+            self.policy.actor_optimizer.param_groups
+        ):
+            name = str(group.get('name', f'group_{group_idx}'))
+            parameters = [
+                parameter for parameter in group['params']
+                if parameter.requires_grad and parameter.grad is not None
+            ]
+            groups.append((name, parameters))
+
+        raw_by_group = {
+            name: self._parameter_grad_norm(parameters)
+            for name, parameters in groups
+        }
+        if self._use_max_grad_norm:
+            if clip_mode == 'per_group':
+                for name, parameters in groups:
+                    if not parameters:
+                        continue
+                    limit = group_limits.get(
+                        name, float(self.max_grad_norm)
+                    )
+                    nn.utils.clip_grad_norm_(parameters, limit)
+            else:
+                parameters = [
+                    parameter
+                    for _, group_parameters in groups
+                    for parameter in group_parameters
+                ]
+                if parameters:
+                    nn.utils.clip_grad_norm_(parameters, self.max_grad_norm)
+
+        clipped_by_group = {
+            name: self._parameter_grad_norm(parameters)
+            for name, parameters in groups
+        }
+        raw_total = math.sqrt(sum(
+            value * value for value in raw_by_group.values()
+        ))
+        clipped_total = math.sqrt(sum(
+            value * value for value in clipped_by_group.values()
+        ))
+        metrics = {
+            'actor_grad_norm': raw_total,
+            'actor_grad_norm_clipped': clipped_total,
+            'actor_grad_clip_applied': float(
+                self._use_max_grad_norm
+                and (
+                    (
+                        clip_mode == 'global'
+                        and raw_total > float(self.max_grad_norm)
+                    )
+                    or (
+                        clip_mode == 'per_group'
+                        and any(
+                            raw_by_group[name]
+                            > group_limits.get(
+                                name, float(self.max_grad_norm)
+                            )
+                            for name, _ in groups
+                        )
+                    )
+                )
+            ),
+        }
+        for name, _ in groups:
+            raw = raw_by_group[name]
+            clipped = clipped_by_group[name]
+            if clip_mode == 'per_group':
+                group_limit = group_limits.get(
+                    name, float(self.max_grad_norm)
+                )
+                group_applied = self._use_max_grad_norm and raw > group_limit
+            else:
+                group_applied = (
+                    self._use_max_grad_norm
+                    and raw > 0.0
+                    and raw_total > float(self.max_grad_norm)
+                )
+            metrics.update({
+                f'actor_{name}_grad_norm': raw,
+                f'actor_{name}_grad_norm_clipped': clipped,
+                f'actor_{name}_grad_clip_applied': float(group_applied),
+            })
         return metrics
 
     def _actor_has_accumulated_grad(self):
@@ -1950,6 +2075,7 @@ class MAPPO_Trainer():
         macro_parameters = self._snapshot_actor_parameters()
         macro_state = self._snapshot_actor_step_state(macro_parameters)
         metrics = defaultdict(float)
+        optimizer_metrics = defaultdict(float)
         valid_any = False
         role_group_names = {
             0: 'plane_actor', 1: 'device_actor', 2: 'transporter_actor'
@@ -1993,6 +2119,13 @@ class MAPPO_Trainer():
                 step = self._perform_actor_optimizer_step(
                     grad_divisor=max(valid_mass, 1e-8)
                 )
+                for key, value in step.items():
+                    optimizer_metrics[key] += value
+                for key, value in step.items():
+                    if key not in {
+                        'actor_optimizer_steps', 'actor_update_skipped'
+                    }:
+                        metrics[key] += value
                 if valid_mass > 0.0 and step.get(
                     'actor_optimizer_steps', 0.0
                 ) <= 0.0:
@@ -2033,6 +2166,13 @@ class MAPPO_Trainer():
                 step = self._perform_actor_optimizer_step(
                     grad_divisor=max(valid_mass, 1e-8)
                 )
+                for key, value in step.items():
+                    optimizer_metrics[key] += value
+                for key, value in step.items():
+                    if key not in {
+                        'actor_optimizer_steps', 'actor_update_skipped'
+                    }:
+                        metrics[key] += value
                 if valid_mass > 0.0 and step.get(
                     'actor_optimizer_steps', 0.0
                 ) <= 0.0:
@@ -2053,7 +2193,17 @@ class MAPPO_Trainer():
             metrics['actor_replay_valid'] = float(valid_any)
             metrics['role_sequential_min_ess'] = float(minimum_ess)
             metrics['role_sequential_macro_steps'] = float(valid_any)
-            return dict(metrics)
+            # The caller needs the optimizer-only contribution separately so
+            # a rejected post-update KL probe can undo its diagnostics along
+            # with the atomic parameter rollback.  Returning the full metric
+            # map here would also erase replay/sample diagnostics that remain
+            # meaningful even when the macro update is rejected.
+            optimizer_metrics['actor_optimizer_steps'] = float(valid_any)
+            optimizer_metrics['actor_update_skipped'] = float(not valid_any)
+            optimizer_metrics['actor_optimizer_substeps'] = float(
+                metrics['actor_optimizer_substeps']
+            )
+            return dict(metrics), dict(optimizer_metrics)
         except Exception:
             self._last_actor_step_state = macro_state
             self.rollback_last_actor_step()
@@ -3085,6 +3235,7 @@ class MAPPO_Trainer():
                     prepared_probe_mass = -1.0
                     valid_group_mass = 0.0
                     group_optimizer_steps = 0.0
+                    step_results = {}
                     prepared_group = list(self._iter_prepared_graph_samples(
                         group, graph_batch_executor
                     ))
@@ -3094,7 +3245,10 @@ class MAPPO_Trainer():
                             (epoch * len(actor_groups)
                              + accumulation_group_idx) % len(role_orders)
                         ]
-                        sequential_results = self._sequential_actor_group_update(
+                        (
+                            sequential_results,
+                            step_results,
+                        ) = self._sequential_actor_group_update(
                             prepared_group,
                             masses,
                             order=role_order,
@@ -3493,6 +3647,18 @@ class MAPPO_Trainer():
             "actor_shared_encoder_update_l2",
             "actor_grad_norm_clipped",
             "actor_grad_clip_applied",
+            "actor_shared_encoder_grad_norm",
+            "actor_shared_encoder_grad_norm_clipped",
+            "actor_shared_encoder_grad_clip_applied",
+            "actor_plane_actor_grad_norm",
+            "actor_plane_actor_grad_norm_clipped",
+            "actor_plane_actor_grad_clip_applied",
+            "actor_device_actor_grad_norm",
+            "actor_device_actor_grad_norm_clipped",
+            "actor_device_actor_grad_clip_applied",
+            "actor_transporter_actor_grad_norm",
+            "actor_transporter_actor_grad_norm_clipped",
+            "actor_transporter_actor_grad_clip_applied",
             "actor_shared_encoder_update_relative",
             "actor_plane_actor_update_l2",
             "actor_plane_actor_update_relative",

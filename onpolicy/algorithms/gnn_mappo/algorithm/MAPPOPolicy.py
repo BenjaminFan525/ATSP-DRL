@@ -68,6 +68,9 @@ class GNN_MAPPOPolicy:
                                    counterfactual_q_min_mass=float(getattr(
                                        args, 'counterfactual_q_min_mass', 0.90
                                    )),
+                                   counterfactual_baseline_mix=float(getattr(
+                                       args, 'counterfactual_baseline_mix', 1.0
+                                   )),
                                    device_policy_head_mode=str(getattr(
                                        args, 'device_policy_head_mode', 'shared'
                                    )),
@@ -257,6 +260,10 @@ class GNN_MAPPOPolicy:
     def _build_inputs(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices,
                       agent_types=None):
         """将 Numpy/List 数据组装成网络所需的 Tensor/Batch"""
+        runtime = getattr(self, 'stage3_execution_cache', None)
+        stage3_prepared = runtime is not None and runtime.active
+        if stage3_prepared:
+            graph_obs = runtime.prepare_graph(graph_obs)
         
         # 1. 图数据自动 Batching (兼容单环境测试与多线程环境收集)
         # A PyG Batch is also a HeteroData instance.  Handle it first or an
@@ -270,7 +277,8 @@ class GNN_MAPPOPolicy:
         elif isinstance(graph_obs, HeteroData):
             graph_obs = Batch.from_data_list([graph_obs])
             
-        graph_obs = graph_obs.to(self.device)
+        if not stage3_prepared:
+            graph_obs = graph_obs.to(self.device)
         
         # 2. 构建输入字典
         data = {
@@ -476,6 +484,15 @@ class GNN_MAPPOPolicy:
         )
         if self.bc_reference_ac is not None:
             self.bc_reference_ac.tau = self.ac.tau
+
+    def set_counterfactual_baseline_mix(self, mix):
+        return self.ac.set_counterfactual_baseline_mix(mix)
+
+    def reset_counterfactual_diagnostics(self):
+        self.ac.reset_counterfactual_diagnostics()
+
+    def consume_counterfactual_diagnostics(self):
+        return self.ac.consume_counterfactual_diagnostics()
 
     def get_actions(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices,
                     deterministic=False, agent_types=None, return_decision_mask=False):

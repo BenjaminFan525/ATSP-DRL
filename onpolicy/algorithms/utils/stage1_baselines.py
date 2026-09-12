@@ -861,6 +861,34 @@ class L2DActor(_PairFeatureActor):
         if not rule_valid[effective_ops].all():
             raise RuntimeError("L2D earliest-finish rule failed to select a site.")
 
+        # Supervised teacher replay trains only L2D's operation policy.  The
+        # teacher's legal site is used for the common sequential mask replay,
+        # not learned as an extra site policy.  This opt-in is scoped by the
+        # Stage-1 BC runner and must never relax ordinary PPO action replay.
+        operation_teacher_replay = bool(getattr(
+            self, "operation_teacher_replay", False
+        ))
+        if operation_teacher_replay:
+            if chosen_op is None or chosen_site is None:
+                raise ValueError("L2D teacher replay requires both action labels.")
+            teacher_ops = chosen_op.long().reshape(-1)
+            teacher_sites = chosen_site.long().reshape(-1)
+            if not (
+                (teacher_ops >= 0) & (teacher_ops < op_count)
+                & (teacher_sites >= 0) & (teacher_sites < site_count)
+            ).all():
+                raise ValueError("L2D teacher action is out of bounds.")
+            teacher_rows = torch.arange(batch_size, device=op_logits.device)
+            if not joint_valid[teacher_rows, teacher_ops, teacher_sites].all():
+                raise ValueError("L2D teacher action violates the environment mask.")
+            self.teacher_site_override_count = int(getattr(
+                self, "teacher_site_override_count", 0
+            )) + int((
+                rule_site[teacher_rows, teacher_ops] != teacher_sites
+            ).sum().item())
+            rule_site = rule_site.clone()
+            rule_site[teacher_rows, teacher_ops] = teacher_sites
+
         flat_log_probs = op_logits.new_full(
             (batch_size, op_count * site_count), float("-inf")
         )
@@ -868,7 +896,10 @@ class L2DActor(_PairFeatureActor):
         operations = torch.arange(op_count, device=op_nodes.device).unsqueeze(0)
         flat_ids = operations * site_count + rule_site
         flat_log_probs[rows.expand_as(flat_ids), flat_ids] = op_log_probs
-        if chosen_op is not None and chosen_site is not None:
+        if (
+            chosen_op is not None and chosen_site is not None
+            and not operation_teacher_replay
+        ):
             replay_site = rule_site.gather(1, chosen_op.long().unsqueeze(-1)).squeeze(-1)
             if not torch.equal(replay_site, chosen_site.long().reshape(-1)):
                 raise RuntimeError(

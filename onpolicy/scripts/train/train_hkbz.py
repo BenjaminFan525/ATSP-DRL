@@ -16,8 +16,8 @@ import threading
 import math
 from collections import Counter
 from datetime import datetime
-curr_path = os.path.dirname(os.path.abspath(__file__))
-parent_path = os.path.dirname(os.path.dirname(os.path.dirname(curr_path)))
+curr_path = os.path.dirname(os.path.abspath(__file__)) 
+parent_path = os.path.dirname(os.path.dirname(os.path.dirname(curr_path))) 
 
 sys.path.append(parent_path)
 
@@ -362,7 +362,7 @@ def make_train_env(all_args, *, case_records=None, dataset_override=None, evalua
     env_config_base['plane_cycle_penalty'] = all_args.plane_cycle_penalty
     env_config_base['use_domain_rand'] = bool(all_args.train_domain_rand)
     env_config_base['global_feature_mode'] = all_args.global_feature_mode
-
+            
     dataset_dir = str(dataset_override or env_config_base.get('dataset_dir', 'airport_dataset'))
     if evaluation:
         if case_records is None or Path(dataset_dir).name != 'tune':
@@ -373,10 +373,10 @@ def make_train_env(all_args, *, case_records=None, dataset_override=None, evalua
                             'joint_iga_teacher_index'):
             env_config_base[teacher_key] = ''
     case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
-
+    
     if not case_dirs:
         raise ValueError(f"🚨 错误：在目录 '{dataset_dir}' 中没有找到任何算例文件夹！请先生成数据集。")
-
+        
     max_train_cases = max(0, int(getattr(all_args, 'max_train_cases', 0)))
     cases_per_epoch = max(
         0, int(getattr(all_args, 'train_sampling_size', 0))
@@ -465,7 +465,7 @@ def make_train_env(all_args, *, case_records=None, dataset_override=None, evalua
             "n_rollout_threads cannot exceed the number of selected training cases: "
             f"threads={all_args.n_rollout_threads}, cases={len(case_dirs)}"
         )
-
+    
     # 将整个数据集等分为 n_rollout_threads 份
     split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_rollout_threads)]
     # ====================================================================
@@ -474,7 +474,7 @@ def make_train_env(all_args, *, case_records=None, dataset_override=None, evalua
         def init_env():
             # 获取分配给当前 rank 的算例路径列表
             rank_case_dirs = split_case_dirs[rank]
-
+            
             # 为当前环境构建配置列表
             config_list = []
             for case_dir in rank_case_dirs:
@@ -592,7 +592,7 @@ def make_eval_env(all_args):
     env_config_base['plane_cycle_penalty'] = all_args.plane_cycle_penalty
     env_config_base['use_domain_rand'] = False
     env_config_base['global_feature_mode'] = all_args.global_feature_mode
-
+            
     dataset_dir = str(
         getattr(all_args, 'eval_dataset_dir', '')
         or env_config_base.get(
@@ -601,7 +601,7 @@ def make_eval_env(all_args):
         )
     )
     all_case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
-
+    
     if not all_case_dirs:
         raise ValueError(f"🚨 错误：在评估目录 '{dataset_dir}' 中没有找到任何算例文件夹！")
 
@@ -637,7 +637,7 @@ def make_eval_env(all_args):
             "n_eval_rollout_threads cannot exceed the number of selected validation cases: "
             f"threads={all_args.n_eval_rollout_threads}, cases={len(case_dirs)}"
         )
-
+    
     # 将评估数据集等分为 n_eval_rollout_threads 份
     split_case_dirs = [list(a) for a in np.array_split(case_dirs, all_args.n_eval_rollout_threads)]
     # ====================================================================
@@ -645,7 +645,7 @@ def make_eval_env(all_args):
     def get_env_fn(rank):
         def init_env():
             rank_case_dirs = split_case_dirs[rank]
-
+            
             config_list = []
             for case_dir in rank_case_dirs:
                 config = copy.deepcopy(env_config_base)
@@ -660,7 +660,7 @@ def make_eval_env(all_args):
             env.seed(all_args.seed * 50000 + rank * 10000)
             env.use_domain_rand = False  # 评估时严格关闭域随机化
             return env
-        return init_env
+        return init_env        
 
     return (
         GraphSubprocVecEnv(
@@ -674,8 +674,8 @@ def make_eval_env(all_args):
 def parse_args(args, parser):
     parser.add_argument('--scenario_name', type=str,
                         default='simple', help="Which scenario to run on")
-    parser.add_argument('--ac_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/ac.yaml', help="Path to the ac config file")
-    parser.add_argument('--env_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/env.yaml', help="Path to the environment config file")
+    parser.add_argument('--ac_config', type=str, default=str(Path(parent_path) / 'onpolicy/config/ac.yaml'), help="Path to the ac config file")
+    parser.add_argument('--env_config', type=str, default=str(Path(parent_path) / 'onpolicy/config/env.yaml'), help="Path to the environment config file")
 
     all_args = parser.parse_known_args(args)[0]
     if (all_args.stage2_frozen_manifest
@@ -786,6 +786,10 @@ def main(args):
     for flag, raw in (
         ('--iga_potential_beta_schedule', all_args.iga_potential_beta_schedule),
         ('--bc_reference_kl_coef_schedule', all_args.bc_reference_kl_coef_schedule),
+        (
+            '--counterfactual_baseline_mix_schedule',
+            all_args.counterfactual_baseline_mix_schedule,
+        ),
         ('--plane_bc_dagger_schedule', all_args.plane_bc_dagger_schedule),
         ('--device_bc_dagger_schedule', all_args.device_bc_dagger_schedule),
         (
@@ -803,8 +807,10 @@ def main(args):
             raise ValueError(f'{flag} must be a comma-separated float list.') from error
         if any(not np.isfinite(value) or value < 0.0 for value in values):
             raise ValueError(f'{flag} values must be finite and non-negative.')
-        if 'dagger' in flag and any(value > 1.0 for value in values):
-            raise ValueError(f'{flag} teacher rates must not exceed 1.')
+        if (
+            'dagger' in flag or 'counterfactual_baseline_mix' in flag
+        ) and any(value > 1.0 for value in values):
+            raise ValueError(f'{flag} values must not exceed 1.')
     if all_args.device_bc_teacher == 'iga':
         teacher_dir = Path(all_args.resource_iga_teacher_dir).expanduser()
         teacher_index = Path(all_args.resource_iga_teacher_index).expanduser()

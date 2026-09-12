@@ -595,6 +595,16 @@ def get_config():
         ),
     )
     parser.add_argument(
+        "--bc_reference_checkpoint",
+        type=str,
+        default="",
+        help=(
+            "optional explicit checkpoint used as the immutable policy "
+            "reference for BC-reference KL; when empty, retain the legacy "
+            "post-BC sibling-checkpoint resolution"
+        ),
+    )
+    parser.add_argument(
         "--bc_reference_kl_coef_schedule",
         type=str,
         default="",
@@ -652,6 +662,30 @@ def get_config():
                         action='store_false', default=True, help="by default, use max norm of gradients. If set, do not use.")
     parser.add_argument("--max_grad_norm", type=float, default=0.5,
                         help='max norm of gradients (default: 0.5)')
+    parser.add_argument(
+        "--actor_grad_clip_mode", type=str, default="global",
+        choices=["global", "per_group"],
+        help=(
+            "clip all actor gradients together (global) or independently "
+            "clip the shared encoder and each role head (per_group)"
+        ),
+    )
+    parser.add_argument(
+        "--shared_actor_max_grad_norm", type=float, default=-1.0,
+        help="shared-encoder actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--plane_actor_max_grad_norm", type=float, default=-1.0,
+        help="plane-head actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--device_actor_max_grad_norm", type=float, default=-1.0,
+        help="ordinary-device-head actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--transporter_actor_max_grad_norm", type=float, default=-1.0,
+        help="transporter-head actor clip; <=0 inherits --max_grad_norm",
+    )
     parser.add_argument("--use_gae", action='store_false',
                         default=True, help='use generalized advantage estimation')
     parser.add_argument("--gamma", type=float, default=1.00,
@@ -1715,11 +1749,14 @@ def get_config():
     )
     parser.add_argument(
         '--role_event_credit_mode', type=str, default='elapsed',
-        choices=['elapsed', 'critical_path'],
+        choices=['elapsed', 'critical_path', 'critical_path_v2'],
         help=(
             'elapsed keeps the exact physical-time reward decomposition; '
             'critical_path redistributes the same role return over audited '
-            'post-episode Cmax-frontier and resource-lateness event scores'
+            'post-episode Cmax-frontier and resource-lateness event scores; '
+            'critical_path_v2 additionally gates resource delay by terminal '
+            'slack and distinguishes blocking, avoidable wait, and rendezvous '
+            'synchronization'
         ),
     )
     parser.add_argument(
@@ -1746,6 +1783,20 @@ def get_config():
         help=(
             'diagnostic target for probability mass represented by the '
             'counterfactual top-k action set'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_baseline_mix', type=float, default=1.0,
+        help=(
+            'multiplier in [0,1] applied to the rollout counterfactual Q '
+            'expectation; replayed chosen-action Q targets are unchanged'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_baseline_mix_schedule', type=str, default='',
+        help=(
+            'optional comma-separated per-epoch counterfactual baseline mix; '
+            'the last value is held for later epochs'
         ),
     )
     parser.add_argument(
@@ -2038,8 +2089,8 @@ def get_config():
     parser.add_argument(
         '--paired_case_baseline_dir', type=str, default='',
         help=(
-            'directory of verified per-case IGA JSON files used as a '
-            'variance-reducing paired terminal baseline'
+            'compact JSON map or directory of verified per-case reference '
+            'results used as a variance-reducing paired terminal baseline'
         ),
     )
     parser.add_argument(

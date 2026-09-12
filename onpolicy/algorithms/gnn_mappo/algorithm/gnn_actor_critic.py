@@ -250,6 +250,7 @@ class GNN_Actor_Critic(nn.Module):
                  stage1_baseline='proposed',
                  central_team_critic=False, counterfactual_q_baseline=False,
                  counterfactual_q_topk=8, counterfactual_q_min_mass=0.90,
+                 counterfactual_baseline_mix=1.0,
                  device_policy_head_mode='shared',
                  ordinary_device_type_count=10,
                  device_timing_head=False,
@@ -280,6 +281,14 @@ class GNN_Actor_Critic(nn.Module):
         self.counterfactual_q_baseline = bool(counterfactual_q_baseline)
         self.counterfactual_q_topk = int(counterfactual_q_topk)
         self.counterfactual_q_min_mass = float(counterfactual_q_min_mass)
+        self.counterfactual_baseline_mix = float(counterfactual_baseline_mix)
+        self._counterfactual_represented_masses = []
+        if self.counterfactual_q_topk < 1:
+            raise ValueError('counterfactual_q_topk must be positive.')
+        if not 0.0 <= self.counterfactual_q_min_mass <= 1.0:
+            raise ValueError('counterfactual_q_min_mass must be in [0, 1].')
+        if not 0.0 <= self.counterfactual_baseline_mix <= 1.0:
+            raise ValueError('counterfactual_baseline_mix must be in [0, 1].')
         self.device_policy_head_mode = str(device_policy_head_mode)
         self.ordinary_device_type_count = int(ordinary_device_type_count)
         self.device_timing_head = bool(device_timing_head)
@@ -892,9 +901,64 @@ class GNN_Actor_Critic(nn.Module):
             probabilities, k=topk, dim=-1
         )
         represented_mass = top_probabilities.sum(dim=-1, keepdim=True)
+        # Keep only tiny detached tensors until the enclosing rollout shard is
+        # complete.  This avoids a GPU synchronization on every environment
+        # decision while still exposing top-k coverage as an auditable metric.
+        if not hasattr(self, '_counterfactual_represented_masses'):
+            self._counterfactual_represented_masses = []
+        self._counterfactual_represented_masses.append(
+            represented_mass.detach().reshape(-1)
+        )
         weights = top_probabilities / represented_mass.clamp_min(1e-12)
         q_values = evaluate(top_actions)
-        return (q_values * weights).sum(dim=-1)
+        return (
+            float(getattr(self, 'counterfactual_baseline_mix', 1.0))
+            * (q_values * weights).sum(dim=-1)
+        )
+
+    def set_counterfactual_baseline_mix(self, mix):
+        """Set rollout control-variate strength without changing Q targets."""
+        mix = float(mix)
+        if not np.isfinite(mix) or not 0.0 <= mix <= 1.0:
+            raise ValueError('counterfactual_baseline_mix must be in [0, 1].')
+        self.counterfactual_baseline_mix = mix
+        return self.counterfactual_baseline_mix
+
+    def reset_counterfactual_diagnostics(self):
+        self._counterfactual_represented_masses = []
+
+    def consume_counterfactual_diagnostics(self):
+        """Return and reset rollout top-k probability-mass diagnostics."""
+        metrics = {
+            'counterfactual_baseline_mix': float(
+                self.counterfactual_baseline_mix
+            ),
+            'counterfactual_topk_mass_count': 0.0,
+            'counterfactual_topk_mass_mean': 0.0,
+            'counterfactual_topk_mass_min': 0.0,
+            'counterfactual_topk_mass_p10': 0.0,
+            'counterfactual_topk_mass_target_fraction': 0.0,
+        }
+        masses = self._counterfactual_represented_masses
+        self._counterfactual_represented_masses = []
+        if not masses:
+            return metrics
+        values = torch.cat(masses).float()
+        values = values[torch.isfinite(values)]
+        if values.numel() == 0:
+            return metrics
+        metrics.update({
+            'counterfactual_topk_mass_count': float(values.numel()),
+            'counterfactual_topk_mass_mean': float(values.mean().item()),
+            'counterfactual_topk_mass_min': float(values.min().item()),
+            'counterfactual_topk_mass_p10': float(
+                torch.quantile(values, 0.10).item()
+            ),
+            'counterfactual_topk_mass_target_fraction': float(
+                (values >= self.counterfactual_q_min_mass).float().mean().item()
+            ),
+        })
+        return metrics
 
     @staticmethod
     def _local_plane_history_index(last_op_idx, op_start, n_jobs):
@@ -1082,6 +1146,9 @@ class GNN_Actor_Critic(nn.Module):
         in eval mode, so this recomputation contains no stochastic dropout.
         """
 
+        runtime = getattr(self, 'stage3_execution_cache', None)
+        if runtime is not None and runtime.active:
+            return runtime.encode(graph, actor_grad=actor_grad)
         encoder_trainable = bool(
             actor_grad
             and torch.is_grad_enabled()
@@ -1138,6 +1205,7 @@ class GNN_Actor_Critic(nn.Module):
             if encoded_graph is None
             else encoded_graph
         )
+        role_encodings = enc_out.get('role_encodings')
         if resource_rl and not bool(torch.stack([
             torch.isfinite(value).all() for value in enc_out.values()
             if torch.is_tensor(value)
@@ -1710,24 +1778,37 @@ class GNN_Actor_Critic(nn.Module):
                         role_index = role_mask
 
                     role_batch_indices = active_batch_indices[role_index]
+                    # Optional Stage3 private graph tails. Keep the same joint
+                    # masks, request claims and autoregressive decision order.
+                    role_features = (role_encodings['2' if role_name == 'transporter' else '1']
+                                     if role_encodings is not None else None)
+                    role_requests = request_nodes if role_features is None else role_features['request_nodes']
+                    role_sites = site_nodes if role_features is None else role_features['site_nodes']
+                    role_global = resource_global_emb if role_features is None else role_features['global_emb']
+                    role_selection = last_selection_emb[role_index]
+                    role_vehicle = dev_emb[role_index]
+                    if role_features is not None:
+                        role_selection = (role_requests[role_batch_indices, safe_last_req_idx[role_index], :]
+                                          * valid_last_req[role_index].unsqueeze(-1).float()).unsqueeze(1)
+                        role_vehicle = role_features['device_nodes'][role_batch_indices, device_local_idx, :].unsqueeze(1)
                     hidden_state_i = (
                         data['hidden_states'][role_batch_indices, agent_idx:agent_idx+1, :]
                         .squeeze(1)
                         .transpose(0, 1)
                     )
                     if resource_v6 is not None and resource_v6.arm == 'S2':
-                        role_query = None  # Stateless resource policy; no legacy GRU forward.
+                        role_query = None  # Opt-in stateless Stage2 resource head.
                     else:
                         seq_embed, slice_embed, new_hidden_state_i = sel_enc(
-                            selection=last_selection_emb[role_index],
-                            veh=dev_emb[role_index],
+                            selection=role_selection,
+                            veh=role_vehicle,
                             hidden_state=hidden_state_i,
                         )
                         new_hidden_state[role_batch_indices, agent_idx:agent_idx+1, :] = (
                             new_hidden_state_i.transpose(0, 1).unsqueeze(1)
                         )
                         role_query = torch.cat([
-                            resource_global_emb[role_batch_indices],
+                            role_global[role_batch_indices],
                             seq_embed.squeeze(1),
                             slice_embed.squeeze(1),
                         ], dim=-1)
@@ -1756,7 +1837,7 @@ class GNN_Actor_Critic(nn.Module):
                         elif actor_grad:
                             role_req, role_log_prob, role_dist = actor_head(
                                 query=role_query.unsqueeze(1),
-                                request_nodes=request_nodes[role_batch_indices],
+                                request_nodes=role_requests[role_batch_indices],
                                 request_valid_mask=role_req_mask,
                                 deterministic=deterministic,
                                 tau=self.tau,
@@ -1766,7 +1847,7 @@ class GNN_Actor_Critic(nn.Module):
                             with torch.no_grad():
                                 role_req, role_log_prob, role_dist = actor_head(
                                     query=role_query.unsqueeze(1),
-                                    request_nodes=request_nodes[role_batch_indices],
+                                    request_nodes=role_requests[role_batch_indices],
                                     request_valid_mask=role_req_mask,
                                     deterministic=deterministic,
                                     tau=self.tau,
@@ -1818,12 +1899,12 @@ class GNN_Actor_Critic(nn.Module):
                     if criticize:
                         critic_query = role_query.detach() if criticize_only else role_query
                         critic_requests = (
-                            request_nodes[role_batch_indices].detach()
-                            if criticize_only else request_nodes[role_batch_indices]
+                            role_requests[role_batch_indices].detach()
+                            if criticize_only else role_requests[role_batch_indices]
                         )
                         critic_sites = (
-                            site_nodes[role_batch_indices].detach()
-                            if criticize_only else site_nodes[role_batch_indices]
+                            role_sites[role_batch_indices].detach()
+                            if criticize_only else role_sites[role_batch_indices]
                         )
                         if self.counterfactual_q_baseline:
                             cur_value[role_index] = (
@@ -2169,7 +2250,7 @@ class GNN_Actor_Critic(nn.Module):
                 [op_choice, site_choice, plane_order_rank],
                 dim=2,
             )
-
+        
         if return_actor_details:
             return {
                 'actions': action,
@@ -2179,7 +2260,7 @@ class GNN_Actor_Critic(nn.Module):
                 'rnn_states': new_hidden_state,
                 'global_emb': global_emb,
             }
-        
+
         # 计算平均熵
         ent = torch.nan_to_num(
             total_entropy / entropy_counts.clamp_min(1.0),

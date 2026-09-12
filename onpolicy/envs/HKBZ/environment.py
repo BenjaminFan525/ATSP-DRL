@@ -121,10 +121,10 @@ class AircraftScheduleEnv(gym.Env):
         therefore needs a semantic identifier in addition to shape checks.
         """
         return hkbz_semantics.global_feature_contract(mode)
-
+    
     def __init__(self, config_list, render_mode: str = None):
         super().__init__()
-
+        
         # --- [修改点 1]：支持传入配置文件列表 ---
         # 兼容处理：如果传入的是单个字典，转为列表
         if isinstance(config_list, dict):
@@ -133,7 +133,7 @@ class AircraftScheduleEnv(gym.Env):
             self.data_list = config_list
         else:
             raise ValueError("config_list 必须是配置字典或配置字典的列表")
-
+            
         self.data_idx = 0
         self._train_epoch_case_budget_per_worker = max(
             0,
@@ -143,23 +143,23 @@ class AircraftScheduleEnv(gym.Env):
         )
         self._training_case_cycle_initialized = False
         self.render_mode = render_mode
-
+        
         # 初始化基础配置为列表的第一项，以防其他未剥离的逻辑需要调用 self.config
-        self.config = self.data_list[0]
-
+        self.config = self.data_list[0] 
+        
         # MARL核心属性
         self.n_agents = 0
         self.n_actions = 0  # 动作空间维度
         self.obs_shape = 0  # 观测空间维度
         self.state_shape = 0  # 全局状态维度
-
+        
         # 训练监控与可视化
         self.steps = 0
         self.step_time = 0
         self.total_time = 0
         self.fig = None
         self.ax = None
-
+        
         # 基础状态容器
         self.planes = {}
         self.force_transfer_planes = []
@@ -197,7 +197,7 @@ class AircraftScheduleEnv(gym.Env):
         self.departure_log = []
         self._departed_this_step = {}
         self.departed_total_relocations = 0
-
+        
         # 环境设置
         self.seed(self.config.get('seed', None))
         self.use_domain_rand = self.config.get('use_domain_rand', True)
@@ -216,7 +216,7 @@ class AircraftScheduleEnv(gym.Env):
         self.hindsight_terminal_cmax_coef = float(self.config.get('hindsight_terminal_cmax_coef', 0.0))
         self.n_plane_agents = int(self.config.get('n_agents', 0))
         self.max_device_num = int(self.config.get('max_device_num', 0)) if self.resource_policy == 'drl' else 0
-
+        
         # --- [修改点 2]：首次初始化，建立 Action/Obs 空间 ---
         # 在 __init__ 中加载一次数据，是为了让 gym.Env 能够正确初始化 action_space 等静态属性
         initial_data = self._load_data_from_disk(self.config)
@@ -1072,18 +1072,18 @@ class AircraftScheduleEnv(gym.Env):
         返回一个包含所有环境必须数据的字典。
         """
         data_bundle = {}
-
+        
         # 加载作业数据
         with open(config_dict['jobs_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
-        data_bundle['jobs'] = {item["作业编号"] : Job(code=item["作业编号"],
-                    time=item["作业时间"],
-                    group=item["分组"],
-                    resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [],
-                    predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [],
+        data_bundle['jobs'] = {item["作业编号"] : Job(code=item["作业编号"], 
+                    time=item["作业时间"], 
+                    group=item["分组"], 
+                    resources=item["需要设备类型"] if isinstance(item["需要设备类型"], list) else [], 
+                    predecessor=item["前置作业"] if isinstance(item["前置作业"], list) else [], 
                     exclusive=item["互斥作业"] if isinstance(item["互斥作业"], list) else [])
                 for item in data}
-
+                
         # 加载固定资源
         with open(config_dict['fixed_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -1095,7 +1095,7 @@ class AircraftScheduleEnv(gym.Env):
                 max_service=3
             ) for item in data
         }
-
+        
         # 加载移动资源
         with open(config_dict['mobile_res_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -1107,7 +1107,7 @@ class AircraftScheduleEnv(gym.Env):
                 max_service=1
             ) for item in data
         }
-
+        
         # 加载站点
         with open(config_dict['sites_path'], 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -1119,7 +1119,7 @@ class AircraftScheduleEnv(gym.Env):
                 'mobile_resources': [res for res in data_bundle['mobile_resources'].values() if code in res.sites]
             }) for code, pos in zip(data['sites_codes'], data['sites_positions'])
         }
-
+        
         # 初始化移动设备
         mobile_devices = {}
         for res in data_bundle['mobile_resources'].values():
@@ -1135,12 +1135,12 @@ class AircraftScheduleEnv(gym.Env):
             else:
                 mobile_devices[res.type].append(Device(res.code, device_cfg))
         data_bundle['mobile_devices'] = mobile_devices
-
+        
         # 加载航班数据
         with open(config_dict['flights_path'], 'r', encoding='utf-8') as f:
             flights_data = json.load(f)
         data_bundle['flights_data'] = flights_data
-
+        
         # 生成 Base Landing List
         base_landing_list = []
         for idx, item in enumerate(flights_data):
@@ -1154,7 +1154,7 @@ class AircraftScheduleEnv(gym.Env):
             })
         base_landing_list.sort(key=lambda x: x['land_time'])
         data_bundle['base_landing_list'] = base_landing_list
-
+        
         return data_bundle
 
     def _apply_data(self, new_data, clone=False):
@@ -1168,7 +1168,7 @@ class AircraftScheduleEnv(gym.Env):
         self.mobile_devices = new_data['mobile_devices']
         self.flights_data = new_data['flights_data']
         self.base_landing_list = new_data['base_landing_list']
-
+        
         self.num_planes = len(self.flights_data)
         self.resource_policy = self.config.get('resource_policy', 'heuristic')
         self._load_resource_lookahead_config(self.config)
@@ -1195,9 +1195,9 @@ class AircraftScheduleEnv(gym.Env):
         self.device_code_to_agent_id = {
             dev.code: self.n_plane_agents + idx for idx, dev in enumerate(self.device_list[:self.max_device_num])
         }
-
+        
         self.waiting_sites = {job_type: [] for job_type in self.jobs.keys()}
-
+        
         # 预计算一些常用的列表
         self.site_code_list = list(self.sites.keys())
         self.service_job_code_list = [
@@ -1231,11 +1231,11 @@ class AircraftScheduleEnv(gym.Env):
             code for code in self.site_code_list
             if code not in self.runway_code_list
         ]
-
+        
         # 更新状态追踪数组
         self.sites_state_global = [-1] * len(self.sites)
         self.state_left_time = np.zeros(len(self.sites))
-
+        
         # 重新定义 Action Space (⚠️ 注意：如果不同配置文件的站点/作业数量不同，这会导致 action_space 大小变化)
         self.action_space = spaces.MultiDiscrete([
             len(self.sites) + 1,
@@ -3439,12 +3439,12 @@ class AircraftScheduleEnv(gym.Env):
             )
         claimed_site_indices.add(site_idx)
         return op_global_idx, site_idx
-
+        
     def seed(self, seed=None):
         '''设置随机种子'''
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
-
+    
     def add_planes(self, new_planes_cfg):
         '''添加新飞机到环境'''
         for plane_cfg in new_planes_cfg:
@@ -3504,10 +3504,10 @@ class AircraftScheduleEnv(gym.Env):
         if departed:
             self.remove_planes(departed)
         return departed
-
+        
     def get_idle_devices(self, res_types):
         '''获取指定资源类型的空闲设备
-
+        
         输入:
             res_types: list - 资源类型列表
         返回:
@@ -3525,7 +3525,7 @@ class AircraftScheduleEnv(gym.Env):
 
     def get_avail_sites(self, plane=None):
         '''获取飞机可用的站点列表
-
+        
         输入:
             plane: Plane对象或None - 指定飞机，默认为None
         返回:
@@ -3544,10 +3544,10 @@ class AircraftScheduleEnv(gym.Env):
             #     # 如果飞机正在忙碌，排除当前站位
             #     ret = [site for site in ret if site != plane.site.code]
         return ret
-
+    
     def get_avail_takeoff_sites(self):
         '''获取可用起飞跑道
-
+        
         返回:
             list - 空闲起飞跑道代码列表
         示例:
@@ -5488,20 +5488,20 @@ class AircraftScheduleEnv(gym.Env):
 
     def _get_obs(self):
         """
-        更新环境状态并构建异构图数据对象 (HeteroData)。
+        更新环境状态并构建异构图数据对象 (HeteroData)。 
         【采用静态拓扑】：无论飞机是否在场，恒定生成 n_agents * n_ops 个工序节点，
         确保网络在不同 Step、不同 Episode 获得的张量形状绝对一致。
         """
         self._refresh_request_pool()
         data = HeteroData()
-
+        
         # ==========================================
         # 1. 解析全局常量与映射字典
         # ==========================================
         site_list = list(self.sites.values())
         site2idx = {site.code: idx for idx, site in enumerate(site_list)}
         n_sites = len(site_list)
-
+        
         device_list = self.device_list
         device2idx = {dev.code: idx for idx, dev in enumerate(device_list)}
         dev_types = list(self.mobile_devices.keys())
@@ -5510,7 +5510,7 @@ class AircraftScheduleEnv(gym.Env):
         n_ops = len(self.job_code_list)
         n_plane_agents = self.n_plane_agents
         n_agents = self.n_agents
-
+        
         # 提取当前场上活跃的飞机，映射为全局唯一 PID
         active_planes = {}
         for plane in self.planes.values():
@@ -5543,7 +5543,7 @@ class AircraftScheduleEnv(gym.Env):
                 10.0,
             )
             job_onehot = site.avail_job_onehot if hasattr(site, 'avail_job_onehot') else [0] * n_ops
-
+            
             site_features.append([
                 occ,
                 interf,
@@ -5551,15 +5551,15 @@ class AircraftScheduleEnv(gym.Env):
                 float(site.pos[0]) / coordinate_scale,
                 float(site.pos[1]) / coordinate_scale,
             ] + job_onehot)
-
+            
             # 物理限制
             if site.code in self.runway_code_list or site.is_interfered or site.is_occupied or site.code == "Z":
                 global_site_valid.append(False)
             else:
                 global_site_valid.append(True)
-
+                
         data['site'].x = torch.tensor(site_features, dtype=torch.float32)
-
+        
         device_features = []
         for dev in device_list:
             dtype_enc = float(dev_types.index(dev.resource.type)) / max(
@@ -5596,7 +5596,7 @@ class AircraftScheduleEnv(gym.Env):
             pos_x = float(dev.site.pos[0]) / coordinate_scale
             pos_y = float(dev.site.pos[1]) / coordinate_scale
             device_features.append([dtype_enc, status_enc, rem_time, pos_x, pos_y])
-
+            
         if len(device_features) > 0:
             data['device'].x = torch.tensor(device_features, dtype=torch.float32)
         else:
@@ -5611,7 +5611,7 @@ class AircraftScheduleEnv(gym.Env):
             (n_plane_agents * n_ops, 11), dtype=np.float32
         )
         agent_op_mask = np.zeros((n_agents, n_plane_agents * n_ops), dtype=bool)
-
+        
         # 维度缩减为 (n_agents, n_sites)
         ptr_site_mask_matrix = np.zeros((n_agents, n_sites), dtype=bool)
         job_site_mask_matrix = np.zeros((n_ops, n_sites), dtype=bool)
@@ -5640,10 +5640,10 @@ class AircraftScheduleEnv(gym.Env):
         departure_plan = self._compute_departure_runway_plan()
         self._departure_runway_plan = dict(departure_plan)
         departure_candidates = set(departure_plan)
-
+        
         for global_pid in range(n_plane_agents):
             plane = active_planes.get(global_pid, None)
-
+            
             if plane is not None:
                 # ---------------------------------------------------
                 # A. 计算该飞机对所有机位的合法性 (不再依赖具体的 job)
@@ -5675,9 +5675,9 @@ class AircraftScheduleEnv(gym.Env):
                     plane, departure_plan=departure_plan
                 )
                 for j_idx, job_code in enumerate(self.job_code_list):
-                    u_idx = global_pid * n_ops + j_idx
+                    u_idx = global_pid * n_ops + j_idx 
                     job_obj = plane.jobs.get(job_code, self.jobs[job_code])
-
+                    
                     if (
                         job_code == self.TRANSFER_JOB_CODE
                         and plane.departure_staging_decided
@@ -5691,10 +5691,10 @@ class AircraftScheduleEnv(gym.Env):
                         status, is_ready = 1.0, True
                     else:
                         status, is_ready = 0.0, False
-
+                        
                     can_schedule = plane.is_idle() and is_ready
                     agent_op_mask[global_pid, u_idx] = can_schedule
-
+                    
                     proc_time = (
                         min(float(job_obj.time) / 3600.0, 10.0)
                         if job_obj.time else 0.0
@@ -5722,7 +5722,7 @@ class AircraftScheduleEnv(gym.Env):
                         / max(1.0, float(n_ops)),
                         1.0,
                     )
-
+                    
                     op_features[u_idx] = [
                         status / 3.0,
                         proc_time,
@@ -5738,7 +5738,7 @@ class AircraftScheduleEnv(gym.Env):
                         irreversible_progress,
                         1.0,
                     ]
-
+                    
             else:
                 # 飞机不在场上：幽灵节点
                 for j_idx, job_code in enumerate(self.job_code_list):
@@ -5782,7 +5782,7 @@ class AircraftScheduleEnv(gym.Env):
                         f"Active plane {plane.code} has no legal operation-site pair "
                         f"at environment step {self.steps}."
                     )
-
+                
         data['operation'].x = torch.tensor(op_features, dtype=torch.float32)
 
         # Target-specific operation-site features are consumed directly by the
@@ -6237,20 +6237,20 @@ class AircraftScheduleEnv(gym.Env):
         # ==========================================
         # 4. 构建边索引与边特征 (Edges)
         # ==========================================
-        edge_precedes = [[], []]
-        edge_os = [[], []]
+        edge_precedes = [[], []]   
+        edge_os = [[], []]         
         attr_os = []
-        edge_or = [[], []]
+        edge_or = [[], []]         
         attr_or = []
         edge_dr = [[], []]
         attr_dr = []
-
+        
         # 只为在场的活跃飞机连边，Dummy 节点作为孤岛存在即可
         for global_pid, plane in active_planes.items():
             for j_idx, j_code in enumerate(self.job_code_list):
                 u_idx = global_pid * n_ops + j_idx
                 job_obj = plane.jobs.get(j_code, self.jobs[j_code])
-
+                
                 # --- A. Precedes ---
                 for pred_code in sorted(job_obj.predecessor):
                     if pred_code in self.job_code_list:
@@ -6258,7 +6258,7 @@ class AircraftScheduleEnv(gym.Env):
                         pred_u_idx = global_pid * n_ops + pred_j_idx
                         edge_precedes[0].append(pred_u_idx)
                         edge_precedes[1].append(u_idx)
-
+                        
                 # --- B. O-S Edge ---
                 # Connect only sites that can eventually execute this job;
                 # false compatibility edges previously polluted every op.
@@ -6272,7 +6272,7 @@ class AircraftScheduleEnv(gym.Env):
                         edge_os[1].append(s_idx)
                         dist = abs(plane.site.pos[0] - site.pos[0]) + abs(plane.site.pos[1] - site.pos[1])
                         attr_os.append([min(dist / plane.velocity / 3600.0, 10.0)])
-
+                
                 # --- C. O-R Edge ---
                 needed_dev_types = sorted(
                     set(job_obj.resources).intersection(dev_types)
@@ -6290,7 +6290,7 @@ class AircraftScheduleEnv(gym.Env):
                         and j_code == self.departure_job_code_list[0]
                     ) else None
                 )
-
+                    
                 for dev_type in needed_dev_types:
                     for dev in self.mobile_devices.get(dev_type, []):
                         if (
@@ -6345,14 +6345,14 @@ class AircraftScheduleEnv(gym.Env):
             data['operation', 'precedes', 'operation'].edge_index = torch.tensor(edge_precedes, dtype=torch.long)
         else:
             data['operation', 'precedes', 'operation'].edge_index = torch.empty((2, 0), dtype=torch.long)
-
+            
         if len(edge_os[0]) > 0:
             data['operation', 'assignable_to', 'site'].edge_index = torch.tensor(edge_os, dtype=torch.long)
             data['operation', 'assignable_to', 'site'].edge_attr = torch.tensor(attr_os, dtype=torch.float32)
         else:
             data['operation', 'assignable_to', 'site'].edge_index = torch.empty((2, 0), dtype=torch.long)
             data['operation', 'assignable_to', 'site'].edge_attr = torch.empty((0, 1), dtype=torch.float32)
-
+            
         if len(edge_or[0]) > 0:
             data['operation', 'needs', 'device'].edge_index = torch.tensor(edge_or, dtype=torch.long)
             data['operation', 'needs', 'device'].edge_attr = torch.tensor(attr_or, dtype=torch.float32)
@@ -6366,7 +6366,7 @@ class AircraftScheduleEnv(gym.Env):
         else:
             data['device', 'can_serve', 'request'].edge_index = torch.empty((2, 0), dtype=torch.long)
             data['device', 'can_serve', 'request'].edge_attr = torch.empty((0, 1), dtype=torch.float32)
-
+            
         # 直接挂载 Numpy 生成的绝对固定形状的 Tensor
         data.op_mask = torch.tensor(agent_op_mask, dtype=torch.bool)             # Shape: [n_agents, n_ops]
         data.site_mask_matrix = torch.tensor(ptr_site_mask_matrix, dtype=torch.bool) # Shape: [n_agents, n_sites]
@@ -6402,7 +6402,7 @@ class AircraftScheduleEnv(gym.Env):
         if self.config.get('stage2_resource_v6_observations', False):
             from onpolicy.utils.stage2_resource_v6_observation import attach_resource_view
             attach_resource_view(self, data, coordinate_scale)
-
+            
         return data
 
     def _get_reward(self):
@@ -6412,8 +6412,8 @@ class AircraftScheduleEnv(gym.Env):
         1. 引入 Reward Shaping（阶段性奖励与离场奖励），打破稀疏惩罚，引导 Actor 走出随机探索的深渊。
         2. 修复 SMDP 奖励分配漏洞：每一步流逝的 dt 产生的奖惩，必须分发给所有在场飞机。
         """
-        dt = self.step_time
-
+        dt = self.step_time 
+        
         # 如果没有时间流逝，直接返回 0
         if dt <= 0:
             return np.zeros((self.n_agents, 1), dtype=np.float32)
@@ -6432,13 +6432,13 @@ class AircraftScheduleEnv(gym.Env):
         ]
         for plane_id, plane in reward_planes:
             pid = int(plane_id.split('_')[-1])
-
+            
             # --- 动态初始化追踪属性 (无需去 Plane 类里改底座代码) ---
             if not hasattr(plane, '_last_rewarded_job_count'):
                 plane._last_rewarded_job_count = len(plane.ever_finished_jobs)
             if not hasattr(plane, '_has_received_completion_bonus'):
                 plane._has_received_completion_bonus = False
-
+            
             # 基础奖励：无论是否在做决策，所有在场飞机都要承担时间流逝的惩罚
             agent_reward = global_time_penalty
 
@@ -6446,7 +6446,7 @@ class AircraftScheduleEnv(gym.Env):
             # 检查在刚才流逝的 dt 时间内，该飞机是否完成了新的保障工序
             current_finished_count = len(plane.ever_finished_jobs)
             newly_finished = current_finished_count - plane._last_rewarded_job_count
-
+            
             if newly_finished > 0:
                 # 每完成一个保障工序，给予正向反馈，引导模型 "多干活"
                 agent_reward += newly_finished * 5.0
@@ -6461,7 +6461,7 @@ class AircraftScheduleEnv(gym.Env):
                 # 给予巨大的通关奖励，这是策略网络后期收敛的核心动力
                 agent_reward += 50.0
                 plane._has_received_completion_bonus = True
-
+            
             # 赋值：不再用 current_active_agents 屏蔽，保障休眠期的连续奖励传递
             rewards[pid, 0] = agent_reward
 
@@ -6473,9 +6473,9 @@ class AircraftScheduleEnv(gym.Env):
                         rewards[agent_id, 0] = 1.5 * global_time_penalty
                     else:
                         rewards[agent_id, 0] = global_time_penalty
-
+            
         return rewards
-
+    
     def _get_done(self):
         """
         获取每个智能体在当前回合是否结束 (Episode Termination)。
@@ -6490,14 +6490,14 @@ class AircraftScheduleEnv(gym.Env):
         for pid in self.departed_agent_ids:
             if pid < self.n_plane_agents:
                 agent_dones[pid] = True
-
+        
         # 遍历当前仍在环境中的所有飞机
         for plane in self.planes.values():
             pid = int(plane.code.split('_')[-1])
             # 单架飞机结束的标志：剩余待办作业列表为空
             if pid < self.n_plane_agents:
                 agent_dones[pid] = plane.is_completed_all_jobs()
-
+            
         return np.array(agent_dones)
 
     def _get_info(self):
@@ -6526,28 +6526,28 @@ class AircraftScheduleEnv(gym.Env):
 
         # 准备全局固定顺序的机位列表 (与 _get_obs 中的 site_list 顺序保持绝对一致)
         site_codes = list(self.sites.keys())
-
+        
         # 初始化记录数组，-1 表示没有历史记录 (例如 Episode 刚开始)
         last_site_indices = [-1] * self.n_agents
         last_op_indices = [-1] * self.n_agents
-
+        
         # 遍历当前场上的飞机
-
+        
         for plane in self.planes.values():
             pid = int(plane.code.split('_')[-1])
-
+            
             # ---------------------------------------------------------
             # A. 计算上一次机位的全局索引
             # ---------------------------------------------------------
             if pid >= self.n_plane_agents:
                 continue
             last_site_indices[pid] = plane.last_site_idx
-
+                
             # ---------------------------------------------------------
             # B. 计算上一次工序的全局索引
             # ---------------------------------------------------------
             last_op_indices[pid] = plane.last_job_idx
-
+                    
         resource_metrics = (
             self.get_resource_lateness_metrics()
             if self.done else {
@@ -6578,7 +6578,7 @@ class AircraftScheduleEnv(gym.Env):
         )
         wait_decomposition = resource_metrics.get('wait_decomposition', {})
         return {
-            'active_agents': np.array(active_agents),
+            'active_agents': np.array(active_agents), 
             'last_site_indices': np.array(last_site_indices, dtype=np.int32),
             'last_op_indices': np.array(last_op_indices, dtype=np.int32),
             'agent_types': self._build_agent_types(),
@@ -6727,7 +6727,7 @@ class AircraftScheduleEnv(gym.Env):
                 resource_metrics['policy_defer_rate'], dtype=np.float32
             ),
         }
-
+    
     def step(self, action):
         '''执行一步纯事件驱动动作，并在内部自动快进时间直到出现可决策状态'''
         self._departed_this_step = {}
@@ -6773,7 +6773,7 @@ class AircraftScheduleEnv(gym.Env):
             if self.hindsight_reward_mode == 'iga_potential' else None
         )
         potential_actions = []
-
+        
         claimed_site_indices = set()
         plane_items = sorted(
             self.planes.items(),
@@ -7021,7 +7021,7 @@ class AircraftScheduleEnv(gym.Env):
                     break
 
             internal_step_time = np.inf
-
+            
             # -----------------------------------------------------------
             # Phase 1B: 环境设备自治调度 (NPCs' Turn)
             # -----------------------------------------------------------
@@ -7053,7 +7053,7 @@ class AircraftScheduleEnv(gym.Env):
                     internal_step_time = min(internal_step_time, plane.left_trans_time)
                 elif plane.is_busy:
                     internal_step_time = min(internal_step_time, plane.site.left_job_time)
-
+                    
             for devices in self.mobile_devices.values():
                 for device in devices:
                     if not device.is_idle():
@@ -7069,7 +7069,7 @@ class AircraftScheduleEnv(gym.Env):
                     self._next_lookahead_dispatch_dt(),
                     self._next_lookahead_reservation_expiry_dt(),
                 )
-
+                        
             for site in self.sites.values():
                 if site.is_interfered:
                     internal_step_time = min(internal_step_time, site.left_rec_time)
@@ -7079,7 +7079,7 @@ class AircraftScheduleEnv(gym.Env):
             # -----------------------------------------------------------
             # 检查 site 'Z' 是否被占用 (场上是否有飞机的当前位置是 'Z')
             z_occupied = any(p.site.code == 'Z' for p in self.planes.values())
-
+            
             # 判断是否有已到期/超期且等待降落的飞机
             if self.landing_list and self.landing_list[0][0] <= self.total_time and not z_occupied:
                 # 如果跑道空闲，且有飞机该降落了(甚至已经晚点了)，立刻将下一个跃迁时间设为0，去执行降落
@@ -7088,7 +7088,7 @@ class AircraftScheduleEnv(gym.Env):
                 # 否则(跑道被占，或者当前没有急需降落的飞机)，只关注严格在未来的降落计划
                 future_landings = [item[0] for item in self.landing_list if item[0] > self.total_time]
                 next_landing_dt = future_landings[0] - self.total_time if future_landings else np.inf
-
+            
             dt = min(internal_step_time, next_landing_dt)
             if dt == np.inf:
                 if not self._is_schedule_complete():
@@ -7099,7 +7099,7 @@ class AircraftScheduleEnv(gym.Env):
                         f"snapshot={self._deadlock_snapshot()}."
                     )
                 break
-
+                
             self.total_time += dt
 
             # -----------------------------------------------------------
@@ -7109,7 +7109,7 @@ class AircraftScheduleEnv(gym.Env):
                 # 第一段：只结算干涉、正在运输（会到达目的地）和正在作业（会结束作业）的实体
                 for site in self.sites.values():
                     if site.is_interfered: site.update(dt)
-
+                        
                 update_time_before = float(self.total_time) - float(dt)
                 for plane in list(self.planes.values()):
                     if plane.is_busy or plane.is_transporting:
@@ -7156,11 +7156,11 @@ class AircraftScheduleEnv(gym.Env):
             # -----------------------------------------------------------
             while self.landing_list and self.total_time >= self.landing_list[0][0]:
                 if self.sites['Z'].is_occupied:
-                    break
-
+                    break 
+                    
                 # 执行降落
-                land_time, bidx, pidx, _ = self.landing_list.pop(0)
-
+                land_time, bidx, pidx, _ = self.landing_list.pop(0) 
+                
                 plane_cfg = {
                     'velocity': 5,
                     'site': self.sites['Z'],
@@ -7178,7 +7178,7 @@ class AircraftScheduleEnv(gym.Env):
             # ZY-F completion is the physical departure event. Finalize its
             # trajectory first, then release the runway and remove the plane.
             self._remove_departed_planes()
-
+                        
             # 【新增】：极端容错 - 拦截并结算可能被从环境中移除 (remove_planes) 的飞机日志
             for p_id in list(self.pending_actions.keys()):
                 if p_id not in self.planes:
@@ -7206,7 +7206,7 @@ class AircraftScheduleEnv(gym.Env):
                             'status': 'arrived',
                             'time': float(self.total_time),
                         })
-
+            
             # -----------------------------------------------------------
             # Phase 5: 检查是否可以退出快进循环
             # -----------------------------------------------------------
@@ -7241,10 +7241,10 @@ class AircraftScheduleEnv(gym.Env):
                     if not site.is_interfered and not site.is_occupied:
                         has_idle_site = True
                         break
-
+                    
             if has_active or has_active_device:
                 break # 有飞机空闲了需要下发动作，跳出循环
-
+        
         self.step_time = self.total_time - time_prev
         if potential_before is not None and potential_actions:
             self.potential_transition_log.append({
@@ -7261,23 +7261,23 @@ class AircraftScheduleEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
+        
         # ==========================================================
         # 动态切换配置与加载数据
         # ==========================================================
         current_config = self.data_list[self.data_idx]
         self.config = current_config  # 更新 self.config 引用
         self.current_case_path = os.path.dirname(current_config.get('jobs_path', ''))
-
+        
         # 实时 I/O 读取
         new_data = self._load_data_from_disk(current_config)
-
+        
         # 应用数据 (无需 clone)
         self._apply_data(new_data, clone=False)
-
+        
         # 循环索引，为下一次 reset 准备
         self.data_idx = (self.data_idx + 1) % len(self.data_list)
-
+        
         # 解析域随机化开关 (优先级：options传入 > config配置 > 默认开启)
         self.steps = 0
         self.total_time = 0
@@ -7312,32 +7312,32 @@ class AircraftScheduleEnv(gym.Env):
         self.departure_log = []
         self._departed_this_step = {}
         self.departed_total_relocations = 0
-
+        
         self.planes.clear()
         self.num_planes = 0
         self.force_transfer_planes.clear()
         for key in self.waiting_sites.keys():
             self.waiting_sites[key] = []
-
+            
         # ==========================================================
         # DR 1: 进场时间扰动 (Arrival Jitter)
         # ==========================================================
         self.landing_list = []
         self.plane_num_per_batch = len(self.flights_data)
-
+        
         # 仅在开启随机化时生成预置飞机
         if self.use_domain_rand:
             num_pre_planes = self.np_random.integers(0, 3) if hasattr(self, 'np_random') else np.random.randint(0, 3)
         else:
             num_pre_planes = 0
-
+            
         # [修改点 3]：基于 base_landing_list 恢复环境并加入随机扰动
         for idx, base_flight in enumerate(self.base_landing_list):
             if idx >= len(self.flights_data) - num_pre_planes:
                 continue
-
+                
             base_time = base_flight['land_time']
-
+            
             # ====== 【核心修改：强制第一架飞机在 t=0 降落】 ======
             if base_time == 0:
                 land_time = 0
@@ -7347,12 +7347,12 @@ class AircraftScheduleEnv(gym.Env):
             # ====================================================
 
             self.landing_list.append((land_time, base_flight['bidx'], base_flight['pidx'], base_flight['fuel']))
-
+                
         # 按时间进行排序
         self.landing_list.sort(key=lambda x: x[0])
-
+        
         # ==========================================================
-        # DR 3: 移动设备初始位置打乱
+        # DR 3: 移动设备初始位置打乱 
         # (这部分代码保持你上一版的原样，不需要动)
         # ==========================================================
         for resource in list(self.fixed_resources.values()) + list(self.mobile_resources.values()):
@@ -7362,8 +7362,8 @@ class AircraftScheduleEnv(gym.Env):
         gate_codes = list(self.service_site_code_list)
         for devices in self.mobile_devices.values():
             for device in devices:
-                device.reset()
-                if self.use_domain_rand and device.resource.type != 'R014':
+                device.reset() 
+                if self.use_domain_rand and device.resource.type != 'R014': 
                     random_site_code = self.np_random.choice(gate_codes) if hasattr(self, 'np_random') else np.random.choice(gate_codes)
                     device.start_transport(self.sites[random_site_code])
                     device.finish_transport()
@@ -7373,14 +7373,14 @@ class AircraftScheduleEnv(gym.Env):
         # ==========================================================
         # [修改点 4]：处理 0 时刻即到达着陆跑道的飞机
         while self.landing_list and self.total_time >= self.landing_list[0][0]:
-            land_time, bidx, pidx, fuel = self.landing_list.pop(0)
-
+            land_time, bidx, pidx, fuel = self.landing_list.pop(0) 
+            
             # 油量也加入微小扰动以增加样本多样性
             final_fuel = fuel
             if self.use_domain_rand:
                 fuel_jitter = self.np_random.integers(-5, 6) if hasattr(self, 'np_random') else np.random.randint(-5, 6)
                 final_fuel = max(0, min(100, fuel + fuel_jitter))
-
+                
             plane_cfg = {
                 'velocity': 5,
                 'site': self.sites['Z'],
@@ -7398,7 +7398,7 @@ class AircraftScheduleEnv(gym.Env):
                 pre_cfg = {
                     'velocity': 5,
                     'site': self.sites[gate_code],
-                    'fuel': 100,
+                    'fuel': 100, 
                     'jobs': self._build_plane_jobs(drop_optional=self.use_domain_rand)
                 }
                 # 依然当做 batch 0 注册，这样 global_pid 计算出来是完全合法的
@@ -7406,9 +7406,9 @@ class AircraftScheduleEnv(gym.Env):
                 plane_obj = self.planes[f'Plane_0_{pidx}']
                 plane_obj.finished_jobs.extend(['ZY_Z', 'ZY_M', 'ZY01'])
                 plane_obj.ever_finished_jobs.update(['ZY_Z', 'ZY_M', 'ZY01'])
-
+                
         return self._get_obs(), self._get_done(), self._get_info()
-
+    
     def shuffer_data(self):
         """Advance a deterministic case-coverage cycle between train epochs.
 
@@ -7709,7 +7709,7 @@ class AircraftScheduleEnv(gym.Env):
             'case_id': str(getattr(self, 'current_case_path', '')),
         }
 
-    def get_role_event_credit_weights(self):
+    def get_role_event_credit_weights(self, credit_mode='critical_path'):
         """Return audited post-episode scores for role-return redistribution.
 
         The scores are *not* an auxiliary reward and never change the case
@@ -7729,6 +7729,14 @@ class AircraftScheduleEnv(gym.Env):
         explicit and lets tests audit every contribution against the recorded
         trajectory rather than relying on a second simulator.
         """
+        credit_mode = str(credit_mode)
+        if credit_mode not in {'critical_path', 'critical_path_v2'}:
+            raise ValueError(
+                'credit_mode must be critical_path or critical_path_v2.'
+            )
+        if credit_mode == 'critical_path_v2':
+            return self._get_role_event_credit_weights_v2()
+
         records = []
         for record in self.trajectory_log:
             if 'end_time' in record:
@@ -7809,6 +7817,231 @@ class AircraftScheduleEnv(gym.Env):
             'global_frontier_seconds': frontier,
             'unattributed_terminal_seconds': max(0.0, cmax - frontier),
             'role_frontier_seconds': role_frontier_seconds,
+        }
+
+    def _get_role_event_credit_weights_v2(self):
+        """Slack-gated causal delay attribution for role-event returns.
+
+        Version 1 treated raw resource wait as equally important for every
+        aircraft.  That can reward an action on a plane with ample terminal
+        slack as strongly as a truly Cmax-blocking action.  Version 2 first
+        measures each aircraft's completion slack and exponentially gates all
+        delay evidence.  It keeps the exact objective unchanged: these scores
+        are normalized only after the episode by the replay buffer.
+        """
+        from onpolicy.envs.HKBZ.experiment.resource_wait_metrics import (
+            summarize_aircraft_resource_wait,
+        )
+
+        def non_negative(value):
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return 0.0
+            return max(0.0, value) if np.isfinite(value) else 0.0
+
+        plane_records = [
+            record for record in getattr(self, 'trajectory_log', ())
+            if 'end_time' in record
+        ]
+        device_records = [
+            record for record in getattr(self, 'device_trajectory_log', ())
+            if 'end_time' in record
+        ]
+        cmax = non_negative(getattr(self, 'total_time', 0.0))
+        scale = max(1e-9, non_negative(getattr(
+            self, 'resource_slack_criticality_seconds', 600.0
+        )))
+        minimum = min(1.0, non_negative(getattr(
+            self, 'resource_slack_min_weight', 0.05
+        )))
+
+        completion_by_plane = {}
+        for record in plane_records:
+            plane_id = record.get('plane_id')
+            if plane_id is None:
+                continue
+            key = str(plane_id)
+            completion_by_plane[key] = max(
+                completion_by_plane.get(key, 0.0),
+                non_negative(record.get('end_time')),
+            )
+
+        job_resources = {
+            code: self._needed_mobile_types(code)
+            for code in getattr(self, 'job_code_list', ())
+        }
+        wait_summary = summarize_aircraft_resource_wait(
+            plane_records,
+            device_records,
+            job_resources,
+            transporter_type=getattr(
+                self, 'TRANSPORTER_RESOURCE_TYPE', 'R014'
+            ),
+            aircraft_count=len(getattr(self, 'flights_data', ())),
+            include_events=True,
+            episode_cmax=cmax,
+            criticality_scale_seconds=scale,
+            criticality_min_weight=minimum,
+        )
+        wait_events = wait_summary.get('events', ())
+
+        def matching_wait_event(record, *, plane=False):
+            plane_id = record.get('plane_id')
+            job_code = record.get(
+                'target_job_code' if plane else 'job_code'
+            )
+            if plane_id is None or job_code is None:
+                return {}
+            candidates = [
+                event for event in wait_events
+                if str(event.get('plane_id')) == str(plane_id)
+                and str(event.get('job_code')) == str(job_code)
+            ]
+            if not candidates:
+                return {}
+            start = non_negative(record.get('start_time'))
+            return min(
+                candidates,
+                key=lambda event: abs(
+                    non_negative(event.get('start_time')) - start
+                ),
+            )
+
+        def criticality(record):
+            plane_id = record.get('plane_id')
+            completion = completion_by_plane.get(
+                str(plane_id), non_negative(record.get('end_time'))
+            )
+            slack = max(0.0, cmax - completion)
+            weight = minimum + (1.0 - minimum) * math.exp(-slack / scale)
+            return float(weight), float(slack)
+
+        records = [('plane', record) for record in plane_records]
+        records.extend((
+            'transporter' if record.get('is_transporter', False)
+            else 'device',
+            record,
+        ) for record in device_records)
+        records.sort(key=lambda item: (
+            non_negative(item[1].get('end_time')),
+            int(item[1].get('agent_id', -1)),
+        ))
+
+        weights = {}
+        frontier = 0.0
+        role_frontier_seconds = {
+            'plane': 0.0, 'device': 0.0, 'transporter': 0.0,
+        }
+        component_totals = {
+            'cmax_frontier_seconds': 0.0,
+            'critical_wait_seconds': 0.0,
+            'critical_avoidable_lateness_seconds': 0.0,
+            'rendezvous_spread_seconds': 0.0,
+            'precedence_blocking_seconds': 0.0,
+            'predicted_lateness_seconds': 0.0,
+            'late_duration_seconds': 0.0,
+        }
+        for role, record in records:
+            step_idx = int(record.get('step_idx', -1))
+            agent_id = int(record.get('agent_id', -1))
+            if step_idx < 0 or agent_id < 0:
+                continue
+            end_time = non_negative(record.get('end_time'))
+            frontier_delta = max(0.0, end_time - frontier)
+            frontier = max(frontier, end_time)
+            role_frontier_seconds[role] += frontier_delta
+            gate, completion_slack = criticality(record)
+            wait_event = matching_wait_event(
+                record, plane=(role == 'plane')
+            )
+
+            if role == 'plane':
+                raw_wait = non_negative(record.get(
+                    'waiting_time', wait_event.get('wait_seconds', 0.0)
+                ))
+                predicted_lateness = 0.0
+            else:
+                raw_wait = non_negative(record.get(
+                    'waiting_time_at_dispatch', 0.0
+                ))
+                depth = max(0, int(record.get('dependency_depth', 0)))
+                predicted_lateness = (
+                    non_negative(record.get(
+                        'predicted_lateness_at_dispatch', 0.0
+                    )) / float(1 + depth)
+                )
+            precedence = non_negative(wait_event.get(
+                'waiting_before_dispatch_seconds', raw_wait
+            ))
+            rendezvous = non_negative(wait_event.get(
+                'post_arrival_synchronization_seconds', 0.0
+            ))
+            avoidable = precedence + rendezvous
+            critical_wait = gate * raw_wait
+            critical_avoidable = gate * avoidable
+            critical_rendezvous = gate * rendezvous
+            critical_precedence = gate * precedence
+            critical_prediction = gate * predicted_lateness
+            duration = non_negative(record.get(
+                'duration', end_time - non_negative(record.get('start_time'))
+            ))
+            horizon_fraction = (
+                min(1.0, end_time / cmax) if cmax > 0.0 else 0.0
+            )
+            late_duration = 0.25 * gate * duration * horizon_fraction ** 4
+
+            # Critical wait already contains its avoidable sub-components;
+            # they are exposed separately for audit but are not double-counted.
+            score = (
+                frontier_delta
+                + critical_wait
+                + critical_prediction
+                + critical_rendezvous
+                + late_duration
+            )
+            key = (step_idx, agent_id)
+            data = weights.setdefault(key, {
+                'weight': 0.0,
+                'cmax_frontier_seconds': 0.0,
+                'critical_wait_seconds': 0.0,
+                'critical_avoidable_lateness_seconds': 0.0,
+                'rendezvous_spread_seconds': 0.0,
+                'precedence_blocking_seconds': 0.0,
+                'predicted_lateness_seconds': 0.0,
+                'late_duration_seconds': 0.0,
+                'completion_slack_seconds': completion_slack,
+                'criticality_weight': gate,
+                'role': role,
+                'record_count': 0,
+            })
+            contributions = {
+                'cmax_frontier_seconds': frontier_delta,
+                'critical_wait_seconds': critical_wait,
+                'critical_avoidable_lateness_seconds': critical_avoidable,
+                'rendezvous_spread_seconds': critical_rendezvous,
+                'precedence_blocking_seconds': critical_precedence,
+                'predicted_lateness_seconds': critical_prediction,
+                'late_duration_seconds': late_duration,
+            }
+            data['weight'] += score
+            for name, value in contributions.items():
+                data[name] += value
+                component_totals[name] += value
+            data['record_count'] += 1
+
+        return {
+            'schema_version': 2,
+            'credit_mode': 'critical_path_v2',
+            'weights': weights,
+            'cmax': cmax,
+            'completed_record_count': len(records),
+            'global_frontier_seconds': frontier,
+            'unattributed_terminal_seconds': max(0.0, cmax - frontier),
+            'role_frontier_seconds': role_frontier_seconds,
+            'component_totals': component_totals,
+            'criticality_scale_seconds': scale,
+            'criticality_min_weight': minimum,
         }
 
     def render(self):
