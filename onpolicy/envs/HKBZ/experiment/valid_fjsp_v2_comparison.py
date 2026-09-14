@@ -49,6 +49,9 @@ from onpolicy.envs.HKBZ.experiment.valid_model_parallel import (  # noqa: E402
     _to_tensor,
     make_eval_envs_from_configs,
 )
+from onpolicy.utils.checkpoint_contract import (  # noqa: E402
+    checkpoint_stage1_baseline,
+)
 
 
 METHOD_ALIASES = {
@@ -58,6 +61,13 @@ METHOD_ALIASES = {
     "mwkr": "MWKR",
     "iga": "IGA",
     "nsga2": "NSGA-II",
+}
+POLICY_LABELS = {
+    "proposed": "DRL-G",
+    "l2d": "L2D-AT",
+    "multi_ppo": "Multi-PPO-AT",
+    "fjsp_drl": "FJSP-DRL-AT",
+    "daniel": "DANIEL-AT",
 }
 
 
@@ -417,8 +427,16 @@ def load_policy(args):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     with open(args.ac_config, "r", encoding="utf-8") as handle:
         ac_config = yaml.safe_load(handle) or {}
-    policy = Policy(args, ac_config, device=device)
     checkpoint = torch.load(args.checkpoint_dir, map_location=device)
+    args.stage1_baseline = checkpoint_stage1_baseline(checkpoint)
+    args.plane_order_mode = str(checkpoint.get(
+        "plane_order_mode", getattr(args, "plane_order_mode", "fixed")
+    ))
+    args.plane_pair_decoder = str(checkpoint.get(
+        "plane_pair_decoder",
+        getattr(args, "plane_pair_decoder", "joint_pair"),
+    ))
+    policy = Policy(args, ac_config, device=device)
     policy.load_model_state(checkpoint["model"])
     checkpoint_tau = float(checkpoint.get("tau", 1.0))
     policy.ac.tau = (
@@ -546,8 +564,17 @@ def main(argv=None):
     write_json(args.output_json, payload)
 
     if "drl_g" in args.methods:
-        print(f"[DRL-G] loading checkpoint {args.checkpoint_dir}", flush=True)
         policy, checkpoint, device = load_policy(args)
+        policy_label = POLICY_LABELS[policy.ac.stage1_baseline]
+        payload["stage1_baseline"] = policy.ac.stage1_baseline
+        payload["methods_requested"] = [
+            policy_label if name == "DRL-G" else name
+            for name in payload["methods_requested"]
+        ]
+        print(
+            f"[{policy_label}] loading checkpoint {args.checkpoint_dir}",
+            flush=True,
+        )
         records = []
         for start in range(0, len(case_names), args.model_batch_size):
             batch_names = case_names[start:start + args.model_batch_size]
@@ -556,12 +583,14 @@ def main(argv=None):
             )
             records.extend(batch_records)
             print(
-                f"[DRL-G] completed {len(records)}/{len(case_names)} cases; "
+                f"[{policy_label}] completed {len(records)}/{len(case_names)} "
+                f"cases; "
                 f"batch_mean={np.mean([x['makespan'] for x in batch_records]):.3f}",
                 flush=True,
             )
-            payload["methods"]["DRL-G"] = {
+            payload["methods"][policy_label] = {
                 "status": "running",
+                "stage1_baseline": policy.ac.stage1_baseline,
                 "device": str(device),
                 "checkpoint_tau": float(checkpoint.get("tau", 1.0)),
                 "tau": float(policy.ac.tau),
@@ -569,7 +598,7 @@ def main(argv=None):
                 "summary": summarize(records),
             }
             write_json(args.output_json, payload)
-        payload["methods"]["DRL-G"]["status"] = "completed"
+        payload["methods"][policy_label]["status"] = "completed"
         write_json(args.output_json, payload)
 
     dispatch_rules = {"fifo": "FIFO", "spt": "SPT", "mwkr": "MWKR"}

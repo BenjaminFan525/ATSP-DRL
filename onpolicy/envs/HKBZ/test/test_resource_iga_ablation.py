@@ -9,6 +9,7 @@ import numpy as np
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
 from onpolicy.envs.HKBZ.experiment.evaluate_resource_iga_ablation import (
     ARM_BACKENDS,
+    FrozenPlaneEvaluator,
     GenomeLayout,
     PRIMARY_ARMS,
     TRANSPORTER_TYPE,
@@ -16,12 +17,16 @@ from onpolicy.envs.HKBZ.experiment.evaluate_resource_iga_ablation import (
     _iga_preferences,
     _resolve_source_command,
     mixed_resource_actions,
+    normalize_resource_lookahead_contract,
 )
 from onpolicy.envs.HKBZ.experiment.generate_stage2_resource_iga_labels import (
     SEARCH_CONTRACT_VERSION,
     _AnytimeCaseGA,
     _initial_population,
+    _load_warm_start,
     _load_verified_warm_episode,
+    _teacher_contract,
+    _teacher_is_reusable,
 )
 from onpolicy.envs.HKBZ.test.test_device_lookahead_dispatch import (
     _commit_plane_to_future_mobile_job,
@@ -33,6 +38,19 @@ CASE_DIR = (
     ROOT
     / "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012"
 )
+
+MATCHED_PLANNING_CONTRACT = {
+    "device_lookahead_dispatch": True,
+    "device_lookahead_safety_margin": 60.0,
+    "device_deadline_aware_dispatch": True,
+    "device_future_intent_horizon": 1,
+    "device_future_intent_mode": "bounded_frontier",
+    "device_frontier_max_requests": 2,
+    "resource_release_aware_eta": True,
+    "device_lookahead_reservation_mode": "hard",
+    "device_reservation_grace_seconds": 300.0,
+    "device_departure_lookahead": True,
+}
 
 
 def _make_env(lookahead=False):
@@ -78,6 +96,88 @@ def _create_r008_request(env):
 
 
 class ResourceIGAAblationTest(unittest.TestCase):
+    def test_matched_planning_contract_is_injected_without_defaults(self):
+        evaluator = FrozenPlaneEvaluator(
+            None,
+            None,
+            max_steps=4000,
+            resource_lookahead_contract=MATCHED_PLANNING_CONTRACT,
+        )
+        config = evaluator._env_config(CASE_DIR)
+        self.assertEqual(
+            evaluator.resource_lookahead_contract,
+            MATCHED_PLANNING_CONTRACT,
+        )
+        for key, value in MATCHED_PLANNING_CONTRACT.items():
+            self.assertEqual(config[key], value, key)
+
+    def test_matched_planning_contract_must_be_complete(self):
+        incomplete = dict(MATCHED_PLANNING_CONTRACT)
+        incomplete.pop("device_departure_lookahead")
+        with self.assertRaisesRegex(ValueError, "must be complete"):
+            normalize_resource_lookahead_contract(incomplete)
+
+    def test_hard_teacher_cannot_be_reused_as_soft_warm_start(self):
+        hard = dict(MATCHED_PLANNING_CONTRACT)
+        soft = {
+            **MATCHED_PLANNING_CONTRACT,
+            "device_lookahead_reservation_mode": "soft",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            teacher_dir = root / "teachers"
+            teacher_dir.mkdir()
+            path = teacher_dir / "case_0001.json"
+            contract = _teacher_contract(
+                case="case_0001",
+                case_sha="case-sha",
+                checkpoint_sha="checkpoint-sha",
+                command_sha="command-sha",
+                command_key="command-key",
+                cumulative_budget=180.0,
+                resource_lookahead_contract=hard,
+            )
+            payload = {
+                **contract,
+                "completed": True,
+                "makespan": 100.0,
+                "completion": {"completed": True},
+                "decision_trace": [{"step": 0}],
+                "intrinsic_ready_time_labels": [{
+                    "observation_time": 0.0,
+                    "intrinsic_ready_time": 1.0,
+                    "plane_id": "P1",
+                    "job_code": "J1",
+                    "site_code": "S1",
+                }],
+                "intrinsic_ready_time_label_coverage": {
+                    "labeled_request_count": 1,
+                },
+                "search": {
+                    "nominal_cumulative_budget_seconds": 180.0,
+                    "chromosome": [0.5],
+                },
+            }
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            self.assertTrue(_teacher_is_reusable(path, contract))
+            soft_contract = {
+                **contract,
+                "resource_lookahead_contract": soft,
+            }
+            self.assertFalse(_teacher_is_reusable(path, soft_contract))
+            with self.assertRaisesRegex(ValueError, "Incompatible warm-start"):
+                _load_warm_start(
+                    root,
+                    "case_0001",
+                    checkpoint_sha="checkpoint-sha",
+                    command_sha="command-sha",
+                    command_key="command-key",
+                    case_sha="case-sha",
+                    expected_budget=180.0,
+                    resource_lookahead_contract=soft,
+                )
+
     def test_new_multi_command_manifest_resolves_the_exact_source_key(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "commands.json"

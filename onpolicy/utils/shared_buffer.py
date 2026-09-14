@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
+from collections.abc import Mapping
 from onpolicy.utils.util import get_shape_from_obs_space, get_shape_from_act_space
 
 
@@ -89,6 +90,15 @@ class SharedReplayBuffer(object):
         self.team_cmax_values = np.zeros(
             (self.n_rollout_threads,), dtype=np.float32
         )
+        self.team_case_deltas = np.full(
+            (self.n_rollout_threads,), np.nan, dtype=np.float32
+        )
+        # Optional action-independent per-case control variate used only by
+        # the Actor.  Critic targets remain on the native environment-return
+        # scale, which avoids teaching the value network an IGA residual.
+        self.actor_case_baseline_offsets = np.zeros(
+            (self.n_rollout_threads,), dtype=np.float32
+        )
         self.decision_times = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads), dtype=np.float32
         )
@@ -96,6 +106,7 @@ class SharedReplayBuffer(object):
             (self.episode_length + 1, self.n_rollout_threads), dtype=np.float32
         )
         self.last_team_time_potential_diagnostics = {}
+        self.last_role_event_return_diagnostics = {}
 
         self.masks = np.ones((self.episode_length + 1, self.n_rollout_threads, num_agents, 1), dtype=np.float32)
         self.bad_masks = np.ones_like(self.masks)
@@ -127,10 +138,13 @@ class SharedReplayBuffer(object):
         self.decision_times.fill(0.0)
         self.potential_values.fill(0.0)
         self.last_team_time_potential_diagnostics = {}
+        self.last_role_event_return_diagnostics = {}
         self.policy_sample_weights.fill(0.0)
         self.value_sample_weights.fill(0.0)
         self.team_returns.fill(0.0)
         self.team_cmax_values.fill(0.0)
+        self.team_case_deltas.fill(np.nan)
+        self.actor_case_baseline_offsets.fill(0.0)
         self.masks.fill(1.0)
         self.bad_masks.fill(1.0)
         self.active_masks.fill(0.0)
@@ -372,6 +386,31 @@ class SharedReplayBuffer(object):
             raise ValueError('cmax_values must be finite and positive.')
         self.team_cmax_values[:] = values
 
+    def set_team_case_deltas(self, case_deltas):
+        """Store paired Cmax excess for variance/tail-aware PPO."""
+        values = np.asarray(case_deltas, dtype=np.float32).reshape(-1)
+        expected = (self.n_rollout_threads,)
+        if values.shape != expected:
+            raise ValueError(
+                f'case_deltas must have shape {expected}, got {values.shape}.'
+            )
+        if not np.isfinite(values).all():
+            raise ValueError('case_deltas must be finite.')
+        self.team_case_deltas[:] = values
+
+    def set_actor_case_baseline_offsets(self, offsets):
+        """Store one finite, action-independent Actor offset per case."""
+        values = np.asarray(offsets, dtype=np.float32).reshape(-1)
+        expected = (self.n_rollout_threads,)
+        if values.shape != expected:
+            raise ValueError(
+                f'Actor case-baseline offsets must have shape {expected}, '
+                f'got {values.shape}.'
+            )
+        if not np.isfinite(values).all():
+            raise ValueError('Actor case-baseline offsets must be finite.')
+        self.actor_case_baseline_offsets[:] = values
+
     def compute_team_time_returns(
         self,
         team_returns,
@@ -430,6 +469,433 @@ class SharedReplayBuffer(object):
         self.value_preds[T] = np.nan_to_num(
             next_value, nan=0.0, posinf=1e4, neginf=-1e4
         )
+
+    def compute_role_event_time_returns(
+        self,
+        team_returns,
+        cmax_values,
+        cmax_coef,
+        next_value,
+        *,
+        gae_lambda=1.0,
+        role_gae_lambdas=None,
+        value_baselines=None,
+        event_credit_weights=None,
+        event_credit_mode='elapsed',
+        event_credit_uniform_mix=0.15,
+        potential_coef=0.0,
+    ):
+        """Build team-time targets on three independent physical role clocks.
+
+        A mixed environment step can contain plane, ordinary-device, and R014
+        decisions.  Treating it as one joint PPO event entangles decision
+        frequencies.  This routine walks each role's physical event sequence,
+        accumulates elapsed-time cost exactly once per role event, and applies
+        TD(lambda) between consecutive events of *the same role*.
+
+        Gamma is deliberately one for the finite-horizon scheduling objective.
+        Lambda=1 is an audited identity with the old Monte-Carlo target;
+        lambda<1 is the genuinely different Stage3 credit assignment.  The
+        terminal bootstrap is always zero and the complete terminal team-cost
+        residual is attached to the last event on every role clock.
+
+        ``critical_path`` and ``critical_path_v2`` credit change only the
+        decomposition of the fixed
+        role return: post-episode non-negative event scores receive
+        ``1-uniform_mix`` of the elapsed Cmax cost, while ``uniform_mix`` keeps
+        the physical-time decomposition as a variance floor.  The total is
+        checked independently for every case/role.  A fitted state potential
+        may be composed with either credit mode; its role-event differences
+        telescope to ``-beta*Phi(first_role_event)``.
+        """
+
+        T = int(getattr(self, 'filled_steps', self.episode_length))
+        if T <= 0:
+            raise RuntimeError(
+                'Cannot compute role-event returns for an empty rollout.'
+            )
+        team_returns = np.asarray(team_returns, dtype=np.float32).reshape(-1)
+        cmax_values = np.asarray(cmax_values, dtype=np.float32).reshape(-1)
+        expected = (self.n_rollout_threads,)
+        if team_returns.shape != expected or cmax_values.shape != expected:
+            raise ValueError(
+                f'team_returns and cmax_values must have shape {expected}.'
+            )
+        if (
+            not np.isfinite(team_returns).all()
+            or not np.isfinite(cmax_values).all()
+        ):
+            raise ValueError('Role-event objective contains NaN or Inf.')
+        if np.any(self.decision_times[:T] > cmax_values[None, :] + 1e-4):
+            raise ValueError('A role decision time exceeds final Cmax.')
+
+        coef = float(cmax_coef)
+        if not np.isfinite(coef) or coef <= 0.0:
+            raise ValueError('Role-event cmax_coef must be finite and positive.')
+        event_credit_mode = str(event_credit_mode)
+        if event_credit_mode not in {
+            'elapsed', 'critical_path', 'critical_path_v2'
+        }:
+            raise ValueError(
+                'event_credit_mode must be elapsed, critical_path, or '
+                'critical_path_v2.'
+            )
+        event_credit_uniform_mix = float(event_credit_uniform_mix)
+        if (
+            not np.isfinite(event_credit_uniform_mix)
+            or not 0.0 <= event_credit_uniform_mix <= 1.0
+        ):
+            raise ValueError('event_credit_uniform_mix must be in [0, 1].')
+        potential_coef = float(potential_coef)
+        if not np.isfinite(potential_coef) or potential_coef < 0.0:
+            raise ValueError('Role-event potential_coef must be non-negative.')
+        if event_credit_weights is None:
+            event_credit_weights = np.zeros(
+                (T, self.n_rollout_threads, self.num_agents),
+                dtype=np.float32,
+            )
+        else:
+            event_credit_weights = np.asarray(
+                event_credit_weights, dtype=np.float64
+            )
+            expected_credit_shape = (
+                T, self.n_rollout_threads, self.num_agents
+            )
+            if event_credit_weights.shape != expected_credit_shape:
+                raise ValueError(
+                    'event_credit_weights must have shape '
+                    f'{expected_credit_shape}, got '
+                    f'{event_credit_weights.shape}.'
+                )
+            if (
+                not np.isfinite(event_credit_weights).all()
+                or np.any(event_credit_weights < 0.0)
+            ):
+                raise ValueError(
+                    'event_credit_weights must be finite and non-negative.'
+                )
+        potentials = np.asarray(
+            self.potential_values[:T], dtype=np.float64
+        )
+        if not np.isfinite(potentials).all():
+            raise ValueError('Role-event potential contains NaN or Inf.')
+        if potential_coef > 0.0 and np.any(potentials > 1e-4):
+            raise ValueError(
+                'Role-event IGA potential must be non-positive.'
+            )
+        gae_lambda = float(gae_lambda)
+        if not np.isfinite(gae_lambda) or not 0.0 <= gae_lambda <= 1.0:
+            raise ValueError('Role-event GAE lambda must be in [0, 1].')
+        role_names = {0: 'plane', 1: 'device', 2: 'transporter'}
+        role_lambdas = {role: gae_lambda for role in role_names}
+        if role_gae_lambdas is not None:
+            if isinstance(role_gae_lambdas, Mapping):
+                for role, role_name in role_names.items():
+                    if role in role_gae_lambdas:
+                        role_lambdas[role] = float(role_gae_lambdas[role])
+                    elif role_name in role_gae_lambdas:
+                        role_lambdas[role] = float(
+                            role_gae_lambdas[role_name]
+                        )
+            else:
+                values = tuple(role_gae_lambdas)
+                if len(values) != len(role_names):
+                    raise ValueError(
+                        'role_gae_lambdas must contain plane, device, and '
+                        'transporter values.'
+                    )
+                role_lambdas = {
+                    role: float(values[role]) for role in role_names
+                }
+        for role, value in role_lambdas.items():
+            if not np.isfinite(value) or not 0.0 <= value <= 1.0:
+                raise ValueError(
+                    f'{role_names[role]} role-event GAE lambda must be in '
+                    '[0, 1].'
+                )
+        if value_baselines is None:
+            if not all(np.isclose(value, 1.0) for value in role_lambdas.values()):
+                raise ValueError(
+                    'Role-event TD(lambda<1) requires raw-scale critic '
+                    'value_baselines.'
+                )
+            value_baselines = np.zeros_like(
+                self.value_preds[:T], dtype=np.float32
+            )
+        else:
+            value_baselines = np.asarray(value_baselines, dtype=np.float32)
+            expected_baseline_shape = self.value_preds[:T].shape
+            if value_baselines.shape != expected_baseline_shape:
+                raise ValueError(
+                    'Role-event value_baselines must have shape '
+                    f'{expected_baseline_shape}, got {value_baselines.shape}.'
+                )
+            if not np.isfinite(value_baselines).all():
+                raise ValueError(
+                    'Role-event value_baselines contains NaN or Inf.'
+                )
+        self.team_returns[:] = team_returns
+        self.returns.fill(0.0)
+        self.rewards.fill(0.0)
+        role_event_counts = {0: 0, 1: 0, 2: 0}
+        role_td_mc_abs_sum = {0: 0.0, 1: 0.0, 2: 0.0}
+        role_td_mc_abs_max = {0: 0.0, 1: 0.0, 2: 0.0}
+        max_return_error = 0.0
+        max_conservation_error = 0.0
+        max_base_conservation_error = 0.0
+        max_potential_telescoping_error = 0.0
+        credit_sequence_count = 0
+        credit_fallback_sequence_count = 0
+        credit_positive_event_count = 0
+        credit_max_event_share = 0.0
+        credit_effective_event_fraction_sum = 0.0
+
+        for env_idx, terminal_return in enumerate(team_returns):
+            terminal_residual = float(
+                terminal_return + coef * cmax_values[env_idx]
+            )
+            for role in (0, 1, 2):
+                role_active = (
+                    (self.active_masks[:T, env_idx, :, 0] > 0.0)
+                    & (self.agent_types[:T, env_idx] == role)
+                )
+                event_steps = np.flatnonzero(role_active.any(axis=1))
+                if event_steps.size == 0:
+                    continue
+                role_event_counts[role] += int(event_steps.size)
+                event_times = self.decision_times[event_steps, env_idx].astype(
+                    np.float64
+                )
+                next_times = np.concatenate((
+                    event_times[1:],
+                    np.asarray([cmax_values[env_idx]], dtype=np.float64),
+                ))
+                elapsed_costs = coef * (next_times - event_times)
+                if np.any(elapsed_costs < -1e-6):
+                    raise RuntimeError(
+                        'Role-event physical time moved backwards.'
+                    )
+                elapsed_costs = np.maximum(elapsed_costs, 0.0)
+                base_cost = float(elapsed_costs.sum())
+                elapsed_distribution = (
+                    elapsed_costs / base_cost
+                    if base_cost > 1e-12
+                    else np.full(
+                        event_steps.size,
+                        1.0 / float(event_steps.size),
+                        dtype=np.float64,
+                    )
+                )
+                distribution = elapsed_distribution
+                if event_credit_mode in {
+                    'critical_path', 'critical_path_v2'
+                }:
+                    credit_sequence_count += 1
+                    raw_credit = np.asarray([
+                        float(event_credit_weights[
+                            step, env_idx, role_active[step]
+                        ].sum())
+                        for step in event_steps
+                    ], dtype=np.float64)
+                    positive_count = int(np.count_nonzero(raw_credit > 0.0))
+                    credit_positive_event_count += positive_count
+                    if float(raw_credit.sum()) > 1e-12:
+                        causal_distribution = raw_credit / raw_credit.sum()
+                        distribution = (
+                            (1.0 - event_credit_uniform_mix)
+                            * causal_distribution
+                            + event_credit_uniform_mix
+                            * elapsed_distribution
+                        )
+                    else:
+                        credit_fallback_sequence_count += 1
+                    credit_max_event_share = max(
+                        credit_max_event_share,
+                        float(distribution.max(initial=0.0)),
+                    )
+                    positive_distribution = distribution[distribution > 0.0]
+                    entropy = -float(np.sum(
+                        positive_distribution
+                        * np.log(positive_distribution)
+                    ))
+                    credit_effective_event_fraction_sum += (
+                        float(np.exp(entropy)) / float(event_steps.size)
+                    )
+
+                base_event_rewards = -base_cost * distribution
+                event_rewards = base_event_rewards.copy()
+                event_rewards[-1] += terminal_residual
+
+                event_potentials = potentials[event_steps, env_idx]
+                next_event_potentials = np.concatenate((
+                    event_potentials[1:],
+                    np.zeros((1,), dtype=np.float64),
+                ))
+                potential_rewards = potential_coef * (
+                    next_event_potentials - event_potentials
+                )
+                event_rewards += potential_rewards
+                mc_returns = np.cumsum(event_rewards[::-1])[::-1]
+                if event_credit_mode == 'elapsed':
+                    expected_returns = (
+                        terminal_return
+                        + coef * event_times
+                        - potential_coef * event_potentials
+                    )
+                    max_return_error = max(
+                        max_return_error,
+                        float(np.max(np.abs(
+                            mc_returns - expected_returns
+                        ))),
+                    )
+                expected_initial_return = (
+                    terminal_return
+                    + coef * event_times[0]
+                    - potential_coef * event_potentials[0]
+                )
+                max_conservation_error = max(
+                    max_conservation_error,
+                    abs(float(
+                        event_rewards.sum() - expected_initial_return
+                    )),
+                )
+                max_base_conservation_error = max(
+                    max_base_conservation_error,
+                    abs(float(
+                        base_event_rewards.sum() + base_cost
+                    )),
+                )
+                max_potential_telescoping_error = max(
+                    max_potential_telescoping_error,
+                    abs(float(
+                        potential_rewards.sum()
+                        + potential_coef * event_potentials[0]
+                    )),
+                )
+
+                event_values = np.asarray([
+                    float(value_baselines[
+                        step, env_idx, role_active[step], 0
+                    ].mean())
+                    for step in event_steps
+                ], dtype=np.float64)
+                next_event_values = np.concatenate((
+                    event_values[1:], np.zeros((1,), dtype=np.float64)
+                ))
+                deltas = event_rewards + next_event_values - event_values
+                gae = 0.0
+                event_returns = np.zeros_like(event_values)
+                for event_idx in reversed(range(event_steps.size)):
+                    gae = (
+                        float(deltas[event_idx])
+                        + role_lambdas[role] * gae
+                    )
+                    event_returns[event_idx] = event_values[event_idx] + gae
+
+                td_mc_abs = np.abs(event_returns - mc_returns)
+                role_td_mc_abs_sum[role] += float(td_mc_abs.sum())
+                role_td_mc_abs_max[role] = max(
+                    role_td_mc_abs_max[role],
+                    float(td_mc_abs.max(initial=0.0)),
+                )
+                for event_idx, step in enumerate(event_steps):
+                    active_agents = role_active[step]
+                    self.returns[step, env_idx, :, 0][active_agents] = (
+                        event_returns[event_idx]
+                    )
+                    count = int(active_agents.sum())
+                    self.rewards[step, env_idx, :, 0][active_agents] = (
+                        event_rewards[event_idx] / float(count)
+                    )
+
+        tolerance = 2e-3
+        td_mc_count = max(sum(role_event_counts.values()), 1)
+        all_mc = all(
+            np.isclose(value, 1.0) for value in role_lambdas.values()
+        )
+        self.last_role_event_return_diagnostics = {
+            'gamma': 1.0,
+            'gae_lambda': float(gae_lambda),
+            'event_credit_mode_critical_path': float(
+                event_credit_mode == 'critical_path'
+            ),
+            'event_credit_mode_critical_path_v2': float(
+                event_credit_mode == 'critical_path_v2'
+            ),
+            'event_credit_uniform_mix': float(event_credit_uniform_mix),
+            'event_credit_sequence_count': int(credit_sequence_count),
+            'event_credit_fallback_sequence_count': int(
+                credit_fallback_sequence_count
+            ),
+            'event_credit_positive_event_count': int(
+                credit_positive_event_count
+            ),
+            'event_credit_max_event_share': float(
+                credit_max_event_share
+            ),
+            'event_credit_effective_event_fraction_mean': float(
+                credit_effective_event_fraction_sum
+                / max(credit_sequence_count, 1)
+            ),
+            'potential_coef': float(potential_coef),
+            'heterogeneous_gae_lambda': float(
+                len({round(value, 12) for value in role_lambdas.values()}) > 1
+            ),
+            'plane_event_count': int(role_event_counts[0]),
+            'device_event_count': int(role_event_counts[1]),
+            'transporter_event_count': int(role_event_counts[2]),
+            'return_identity_max_abs_error': float(max_return_error),
+            'cost_conservation_max_abs_error': float(max_conservation_error),
+            'base_cost_conservation_max_abs_error': float(
+                max_base_conservation_error
+            ),
+            'potential_telescoping_max_abs_error': float(
+                max_potential_telescoping_error
+            ),
+            'td_mc_mean_abs_difference': float(
+                sum(role_td_mc_abs_sum.values()) / td_mc_count
+            ),
+            'td_mc_max_abs_difference': float(
+                max(role_td_mc_abs_max.values(), default=0.0)
+            ),
+            'mc_identity_enforced': float(all_mc),
+            'terminal_bootstrap_abs_max': 0.0,
+        }
+        for role, role_name in role_names.items():
+            count = max(role_event_counts[role], 1)
+            self.last_role_event_return_diagnostics.update({
+                f'{role_name}_gae_lambda': float(role_lambdas[role]),
+                f'{role_name}_td_mc_mean_abs_difference': float(
+                    role_td_mc_abs_sum[role] / count
+                ),
+                f'{role_name}_td_mc_max_abs_difference': float(
+                    role_td_mc_abs_max[role]
+                ),
+            })
+        if max(
+            max_return_error,
+            max_conservation_error,
+            max_base_conservation_error,
+            max_potential_telescoping_error,
+        ) > tolerance:
+            raise RuntimeError(
+                'Role-event return conservation failed: '
+                f'{self.last_role_event_return_diagnostics}'
+            )
+        if (
+            all_mc
+            and self.last_role_event_return_diagnostics[
+                'td_mc_max_abs_difference'
+            ] > tolerance
+        ):
+            raise RuntimeError(
+                'Role-event lambda=1 failed to reproduce Monte-Carlo returns: '
+                f'{self.last_role_event_return_diagnostics}'
+            )
+        self.value_preds[T] = np.nan_to_num(
+            next_value, nan=0.0, posinf=1e4, neginf=-1e4
+        )
+        return dict(self.last_role_event_return_diagnostics)
 
     def compute_team_time_potential_returns(
         self,
@@ -570,8 +1036,81 @@ class SharedReplayBuffer(object):
         return dict(self.last_team_time_potential_diagnostics)
 
 
-    def build_case_balanced_weights(self, role_loss_coef):
-        """Build per-decision weights whose total mass is one per case."""
+    @staticmethod
+    def _bounded_sqrt_role_shares(
+        role_event_counts,
+        min_share,
+        max_share,
+    ):
+        """Project sqrt(event count) shares onto a bounded unit simplex."""
+
+        active = {
+            int(role): int(count)
+            for role, count in role_event_counts.items()
+            if int(count) > 0
+        }
+        if not active:
+            return {}
+        if len(active) == 1:
+            return {next(iter(active)): 1.0}
+        min_share = float(min_share)
+        max_share = float(max_share)
+        if (
+            not np.isfinite(min_share)
+            or not np.isfinite(max_share)
+            or min_share < 0.0
+            or max_share <= 0.0
+            or min_share > max_share
+        ):
+            raise ValueError('Invalid sqrt-event role-share bounds.')
+        role_count = len(active)
+        lower = min(min_share, 1.0 / role_count)
+        upper = max(max_share, 1.0 / role_count)
+        raw = {
+            role: float(np.sqrt(count)) for role, count in active.items()
+        }
+
+        # sum(clip(scale * raw)) is monotone, so bisection gives a stable
+        # bounded projection without privileging a role when a bound is hit.
+        low_scale = 0.0
+        high_scale = 1.0
+        while sum(
+            min(upper, max(lower, high_scale * value))
+            for value in raw.values()
+        ) < 1.0:
+            high_scale *= 2.0
+        for _ in range(80):
+            scale = 0.5 * (low_scale + high_scale)
+            mass = sum(
+                min(upper, max(lower, scale * value))
+                for value in raw.values()
+            )
+            if mass < 1.0:
+                low_scale = scale
+            else:
+                high_scale = scale
+        shares = {
+            role: min(upper, max(lower, high_scale * value))
+            for role, value in raw.items()
+        }
+        normalizer = sum(shares.values())
+        return {role: share / normalizer for role, share in shares.items()}
+
+    def build_case_balanced_weights(
+        self,
+        role_loss_coef,
+        *,
+        role_loss_weighting='fixed',
+        role_loss_min_share=0.15,
+        role_loss_max_share=0.60,
+    ):
+        """Build case-balanced fixed or event-adaptive role weights.
+
+        ``fixed`` retains the exact historical per-decision weighting used by
+        A1. ``sqrt_event`` gives each case total mass one, allocates role mass
+        proportional to sqrt(role event count), and divides each role's mass
+        uniformly over its joint events (then over simultaneous agents).
+        """
         T = int(getattr(self, 'filled_steps', self.episode_length))
         self.policy_sample_weights.fill(0.0)
         self.value_sample_weights.fill(0.0)
@@ -585,6 +1124,11 @@ class SharedReplayBuffer(object):
             int(role): max(0.0, float(coef))
             for role, coef in role_loss_coef.items()
         }
+        role_loss_weighting = str(role_loss_weighting)
+        if role_loss_weighting not in {'fixed', 'sqrt_event'}:
+            raise ValueError(
+                'role_loss_weighting must be fixed or sqrt_event.'
+            )
         policy_mask = (
             (self.policy_masks[:T, ..., 0] > 0.0)
             & (self.active_masks[:T, ..., 0] > 0.0)
@@ -592,36 +1136,102 @@ class SharedReplayBuffer(object):
         value_mask = self.active_masks[:T, ..., 0] > 0.0
         agent_types = self.agent_types[:T]
 
-        def populate(mask, destination):
+        def populate(mask, destination, prefix):
             case_masses = []
+            role_case_shares = {role: [] for role in role_loss_coef}
+            role_event_totals = {role: 0 for role in role_loss_coef}
             for env_idx in range(self.n_rollout_threads):
-                role_counts = {}
+                role_decision_counts = {}
+                role_event_counts = {}
                 for role, coef in role_loss_coef.items():
                     if coef <= 0.0:
                         continue
-                    count = int(
-                        (mask[:, env_idx] & (agent_types[:, env_idx] == role)).sum()
+                    role_mask = (
+                        mask[:, env_idx]
+                        & (agent_types[:, env_idx] == role)
                     )
-                    if count > 0:
-                        role_counts[role] = count
-                coefficient_mass = sum(role_loss_coef[role] for role in role_counts)
+                    decision_count = int(role_mask.sum())
+                    event_count = int(role_mask.any(axis=1).sum())
+                    if decision_count > 0 and event_count > 0:
+                        role_decision_counts[role] = decision_count
+                        role_event_counts[role] = event_count
+                        role_event_totals[role] += event_count
+                if role_loss_weighting == 'sqrt_event':
+                    role_shares = self._bounded_sqrt_role_shares(
+                        role_event_counts,
+                        role_loss_min_share,
+                        role_loss_max_share,
+                    )
+                else:
+                    coefficient_mass = sum(
+                        role_loss_coef[role]
+                        for role in role_decision_counts
+                    )
+                    role_shares = {
+                        role: role_loss_coef[role] / coefficient_mass
+                        for role in role_decision_counts
+                    } if coefficient_mass > 0.0 else {}
+                coefficient_mass = sum(role_shares.values())
                 if coefficient_mass <= 0.0:
                     case_masses.append(0.0)
                     continue
-                for role, count in role_counts.items():
-                    role_mask = mask[:, env_idx] & (agent_types[:, env_idx] == role)
-                    weight = role_loss_coef[role] / coefficient_mass / float(count)
-                    destination[:T, env_idx, :, 0][role_mask] = weight
+                for role, share in role_shares.items():
+                    role_mask = (
+                        mask[:, env_idx]
+                        & (agent_types[:, env_idx] == role)
+                    )
+                    if role_loss_weighting == 'fixed':
+                        destination[:T, env_idx, :, 0][role_mask] = (
+                            share / float(role_decision_counts[role])
+                        )
+                    else:
+                        per_event_mass = share / float(role_event_counts[role])
+                        for step in np.flatnonzero(role_mask.any(axis=1)):
+                            active_agents = role_mask[step]
+                            destination[step, env_idx, active_agents, 0] = (
+                                per_event_mass / float(active_agents.sum())
+                            )
+                    role_case_shares[role].append(float(share))
                 case_masses.append(float(destination[:T, env_idx].sum()))
             errors = [abs(mass - 1.0) for mass in case_masses if mass > 0.0]
-            return max(errors, default=0.0)
+            diagnostics = {
+                f'{prefix}_case_weight_max_error': float(
+                    max(errors, default=0.0)
+                ),
+            }
+            role_names = {0: 'plane', 1: 'device', 2: 'transporter'}
+            for role, values in role_case_shares.items():
+                role_name = role_names.get(role, f'role_{role}')
+                diagnostics.update({
+                    f'{prefix}_{role_name}_event_count': float(
+                        role_event_totals[role]
+                    ),
+                    f'{prefix}_{role_name}_share_mean': float(
+                        np.mean(values) if values else 0.0
+                    ),
+                    f'{prefix}_{role_name}_share_min': float(
+                        np.min(values) if values else 0.0
+                    ),
+                    f'{prefix}_{role_name}_share_max': float(
+                        np.max(values) if values else 0.0
+                    ),
+                })
+            return diagnostics
 
-        policy_error = populate(policy_mask, self.policy_sample_weights)
-        value_error = populate(value_mask, self.value_sample_weights)
-        return {
-            'policy_case_weight_max_error': float(policy_error),
-            'value_case_weight_max_error': float(value_error),
+        diagnostics = {
+            'role_loss_weighting_sqrt_event': float(
+                role_loss_weighting == 'sqrt_event'
+            ),
+            'role_loss_min_share': float(role_loss_min_share),
+            'role_loss_max_share': float(role_loss_max_share),
         }
+        diagnostics.update(populate(
+            policy_mask, self.policy_sample_weights, 'policy'
+        ))
+        diagnostics.update(populate(
+            value_mask, self.value_sample_weights, 'value'
+        ))
+        return diagnostics
 
     def apply_time_tail_policy_weights(self, start_fraction, final_weight):
         """Redistribute each case's policy mass toward its late decisions.
@@ -682,6 +1292,95 @@ class SharedReplayBuffer(object):
                 float(weighted_count) / max(float(positive_count), 1.0)
             ),
             'tail_policy_case_weight_max_error': float(max(errors, default=0.0)),
+        }
+
+    def apply_cvar_case_weights(
+        self, tail_fraction, tail_weight, case_metric='cmax'
+    ):
+        """Reweight the worst terminal-Cmax cases without changing total mass.
+
+        Case-balanced PPO normally assigns every rollout thread unit mass.
+        CVaR deliberately changes the *relative* mass across cases, while a
+        global normalization keeps the optimizer scale identical to the
+        control arm.  Stable sorting makes ties and repeated canaries exactly
+        reproducible.  Both actor and critic weights use the same case factor
+        so the counterfactual baseline is fitted to the policy objective.
+        """
+        tail_fraction = float(tail_fraction)
+        tail_weight = float(tail_weight)
+        if not 0.0 < tail_fraction <= 1.0:
+            raise ValueError('CVaR tail fraction must be in (0, 1].')
+        if tail_weight < 1.0 or not np.isfinite(tail_weight):
+            raise ValueError('CVaR tail weight must be finite and at least 1.')
+        T = int(getattr(self, 'filled_steps', self.episode_length))
+        if T <= 0 or tail_fraction >= 1.0 or tail_weight <= 1.0:
+            return {
+                'cvar_policy_enabled': 0.0,
+                'cvar_tail_fraction': float(tail_fraction),
+                'cvar_tail_weight': float(tail_weight),
+                'cvar_tail_case_count': 0.0,
+                'cvar_mass_conservation_error': 0.0,
+                'cvar_threshold_cmax': 0.0,
+            }
+        case_metric = str(case_metric)
+        if case_metric not in {'cmax', 'paired_delta'}:
+            raise ValueError('CVaR case metric must be cmax or paired_delta.')
+        cmax = np.asarray(self.team_cmax_values, dtype=np.float64)
+        if cmax.shape != (self.n_rollout_threads,):
+            raise RuntimeError('CVaR terminal-Cmax shape is invalid.')
+        if not np.isfinite(cmax).all() or np.any(cmax <= 0.0):
+            raise RuntimeError('CVaR requires one positive terminal Cmax per case.')
+
+        ranking_values = cmax
+        if case_metric == 'paired_delta':
+            ranking_values = np.asarray(
+                self.team_case_deltas, dtype=np.float64
+            )
+            if (
+                ranking_values.shape != (self.n_rollout_threads,)
+                or not np.isfinite(ranking_values).all()
+            ):
+                raise RuntimeError(
+                    'Paired-delta CVaR requires one finite reference delta '
+                    'per rollout case.'
+                )
+
+        case_count = int(cmax.size)
+        tail_count = max(1, int(np.ceil(tail_fraction * case_count)))
+        ordered = np.argsort(ranking_values, kind='stable')
+        tail_indices = ordered[-tail_count:]
+        multipliers = np.ones(case_count, dtype=np.float64)
+        multipliers[tail_indices] = tail_weight
+
+        policy_old = float(self.policy_sample_weights[:T].sum())
+        value_old = float(self.value_sample_weights[:T].sum())
+        for env_idx, multiplier in enumerate(multipliers):
+            self.policy_sample_weights[:T, env_idx] *= multiplier
+            self.value_sample_weights[:T, env_idx] *= multiplier
+        policy_new = float(self.policy_sample_weights[:T].sum())
+        value_new = float(self.value_sample_weights[:T].sum())
+        if policy_old > 0.0:
+            self.policy_sample_weights[:T] *= policy_old / policy_new
+        if value_old > 0.0:
+            self.value_sample_weights[:T] *= value_old / value_new
+        errors = []
+        if policy_old > 0.0:
+            errors.append(abs(float(self.policy_sample_weights[:T].sum()) - policy_old))
+        if value_old > 0.0:
+            errors.append(abs(float(self.value_sample_weights[:T].sum()) - value_old))
+        return {
+            'cvar_policy_enabled': 1.0,
+            'cvar_tail_fraction': float(tail_fraction),
+            'cvar_tail_weight': float(tail_weight),
+            'cvar_tail_case_count': float(tail_count),
+            'cvar_mass_conservation_error': float(max(errors, default=0.0)),
+            'cvar_threshold_cmax': float(cmax[tail_indices].min()),
+            'cvar_case_metric_paired_delta': float(
+                case_metric == 'paired_delta'
+            ),
+            'cvar_threshold_case_metric': float(
+                ranking_values[tail_indices].min()
+            ),
         }
 
     def graph_recurrent_generator(self, advantages, mini_batch_size):

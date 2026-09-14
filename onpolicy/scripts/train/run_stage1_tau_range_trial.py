@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PYTHON = (ROOT.parent / 'conda/envs/maia/bin/python3.11').resolve()
+PYTHON = (ROOT.parent / 'conda/envs/maia-hkbz-cu124-20260903/bin/python3.11').resolve()
 TRAIN = ROOT / 'onpolicy/scripts/train/train_hkbz.py'
 RESULT_ROOT = ROOT / 'onpolicy/scripts/results/HKBZ/simple/gnn_mappo'
 AC_CONFIG = ROOT / 'onpolicy/config/ac.yaml'

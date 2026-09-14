@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Plan, audit, and execute the Stage-1 M2 -> Stage-2 HKBZ hand-off.
 
-The controller is intentionally small and dependency-light.  It never treats
-``checkpoint_DeviceBC.pt`` as a new training stage: that file is the
-in-process resource-BC warm-up boundary produced by the Stage-2 runner.  A
-new Stage-2 run always restores the immutable Stage-1 M2 source and performs
-the warm-up again.
+The controller is intentionally small and dependency-light.  Stage2 restores
+the immutable Stage1 M2 source, freezes its encoder/aircraft policy, and uses
+supervision only to train the request-ready predictor and mobile-resource
+policy heads.  It never executes PPO or carries critic/ValueNorm state.
 
 The command line has three operational modes::
 
     register  Record an externally completed Stage-1 M2 checkpoint.
     plan      Record the unique Stage-2 command (``--dry-run`` is implied by
               the absence of an execute request).
-    run       Plan and execute the command, then audit warm-up/Best/Last
+    run       Plan and execute the command, then audit supervised/Best/Last
               checkpoint lineage.
 
 All manifest writes are atomic.  The functions in this module are also used
@@ -35,14 +34,14 @@ import subprocess
 import sys
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
 
-
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from onpolicy.utils.training_stage import STAGE2_SUPERVISION_CONTRACT
 PYTHON = Path(
     os.environ.get(
         "PYTHON",
-        str((ROOT.parent / "conda/envs/maia/bin/python3.11").resolve()),
+        str((ROOT.parent / "conda/envs/maia-hkbz-cu124-20260903/bin/python3.11").resolve()),
     )
 )
 TRAIN_SCRIPT = ROOT / "onpolicy/scripts/train/train_hkbz.py"
@@ -57,11 +56,32 @@ STAGE1_KIND = "stage1_m2"
 MANIFEST_SCHEMA_VERSION = 1
 SUPPORTED_HANDOFF_SCHEMA_VERSIONS = frozenset({1, 2})
 DEFAULT_BC_EPOCHS = 2
-DEFAULT_PPO_EPOCHS = 8
-DEFAULT_PPO_EPOCH = 3
+DEFAULT_PPO_EPOCHS = 0
+DEFAULT_PPO_EPOCH = 0
 DEFAULT_BC_MIN_LABELS = 64
+DEFAULT_RANKING_MIN_LABELS = 64
+DEFAULT_READY_MIN_LABELS = 64
 DEFAULT_BC_MIN_ROLLOUTS = 1
 DEFAULT_BC_MAX_ROLLOUTS = 20
+
+RESOURCE_LOOKAHEAD_CONTRACT_FIELDS = frozenset(
+    {
+        "device_lookahead_dispatch",
+        "device_lookahead_safety_margin",
+        "device_deadline_aware_dispatch",
+        "device_future_intent_horizon",
+        "device_future_intent_mode",
+        "device_frontier_max_requests",
+        "resource_release_aware_eta",
+        "device_lookahead_reservation_mode",
+        "device_reservation_grace_seconds",
+        "device_departure_lookahead",
+    }
+)
+INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION = 1
+INTRINSIC_READY_TIME_SEMANTICS = (
+    "earliest_physical_ready_time_excluding_mobile_resource_delay"
+)
 
 _RUN_TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
@@ -100,6 +120,13 @@ STAGE1_ONLY_OPTIONS = frozenset(
         "--iga_potential_beta_schedule",
         "--iga_potential_weights_path",
         "--iga_potential_gamma",
+        # Stage2 is supervised-only. Environment rewards are never consumed,
+        # and carrying a Stage1 potential mode after its fitted weights have
+        # been deliberately removed makes train_hkbz fail before BC starts.
+        "--hindsight_reward_mode",
+        "--hindsight_cmax_coef",
+        "--hindsight_shaping_coef",
+        "--hindsight_terminal_cmax_coef",
         # A completed Stage-1 command may point at an evaluator service that
         # no longer exists. Stage 2 either evaluates locally or receives a
         # fresh socket from its own launcher.
@@ -199,6 +226,8 @@ SWITCH_OPTIONS = frozenset(
         "--device_lookahead_dispatch",
         "--strict_checkpoint_contract",
         "--device_bc_role_balanced",
+        "--device_bc_timing_balanced",
+        "--request_ready_prediction",
     }
 )
 
@@ -219,6 +248,12 @@ VALUE_OPTIONS = INHERITED_OPTIONS | STAGE1_ONLY_OPTIONS | frozenset(
         "--device_bc_pretrain_epochs",
         "--device_bc_lr",
         "--device_bc_min_labels_per_epoch",
+        "--device_bc_min_ranking_labels_per_epoch",
+        "--device_bc_ranking_loss_coef",
+        "--device_bc_timing_loss_coef",
+        "--request_ready_min_labels_per_epoch",
+        "--request_ready_loss_coef",
+        "--request_ready_time_scale",
         "--device_bc_min_rollouts_per_epoch",
         "--device_bc_max_rollouts_per_epoch",
         "--device_bc_teacher",
@@ -316,6 +351,143 @@ def read_json(path: str | os.PathLike[str]) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"Expected a JSON object in {path}")
     return value
+
+
+def load_resource_teacher_planning_contract(
+    index_path: str | os.PathLike[str],
+    *,
+    source: Mapping[str, str],
+    teacher_dir: str | os.PathLike[str],
+) -> dict[str, Any]:
+    """Load and validate the exact planning semantics used by Stage2 labels.
+
+    H/F search labels are state-trajectory labels, so silently training them
+    under parser defaults is invalid even when the teacher chromosome itself
+    can be decoded. Bind the command to the sidecar before workers launch.
+    """
+
+    path = Path(index_path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Stage2 teacher index does not exist: {path}")
+    payload = read_json(path)
+    schema_version = int(payload.get("schema_version", 0))
+    if schema_version not in {1, 2}:
+        raise ValueError(
+            f"Unsupported Stage2 teacher-index schema {schema_version}: {path}"
+        )
+    if (
+        payload.get("teacher_scope") != "stage2_resource_policy"
+        or payload.get("teacher_method") != "resource_iga_all"
+    ):
+        raise ValueError(f"Invalid Stage2 resource teacher index: {path}")
+
+    contract = payload.get("resource_lookahead_contract")
+    if not isinstance(contract, Mapping):
+        raise ValueError("Stage2 teacher index has no planning contract.")
+    observed_fields = set(contract)
+    if observed_fields != set(RESOURCE_LOOKAHEAD_CONTRACT_FIELDS):
+        raise ValueError(
+            "Stage2 teacher planning contract must be complete: "
+            f"missing={sorted(RESOURCE_LOOKAHEAD_CONTRACT_FIELDS - observed_fields)!r}, "
+            f"unknown={sorted(observed_fields - RESOURCE_LOOKAHEAD_CONTRACT_FIELDS)!r}."
+        )
+
+    boolean_fields = (
+        "device_lookahead_dispatch",
+        "device_deadline_aware_dispatch",
+        "resource_release_aware_eta",
+        "device_departure_lookahead",
+    )
+    for field in boolean_fields:
+        if not isinstance(contract[field], bool):
+            raise ValueError(f"Stage2 teacher contract {field} must be boolean.")
+    horizon = contract["device_future_intent_horizon"]
+    frontier = contract["device_frontier_max_requests"]
+    if isinstance(horizon, bool) or int(horizon) not in {0, 1, 2, 3}:
+        raise ValueError("Stage2 teacher horizon must be one of 0, 1, 2 or 3.")
+    if isinstance(frontier, bool) or int(frontier) < 1:
+        raise ValueError("Stage2 teacher frontier must be positive.")
+    if contract["device_future_intent_mode"] not in {
+        "legacy_one",
+        "bounded_frontier",
+    }:
+        raise ValueError("Stage2 teacher has an invalid future-intent mode.")
+    if contract["device_lookahead_reservation_mode"] not in {
+        "none",
+        "soft",
+        "hard",
+    }:
+        raise ValueError("Stage2 teacher has an invalid reservation mode.")
+    margin = float(contract["device_lookahead_safety_margin"])
+    grace = float(contract["device_reservation_grace_seconds"])
+    if not math.isfinite(margin) or margin < 0.0:
+        raise ValueError("Stage2 teacher safety margin must be non-negative.")
+    if not math.isfinite(grace) or grace < 0.0:
+        raise ValueError("Stage2 teacher reservation grace must be non-negative.")
+
+    selected_h = payload.get("selected_H")
+    selected_f = payload.get("selected_F")
+    if selected_h is not None and int(selected_h) != int(horizon):
+        raise ValueError("Stage2 teacher selected_H disagrees with its contract.")
+    if selected_f is not None and int(selected_f) != int(frontier):
+        raise ValueError("Stage2 teacher selected_F disagrees with its contract.")
+    source_sha = str(payload.get("frozen_plane_checkpoint_sha256", ""))
+    if source_sha and source_sha != str(source["sha256"]):
+        raise ValueError(
+            "Stage2 teacher was generated from a different frozen plane checkpoint."
+        )
+    indexed_teacher_dir = str(payload.get("teacher_dir", "") or "")
+    if indexed_teacher_dir and (
+        Path(indexed_teacher_dir).expanduser().resolve()
+        != Path(teacher_dir).expanduser().resolve()
+    ):
+        raise ValueError(
+            "Stage2 teacher directory differs from the directory bound by its index."
+        )
+
+    entries = payload.get("entries")
+    if not isinstance(entries, Mapping) or not entries:
+        raise ValueError("Stage2 teacher index has no case entries.")
+    if int(payload.get("case_count", len(entries))) != len(entries):
+        raise ValueError("Stage2 teacher case_count differs from its entries.")
+    if schema_version >= 2:
+        if int(payload.get("intrinsic_ready_time_label_schema_version", 0)) != (
+            INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+        ):
+            raise ValueError("Stage2 teacher has an incompatible ready-label schema.")
+        if payload.get("intrinsic_ready_time_semantics") != (
+            INTRINSIC_READY_TIME_SEMANTICS
+        ):
+            raise ValueError("Stage2 teacher has incompatible ready-label semantics.")
+        observed = int(payload.get("intrinsic_ready_time_observed_request_count", 0))
+        labeled = int(payload.get("intrinsic_ready_time_labeled_request_count", 0))
+        coverage = float(payload.get("intrinsic_ready_time_label_coverage", -1.0))
+        if observed <= 0 or labeled <= 0 or labeled > observed:
+            raise ValueError("Stage2 teacher has invalid ready-label counts.")
+        if not math.isclose(
+            coverage,
+            labeled / observed,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("Stage2 teacher ready-label coverage is inconsistent.")
+
+    return {
+        "device_lookahead_dispatch": bool(contract["device_lookahead_dispatch"]),
+        "device_lookahead_safety_margin": margin,
+        "device_deadline_aware_dispatch": bool(
+            contract["device_deadline_aware_dispatch"]
+        ),
+        "device_future_intent_horizon": int(horizon),
+        "device_future_intent_mode": str(contract["device_future_intent_mode"]),
+        "device_frontier_max_requests": int(frontier),
+        "resource_release_aware_eta": bool(contract["resource_release_aware_eta"]),
+        "device_lookahead_reservation_mode": str(
+            contract["device_lookahead_reservation_mode"]
+        ),
+        "device_reservation_grace_seconds": grace,
+        "device_departure_lookahead": bool(contract["device_departure_lookahead"]),
+    }
 
 
 def _option_indices(command: Sequence[str], flag: str) -> list[int]:
@@ -437,12 +609,24 @@ def build_stage2_command(
     ppo_epochs: int = DEFAULT_PPO_EPOCHS,
     ppo_epoch: int = DEFAULT_PPO_EPOCH,
     bc_min_labels: int = DEFAULT_BC_MIN_LABELS,
+    ranking_min_labels: int = DEFAULT_RANKING_MIN_LABELS,
+    ranking_loss_coef: float = 1.0,
+    timing_loss_coef: float = 0.5,
+    ready_min_labels: int = DEFAULT_READY_MIN_LABELS,
+    ready_loss_coef: float = 1.0,
+    ready_time_scale: float = 3600.0,
+    device_bc_teacher: str = "iga",
+    resource_teacher_dir: str | os.PathLike[str] = "",
+    resource_teacher_index: str | os.PathLike[str] = "",
     bc_min_rollouts: int = DEFAULT_BC_MIN_ROLLOUTS,
     bc_max_rollouts: int = DEFAULT_BC_MAX_ROLLOUTS,
     bc_lr: float = 0.0,
     plane_order_mode: str | None = None,
     plane_pair_decoder: str | None = None,
     global_feature_mode: str | None = None,
+    resume_checkpoint: str | os.PathLike[str] | None = None,
+    resume_epoch: int = 0,
+    resume_completed_rollouts: int = 0,
     source_command: Sequence[str] | None = None,
     python: str | os.PathLike[str] | None = None,
     train_script: str | os.PathLike[str] | None = None,
@@ -455,9 +639,9 @@ def build_stage2_command(
     tag = validate_run_tag(run_tag)
     positive = {
         "bc_epochs": bc_epochs,
-        "ppo_epochs": ppo_epochs,
-        "ppo_epoch": ppo_epoch,
         "bc_min_labels": bc_min_labels,
+        "ranking_min_labels": ranking_min_labels,
+        "ready_min_labels": ready_min_labels,
         "bc_min_rollouts": bc_min_rollouts,
         "bc_max_rollouts": bc_max_rollouts,
     }
@@ -466,6 +650,53 @@ def build_stage2_command(
             raise ValueError(f"{name} must be positive for resource_joint: {raw}")
     if float(bc_lr) < 0.0:
         raise ValueError("bc_lr must be non-negative.")
+    resume_epoch = int(resume_epoch)
+    resume_completed_rollouts = int(resume_completed_rollouts)
+    if resume_epoch < 0 or resume_completed_rollouts < 0:
+        raise ValueError('Stage2 supervised recovery cursors must be non-negative.')
+    resolved_resume = None
+    if resume_checkpoint:
+        resolved_resume = Path(resume_checkpoint).expanduser().resolve()
+        if not resolved_resume.is_file():
+            raise FileNotFoundError(
+                f'Stage2 supervised recovery checkpoint is missing: '
+                f'{resolved_resume}'
+            )
+        if resume_epoch >= int(bc_epochs):
+            raise ValueError('resume_epoch must identify an unfinished BC epoch.')
+        if resume_completed_rollouts >= int(bc_max_rollouts):
+            raise ValueError(
+                'resume_completed_rollouts must be smaller than '
+                'bc_max_rollouts.'
+            )
+    elif resume_epoch or resume_completed_rollouts:
+        raise ValueError(
+            'Stage2 supervised recovery cursors require resume_checkpoint.'
+        )
+    if int(ppo_epochs) != 0 or int(ppo_epoch) != 0:
+        raise ValueError(
+            'Canonical Stage2 is supervised-only: ppo_epochs and ppo_epoch '
+            'must both be 0.'
+        )
+    if float(ready_loss_coef) <= 0.0:
+        raise ValueError('ready_loss_coef must be positive.')
+    if float(ranking_loss_coef) <= 0.0:
+        raise ValueError('ranking_loss_coef must be positive.')
+    if float(timing_loss_coef) <= 0.0:
+        raise ValueError('timing_loss_coef must be positive.')
+    if float(ready_time_scale) <= 0.0:
+        raise ValueError('ready_time_scale must be positive.')
+    if device_bc_teacher not in {"heuristic", "iga", "joint_iga"}:
+        raise ValueError(
+            f"Unsupported Stage2 teacher: {device_bc_teacher!r}."
+        )
+    teacher_planning_contract = None
+    if device_bc_teacher == "iga" and str(resource_teacher_index).strip():
+        teacher_planning_contract = load_resource_teacher_planning_contract(
+            resource_teacher_index,
+            source=source,
+            teacher_dir=resource_teacher_dir,
+        )
     if source_command is not None:
         # The protected M2 contract is semantic as well as tensor-level.  If
         # an operator supplies the original Stage-1 command, preserve its
@@ -506,61 +737,128 @@ def build_stage2_command(
         "--env_config": str(env_config or ENV_CONFIG),
         "--training_stage": CANONICAL_STAGE,
         "--resource_policy": "drl",
-        "--checkpoint_dir": source["path"],
+        "--checkpoint_dir": str(resolved_resume or source["path"]),
         "--seed": int(seed),
         "--device_bc_pretrain_epochs": int(bc_epochs),
         "--device_bc_min_labels_per_epoch": int(bc_min_labels),
+        "--device_bc_min_ranking_labels_per_epoch": int(
+            ranking_min_labels
+        ),
+        "--device_bc_ranking_loss_coef": float(ranking_loss_coef),
+        "--device_bc_timing_loss_coef": float(timing_loss_coef),
+        "--request_ready_min_labels_per_epoch": int(ready_min_labels),
+        "--request_ready_loss_coef": float(ready_loss_coef),
+        "--request_ready_time_scale": float(ready_time_scale),
         "--device_bc_min_rollouts_per_epoch": int(bc_min_rollouts),
         "--device_bc_max_rollouts_per_epoch": int(bc_max_rollouts),
         "--device_bc_lr": float(bc_lr),
-        "--num_episodes": int(ppo_epochs),
-        "--ppo_epoch": int(ppo_epoch),
-        # Runner interprets both freeze counters as initial PPO epochs.  Set
-        # them to the full run length to make the all-epoch freeze auditable.
-        "--gnn_freeze_epochs": int(ppo_epochs),
-        "--plane_freeze_epochs": int(ppo_epochs),
+        "--device_bc_dagger_schedule": "1.0",
+        "--device_bc_teacher": device_bc_teacher,
+        "--num_episodes": 0,
+        "--ppo_epoch": 0,
+        "--gnn_freeze_epochs": 0,
+        "--plane_freeze_epochs": 0,
         "--plane_order_mode": plane_order_mode,
         "--plane_pair_decoder": plane_pair_decoder,
         "--global_feature_mode": global_feature_mode,
-        # Stage 2 trains independent role-balanced resource ratios.  The
-        # Stage-1 joint-team ratio intentionally aggregates plane actions only
-        # and would give frozen-plane loss no resource-actor gradient.
-        "--hindsight_reward_mode": "team_cmax",
-        "--hindsight_cmax_coef": 0.0,
-        "--hindsight_shaping_coef": 0.0,
-        "--hindsight_terminal_cmax_coef": 1.0,
-        "--device_lookahead_safety_margin": 60.0,
+        "--device_lookahead_safety_margin": (
+            teacher_planning_contract["device_lookahead_safety_margin"]
+            if teacher_planning_contract is not None
+            else 60.0
+        ),
     }
     for flag, value in fixed.items():
         set_option(command, flag, value)
+    if device_bc_teacher == "iga":
+        set_option(
+            command, "--resource_iga_teacher_dir", resource_teacher_dir
+        )
+        set_option(
+            command, "--resource_iga_teacher_index", resource_teacher_index
+        )
+    elif device_bc_teacher == "joint_iga":
+        set_option(
+            command, "--joint_iga_teacher_dir", resource_teacher_dir
+        )
+        set_option(
+            command, "--joint_iga_teacher_index", resource_teacher_index
+        )
+
+    if teacher_planning_contract is not None:
+        for flag, field in (
+            ("--device_deadline_aware_dispatch", "device_deadline_aware_dispatch"),
+            ("--resource_release_aware_eta", "resource_release_aware_eta"),
+            ("--device_departure_lookahead", "device_departure_lookahead"),
+        ):
+            set_switch(command, flag, teacher_planning_contract[field])
+        for flag, field in (
+            ("--device_future_intent_horizon", "device_future_intent_horizon"),
+            ("--device_future_intent_mode", "device_future_intent_mode"),
+            ("--device_frontier_max_requests", "device_frontier_max_requests"),
+            (
+                "--device_lookahead_reservation_mode",
+                "device_lookahead_reservation_mode",
+            ),
+            (
+                "--device_reservation_grace_seconds",
+                "device_reservation_grace_seconds",
+            ),
+        ):
+            set_option(command, flag, teacher_planning_contract[field])
 
     # Evaluation is needed for the runner's Best checkpoint lineage.  It is a
     # plain switch and does not re-enable any Stage-1 regularizer.
     set_switch(command, "--use_eval", True)
-    set_switch(command, "--device_lookahead_dispatch", True)
+    set_switch(
+        command,
+        "--device_lookahead_dispatch",
+        (
+            teacher_planning_contract["device_lookahead_dispatch"]
+            if teacher_planning_contract is not None
+            else True
+        ),
+    )
+    set_switch(command, "--request_ready_prediction", True)
+    set_switch(command, "--device_bc_role_balanced", True)
+    set_switch(command, "--device_bc_timing_balanced", True)
     set_switch(command, "--strict_checkpoint_contract", True)
     set_option(command, "--eval_interval", 1)
 
     # A positive Stage-2 contract must not accidentally inherit any old
-    # recovery/teacher flags from a source command.  The parser's defaults
-    # are intentionally the desired values: device_bc_train_gnn=False and
-    # device_bc_reset_optim=True.  Their explicit values are recorded in the
-    # manifest contract because argparse has no ``--foo=false`` spelling for
-    # store_true/store_false options.
+    # recovery/teacher flags from a source command.  Stage2 owns only its
+    # supervised optimizer, so it also explicitly disables the historical
+    # post-BC PPO optimizer reset.
     for flag in (
         "--resume_stage1",
         "--reset_optimizers_on_resume",
         "--selection_checkpoint_dir",
         "--device_bc_train_gnn",
+        "--device_bc_stochastic_plane",
         "--no_device_bc_reset_optim",
         "--no_device_bc_save",
         "--joint_team_ppo",
         "--central_team_critic",
+        "--resume_stage2",
+        "--stage2_allow_shared_unfreeze",
     ):
         remove_option(command, flag, takes_value=False)
+    for flag in (
+        '--device_bc_resume_epoch',
+        '--device_bc_resume_completed_rollouts',
+    ):
+        remove_option(command, flag, takes_value=True)
     for flag in STAGE1_ONLY_OPTIONS:
         # Some options take values, while switches such as hard_gate do not.
         remove_option(command, flag, takes_value=flag not in {"--bc_reference_hard_gate"})
+    set_switch(command, "--no_device_bc_reset_optim", True)
+    if resolved_resume is not None:
+        set_switch(command, '--resume_stage2', True)
+        set_option(command, '--device_bc_resume_epoch', resume_epoch)
+        set_option(
+            command,
+            '--device_bc_resume_completed_rollouts',
+            resume_completed_rollouts,
+        )
     return command
 
 
@@ -571,6 +869,8 @@ def stage2_contract(
     bc_epochs: int,
     ppo_epochs: int,
     ppo_epoch: int,
+    ranking_min_labels: int = DEFAULT_RANKING_MIN_LABELS,
+    ready_min_labels: int = DEFAULT_READY_MIN_LABELS,
     plane_order_mode: str,
     plane_pair_decoder: str,
     global_feature_mode: str,
@@ -595,22 +895,74 @@ def stage2_contract(
         "observation_schema_id": observation["observation_schema_id"],
         "source_m2_checkpoint": dict(source),
         "device_bc_pretrain_epochs": int(bc_epochs),
-        "ppo_epochs": int(ppo_epochs),
-        "ppo_epoch": int(ppo_epoch),
+        "training_mode": "supervised_only",
+        "stage2_supervision_contract": dict(
+            STAGE2_SUPERVISION_CONTRACT
+        ),
+        "ppo_epochs": 0,
+        "ppo_epoch": 0,
+        "num_episodes": 0,
+        "resource_dense_ranking_min_labels_per_epoch": int(
+            ranking_min_labels
+        ),
+        "request_ready_min_labels_per_epoch": int(ready_min_labels),
         "device_bc_train_gnn": False,
-        "device_bc_reset_optim": True,
+        "device_bc_reset_optim": False,
         "device_bc_save": True,
-        "hindsight_reward_mode": "team_cmax",
-        "joint_team_ppo": False,
-        "central_team_critic": False,
-        "ppo_ratio_scope": "role_balanced_resource_actions",
-        "gnn_freeze_epochs": int(ppo_epochs),
-        "plane_freeze_epochs": int(ppo_epochs),
-        "freeze_scope": "shared_encoder_and_plane_actor_for_every_ppo_epoch",
+        "resource_assignment_min_labels_per_epoch": int(
+            _option_value(
+                command,
+                "--device_bc_min_assignment_labels_per_epoch",
+            )
+            or 0
+        ),
+        "device_bc_categorical_loss_coef": float(
+            _option_value(command, "--device_bc_categorical_loss_coef")
+            or 0.0
+        ),
+        "supervised_targets": (
+            "mobile_action_or_permutation_invariant_final_matching+"
+            "intrinsic_ready_time"
+        ),
+        "teacher_execution_schedule": [1.0],
+        "device_bc_teacher": _option_value(
+            command, "--device_bc_teacher"
+        ),
+        "teacher_directory": (
+            _option_value(command, "--resource_iga_teacher_dir")
+            or _option_value(command, "--joint_iga_teacher_dir")
+        ),
+        "teacher_index": (
+            _option_value(command, "--resource_iga_teacher_index")
+            or _option_value(command, "--joint_iga_teacher_index")
+        ),
+        "gnn_freeze_epochs": 0,
+        "plane_freeze_epochs": 0,
+        "freeze_scope": "shared_encoder_and_plane_actor_during_stage2",
+        "critic_trained": False,
+        "value_normalizer_carried": False,
         "stage1_only_regularizers_cleared": True,
         "stage1_recovery_switches_cleared": True,
-        "checkpoint_DeviceBC_scope": "internal_resource_bc_warmup_boundary_only",
-        "shard_resume": "unsupported; rerun_warmup_from_verified_m2",
+        "checkpoint_DeviceBC_scope": "supervised_stage2_final_compatibility_alias",
+        "recovery": (
+            "resume_supervised_emergency"
+            if "--resume_stage2" in command
+            else "restart_from_verified_m2"
+        ),
+        "resume_checkpoint": (
+            _option_value(command, "--checkpoint_dir")
+            if "--resume_stage2" in command else None
+        ),
+        "resume_epoch": (
+            int(_option_value(command, "--device_bc_resume_epoch") or 0)
+            if "--resume_stage2" in command else 0
+        ),
+        "resume_completed_rollouts": (
+            int(_option_value(
+                command, "--device_bc_resume_completed_rollouts"
+            ) or 0)
+            if "--resume_stage2" in command else 0
+        ),
         "plane_order_mode": str(plane_order_mode),
         "plane_pair_decoder": str(plane_pair_decoder),
         "global_feature_mode": str(global_feature_mode),
@@ -1147,12 +1499,24 @@ def plan_stage2(
     ppo_epochs: int = DEFAULT_PPO_EPOCHS,
     ppo_epoch: int = DEFAULT_PPO_EPOCH,
     bc_min_labels: int = DEFAULT_BC_MIN_LABELS,
+    ranking_min_labels: int = DEFAULT_RANKING_MIN_LABELS,
+    ranking_loss_coef: float = 1.0,
+    timing_loss_coef: float = 0.5,
+    ready_min_labels: int = DEFAULT_READY_MIN_LABELS,
+    ready_loss_coef: float = 1.0,
+    ready_time_scale: float = 3600.0,
+    device_bc_teacher: str = "iga",
+    resource_teacher_dir: str | os.PathLike[str] = "",
+    resource_teacher_index: str | os.PathLike[str] = "",
     bc_min_rollouts: int = DEFAULT_BC_MIN_ROLLOUTS,
     bc_max_rollouts: int = DEFAULT_BC_MAX_ROLLOUTS,
     bc_lr: float = 0.0,
     plane_order_mode: str | None = None,
     plane_pair_decoder: str | None = None,
     global_feature_mode: str | None = None,
+    resume_checkpoint: str | os.PathLike[str] | None = None,
+    resume_epoch: int = 0,
+    resume_completed_rollouts: int = 0,
 ) -> dict[str, Any]:
     """Register M2 and atomically publish one canonical Stage-2 command."""
 
@@ -1166,12 +1530,24 @@ def plan_stage2(
         ppo_epochs=ppo_epochs,
         ppo_epoch=ppo_epoch,
         bc_min_labels=bc_min_labels,
+        ranking_min_labels=ranking_min_labels,
+        ranking_loss_coef=ranking_loss_coef,
+        timing_loss_coef=timing_loss_coef,
+        ready_min_labels=ready_min_labels,
+        ready_loss_coef=ready_loss_coef,
+        ready_time_scale=ready_time_scale,
+        device_bc_teacher=device_bc_teacher,
+        resource_teacher_dir=resource_teacher_dir,
+        resource_teacher_index=resource_teacher_index,
         bc_min_rollouts=bc_min_rollouts,
         bc_max_rollouts=bc_max_rollouts,
         bc_lr=bc_lr,
         plane_order_mode=plane_order_mode,
         plane_pair_decoder=plane_pair_decoder,
         global_feature_mode=global_feature_mode,
+        resume_checkpoint=resume_checkpoint,
+        resume_epoch=resume_epoch,
+        resume_completed_rollouts=resume_completed_rollouts,
         source_command=source_command,
     )
     plane_order_mode = plane_order_mode or _option_value(command, "--plane_order_mode") or "fixed"
@@ -1183,6 +1559,8 @@ def plan_stage2(
         bc_epochs=bc_epochs,
         ppo_epochs=ppo_epochs,
         ppo_epoch=ppo_epoch,
+        ranking_min_labels=ranking_min_labels,
+        ready_min_labels=ready_min_labels,
         plane_order_mode=plane_order_mode,
         plane_pair_decoder=plane_pair_decoder,
         global_feature_mode=global_feature_mode,
@@ -1248,7 +1626,7 @@ def _load_checkpoint(path: Path) -> Mapping[str, Any]:
 
 
 FINAL_RESOURCE_JOINT_PHASES = frozenset(
-    {"resource_joint_ppo", "resource_joint_completed"}
+    {"resource_supervised_completed"}
 )
 
 
@@ -1297,54 +1675,86 @@ def _checkpoint_source_identity(checkpoint: Mapping[str, Any]) -> tuple[str, str
 
 
 def _validate_warmup_evidence(checkpoint: Mapping[str, Any]) -> dict[str, str]:
-    phase = str(checkpoint.get("phase", checkpoint.get("stage", ""))).lower()
-    if "resource_bc_warmup_completed" not in phase:
-        raise ValueError(f"Stage-2 warm-up checkpoint has unexpected phase={phase!r}.")
-    labels = int(checkpoint.get("resource_bc_total_labels", 0))
-    if labels <= 0:
-        raise ValueError("Stage-2 warm-up checkpoint has no positive BC label evidence.")
-    if checkpoint.get("resource_bc_optimizer_reset") is not True:
-        raise ValueError("Stage-2 warm-up checkpoint did not record fresh PPO optimizers.")
-    protected_digest = _require_same_digest(
-        checkpoint.get("protected_parameter_summary_before_bc"),
-        checkpoint.get("protected_parameter_summary_after_bc"),
-        "Stage-2 warm-up protected parameters",
+    return _validate_final_checkpoint_evidence(
+        checkpoint, role="supervised"
     )
-    actor_before, actor_after = _require_different_digest(
-        checkpoint.get("resource_actor_summary_before_bc"),
-        checkpoint.get("resource_actor_summary_after_bc"),
-        "Stage-2 warm-up resource actor",
-    )
-    current_digest = _summary_digest(
-        checkpoint.get("protected_parameter_summary_after_bc"),
-        "Stage-2 warm-up protected-after-BC",
-    )
-    if current_digest != protected_digest:
-        raise ValueError("Stage-2 warm-up protected digest is internally inconsistent.")
-    return {
-        "phase": phase,
-        "protected_sha256": protected_digest,
-        "resource_actor_before_bc_sha256": actor_before,
-        "resource_actor_after_bc_sha256": actor_after,
-        "resource_bc_total_labels": str(labels),
-    }
 
 
 def _validate_final_checkpoint_evidence(
     checkpoint: Mapping[str, Any],
     *,
     role: str,
-) -> dict[str, str | None]:
+) -> dict[str, str | float | None]:
     phase = str(checkpoint.get("phase", checkpoint.get("stage", ""))).lower()
     if phase not in FINAL_RESOURCE_JOINT_PHASES:
         raise ValueError(
-            f"Stage-2 {role} checkpoint has non-PPO/final phase={phase!r}."
+            f"Stage-2 {role} checkpoint has non-supervised phase={phase!r}."
+        )
+    if checkpoint.get("stage2_training_mode") != "supervised_only":
+        raise ValueError(
+            f"Stage-2 {role} checkpoint is not supervised-only."
+        )
+    if checkpoint.get("stage2_supervision_contract") != (
+        STAGE2_SUPERVISION_CONTRACT
+    ):
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has an incompatible supervision contract."
+        )
+    if checkpoint.get("request_ready_prediction") is not True:
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has no request-ready prediction head."
+        )
+    ready_time_scale = float(checkpoint.get(
+        "request_ready_time_scale", float("nan")
+    ))
+    if not math.isfinite(ready_time_scale) or ready_time_scale <= 0.0:
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has an invalid request-ready time scale."
         )
     labels = int(checkpoint.get("resource_bc_total_labels", 0))
+    ranking_labels = int(checkpoint.get(
+        "resource_dense_ranking_total_labels", 0
+    ))
+    assignment_labels = int(checkpoint.get(
+        "resource_assignment_total_labels", 0
+    ))
+    categorical_coef = float(checkpoint.get(
+        "device_bc_categorical_loss_coef", 1.0
+    ))
+    ready_labels = int(checkpoint.get("request_ready_total_labels", 0))
     if labels <= 0:
-        raise ValueError(f"Stage-2 {role} checkpoint has no positive BC label evidence.")
-    if checkpoint.get("resource_bc_optimizer_reset") is not True:
-        raise ValueError(f"Stage-2 {role} checkpoint did not record fresh PPO optimizers.")
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has no mobile-policy labels."
+        )
+    if (
+        ranking_labels <= 0
+        and assignment_labels <= 0
+        and categorical_coef <= 0.0
+    ):
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has neither final-matching labels nor "
+            "active categorical mobile-policy supervision."
+        )
+    if ready_labels <= 0:
+        raise ValueError(
+            f"Stage-2 {role} checkpoint has no intrinsic-ready-time labels."
+        )
+    if checkpoint.get("resource_bc_optimizer_reset") is not False:
+        raise ValueError(
+            f"Stage-2 {role} checkpoint incorrectly records a PPO optimizer reset."
+        )
+    forbidden = [
+        key for key in (
+            "actor_optim", "critic_optim", "value_normalizer",
+            "role_value_normalizers", "lagrangmdvrpn_optimizer",
+            "shared_gradient_state",
+        )
+        if checkpoint.get(key) is not None
+    ]
+    if forbidden:
+        raise ValueError(
+            f"Stage-2 {role} checkpoint carries forbidden RL state: {forbidden}."
+        )
     protected_before_bc = checkpoint.get("protected_parameter_summary_before_bc")
     protected_after_bc = checkpoint.get("protected_parameter_summary_after_bc")
     protected_current = checkpoint.get("protected_parameter_summary")
@@ -1358,49 +1768,30 @@ def _validate_final_checkpoint_evidence(
         protected_current,
         f"Stage-2 {role} protected parameters at final",
     )
-    protected_after_ppo = checkpoint.get("protected_parameter_summary_after_ppo")
-    if protected_after_ppo is not None:
-        _require_same_digest(
-            protected_current,
-            protected_after_ppo,
-            f"Stage-2 {role} protected parameters after PPO",
-        )
     actor_before_bc, actor_after_bc = _require_different_digest(
         checkpoint.get("resource_actor_summary_before_bc"),
         checkpoint.get("resource_actor_summary_after_bc"),
         f"Stage-2 {role} resource actor during BC",
     )
-    actor_before_ppo = checkpoint.get("resource_actor_summary_before_ppo")
-    actor_after_ppo = checkpoint.get("resource_actor_summary_after_ppo")
-    actor_before_ppo_sha = None
-    actor_after_ppo_sha = None
-    if actor_before_ppo is not None and actor_after_ppo is None and role == "best":
-        # Best may be the deterministic post-BC baseline captured after the
-        # runner enters resource_joint_ppo but before the first PPO update.
-        actor_before_ppo_sha = _summary_digest(
-            actor_before_ppo,
-            f"Stage-2 {role} resource actor before PPO",
-        )
-    elif actor_before_ppo is not None or actor_after_ppo is not None:
-        if actor_before_ppo is None or actor_after_ppo is None:
-            raise ValueError(
-                f"Stage-2 {role} has incomplete PPO resource actor evidence."
-            )
-        actor_before_ppo_sha, actor_after_ppo_sha = _require_different_digest(
-            actor_before_ppo,
-            actor_after_ppo,
-            f"Stage-2 {role} resource actor during PPO",
-        )
-    if role == "last" and actor_before_ppo_sha is None:
-        raise ValueError("Stage-2 Last checkpoint lacks PPO resource actor update evidence.")
+    predictor_before, predictor_after = _require_different_digest(
+        checkpoint.get("request_ready_predictor_summary_before"),
+        checkpoint.get("request_ready_predictor_summary_after"),
+        f"Stage-2 {role} intrinsic-ready predictor",
+    )
     return {
         "phase": phase,
+        "request_ready_time_scale": ready_time_scale,
         "protected_sha256": protected_digest,
         "resource_actor_before_bc_sha256": actor_before_bc,
         "resource_actor_after_bc_sha256": actor_after_bc,
-        "resource_actor_before_ppo_sha256": actor_before_ppo_sha,
-        "resource_actor_after_ppo_sha256": actor_after_ppo_sha,
+        "request_ready_predictor_before_sha256": predictor_before,
+        "request_ready_predictor_after_sha256": predictor_after,
+        "request_ready_time_scale": ready_time_scale,
         "resource_bc_total_labels": str(labels),
+        "resource_dense_ranking_total_labels": str(ranking_labels),
+        "resource_assignment_total_labels": str(assignment_labels),
+        "device_bc_categorical_loss_coef": categorical_coef,
+        "request_ready_total_labels": str(ready_labels),
     }
 
 
@@ -1506,10 +1897,39 @@ def _validate_run_status_evidence(
             f"{status.get('training_stage')!r}."
         )
     phase = str(status.get("phase", "")).strip().lower()
-    if phase != "resource_joint_completed":
+    if phase != "resource_supervised_completed":
         raise ValueError(
-            "Stage-2 run_status.json does not record the final resource_joint "
+            "Stage-2 run_status.json does not record the final supervised "
             f"phase: {phase!r}."
+        )
+    if status.get("stage2_training_mode") != "supervised_only":
+        raise ValueError("Stage-2 run_status.json is not supervised-only.")
+    if status.get("stage2_supervision_contract") != (
+        STAGE2_SUPERVISION_CONTRACT
+    ):
+        raise ValueError(
+            "Stage-2 run_status.json has an incompatible supervision contract."
+        )
+    if status.get("request_ready_prediction") is not True:
+        raise ValueError(
+            "Stage-2 run_status.json has no request-ready prediction head."
+        )
+    ready_time_scale = float(status.get(
+        "request_ready_time_scale", float("nan")
+    ))
+    if not math.isfinite(ready_time_scale) or ready_time_scale <= 0.0:
+        raise ValueError(
+            "Stage-2 run_status.json has an invalid request-ready time scale."
+        )
+    if not math.isclose(
+        ready_time_scale,
+        float(last_lineage.get("request_ready_time_scale", float("nan"))),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        raise ValueError(
+            "Stage-2 run_status request-ready time scale differs from "
+            "checkpoint_Last.pt."
         )
     observed_path, observed_sha = _checkpoint_source_identity(status)
     if observed_path != str(source_m2["path"]):
@@ -1523,11 +1943,34 @@ def _validate_run_status_evidence(
             f"{observed_sha!r} != {source_m2['sha256']!r}."
         )
     labels = int(status.get("resource_bc_total_labels", 0))
+    ranking_labels = int(status.get(
+        "resource_dense_ranking_total_labels", 0
+    ))
+    assignment_labels = int(status.get(
+        "resource_assignment_total_labels", 0
+    ))
+    categorical_coef = float(status.get(
+        "device_bc_categorical_loss_coef", 1.0
+    ))
+    ready_labels = int(status.get("request_ready_total_labels", 0))
     if labels <= 0:
-        raise ValueError("Stage-2 run_status.json lacks positive BC label evidence.")
-    if status.get("resource_bc_optimizer_reset") is not True:
+        raise ValueError("Stage-2 run_status.json lacks mobile-policy labels.")
+    if (
+        ranking_labels <= 0
+        and assignment_labels <= 0
+        and categorical_coef <= 0.0
+    ):
         raise ValueError(
-            "Stage-2 run_status.json lacks fresh-optimizer evidence after BC."
+            "Stage-2 run_status.json has neither final-matching labels nor "
+            "active categorical mobile-policy supervision."
+        )
+    if ready_labels <= 0:
+        raise ValueError(
+            "Stage-2 run_status.json lacks intrinsic-ready-time labels."
+        )
+    if status.get("resource_bc_optimizer_reset") is not False:
+        raise ValueError(
+            "Stage-2 run_status.json incorrectly records a PPO optimizer reset."
         )
     protected_sha = _summary_digest(
         status.get("protected_parameter_summary"),
@@ -1554,18 +1997,47 @@ def _validate_run_status_evidence(
         raise ValueError(
             "Stage-2 run_status BC label count differs from checkpoint_Last.pt."
         )
-    actor_before_ppo, actor_after_ppo = _require_different_digest(
-        status.get("resource_actor_summary_before_ppo"),
-        status.get("resource_actor_summary_after_ppo"),
-        "Stage-2 run_status resource actor during PPO",
-    )
-    if actor_before_ppo != str(last_lineage.get("resource_actor_before_ppo_sha256")):
+    if ranking_labels != int(last_lineage.get(
+        "resource_dense_ranking_total_labels", 0
+    )):
         raise ValueError(
-            "Stage-2 run_status PPO-before actor digest differs from checkpoint_Last.pt."
+            "Stage-2 run_status ranking-label count differs from checkpoint_Last.pt."
         )
-    if actor_after_ppo != str(last_lineage.get("resource_actor_after_ppo_sha256")):
+    if assignment_labels != int(last_lineage.get(
+        "resource_assignment_total_labels", 0
+    )):
         raise ValueError(
-            "Stage-2 run_status PPO-after actor digest differs from checkpoint_Last.pt."
+            "Stage-2 run_status assignment-label count differs from "
+            "checkpoint_Last.pt."
+        )
+    if not math.isclose(
+        categorical_coef,
+        float(last_lineage.get("device_bc_categorical_loss_coef", 1.0)),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        raise ValueError(
+            "Stage-2 run_status categorical supervision coefficient differs "
+            "from checkpoint_Last.pt."
+        )
+    if ready_labels != int(last_lineage.get(
+        "request_ready_total_labels", 0
+    )):
+        raise ValueError(
+            "Stage-2 run_status ready-label count differs from checkpoint_Last.pt."
+        )
+    predictor_before, predictor_after = _require_different_digest(
+        status.get("request_ready_predictor_summary_before"),
+        status.get("request_ready_predictor_summary_after"),
+        "Stage-2 run_status intrinsic-ready predictor",
+    )
+    if predictor_before != str(last_lineage.get(
+        "request_ready_predictor_before_sha256"
+    )) or predictor_after != str(last_lineage.get(
+        "request_ready_predictor_after_sha256"
+    )):
+        raise ValueError(
+            "Stage-2 run_status predictor digests differ from checkpoint_Last.pt."
         )
     return {
         "path": str(status_path),
@@ -1578,10 +2050,14 @@ def _validate_run_status_evidence(
         "protected_sha256": protected_sha,
         "resource_actor_before_bc_sha256": actor_before_bc,
         "resource_actor_after_bc_sha256": actor_after_bc,
-        "resource_actor_before_ppo_sha256": actor_before_ppo,
-        "resource_actor_after_ppo_sha256": actor_after_ppo,
+        "request_ready_predictor_before_sha256": predictor_before,
+        "request_ready_predictor_after_sha256": predictor_after,
         "resource_bc_total_labels": labels,
-        "resource_bc_optimizer_reset": True,
+        "resource_dense_ranking_total_labels": ranking_labels,
+        "resource_assignment_total_labels": assignment_labels,
+        "device_bc_categorical_loss_coef": categorical_coef,
+        "request_ready_total_labels": ready_labels,
+        "resource_bc_optimizer_reset": False,
     }
 
 
@@ -1653,6 +2129,30 @@ def audit_stage2_manifest(
         if len({warmup_protected, best_protected, last_protected}) != 1:
             raise ValueError(
                 "Stage-2 warm-up/Best/Last protected digests are not identical."
+            )
+        ready_scales = {
+            float(lineage[role]["request_ready_time_scale"])
+            for role in ("warmup", "best", "last")
+        }
+        if len(ready_scales) != 1:
+            raise ValueError(
+                "Stage-2 warm-up/Best/Last request-ready time scales differ."
+            )
+        command_scale = _option_value(
+            payload.get("command", []), "--request_ready_time_scale"
+        )
+        if (
+            command_scale is None
+            or not math.isclose(
+                next(iter(ready_scales)),
+                float(command_scale),
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError(
+                "Stage-2 checkpoint request-ready time scale differs from "
+                "the registered command."
             )
     run_status_path = artifacts.get(
         "run_status_path",
@@ -1726,6 +2226,9 @@ def run_stage2(
 ) -> dict[str, Any]:
     """Plan, optionally execute, and require complete checkpoint lineage."""
 
+    if not dry_run:
+        from onpolicy.utils.stage2_freeze_guard import reject_stage2_development
+        reject_stage2_development()
     payload = plan_stage2(
         source_m2,
         run_tag=run_tag,
@@ -1817,12 +2320,38 @@ def _common_cli(parser: argparse.ArgumentParser, *, source_required: bool = True
     parser.add_argument("--ppo-epochs", type=int, default=DEFAULT_PPO_EPOCHS)
     parser.add_argument("--ppo-epoch", type=int, default=DEFAULT_PPO_EPOCH)
     parser.add_argument("--bc-min-labels", type=int, default=DEFAULT_BC_MIN_LABELS)
+    parser.add_argument(
+        "--ranking-min-labels",
+        type=int,
+        default=DEFAULT_RANKING_MIN_LABELS,
+    )
+    parser.add_argument("--ranking-loss-coef", type=float, default=1.0)
+    parser.add_argument("--timing-loss-coef", type=float, default=0.5)
+    parser.add_argument(
+        "--ready-min-labels", type=int, default=DEFAULT_READY_MIN_LABELS
+    )
+    parser.add_argument("--ready-loss-coef", type=float, default=1.0)
+    parser.add_argument("--ready-time-scale", type=float, default=3600.0)
+    parser.add_argument(
+        "--device-bc-teacher",
+        choices=("iga", "heuristic", "joint_iga"),
+        default="iga",
+    )
+    parser.add_argument("--resource-teacher-dir", default="")
+    parser.add_argument("--resource-teacher-index", default="")
     parser.add_argument("--bc-min-rollouts", type=int, default=DEFAULT_BC_MIN_ROLLOUTS)
     parser.add_argument("--bc-max-rollouts", type=int, default=DEFAULT_BC_MAX_ROLLOUTS)
     parser.add_argument("--bc-lr", type=float, default=0.0)
     parser.add_argument("--plane-order-mode", choices=("fixed", "learned"), default=None)
     parser.add_argument("--plane-pair-decoder", choices=("cascade", "joint_pair"), default=None)
     parser.add_argument("--global-feature-mode", choices=("none", "f1", "f1f2"), default=None)
+    parser.add_argument(
+        '--resume-checkpoint',
+        default=None,
+        help='emergency supervised Stage2 checkpoint to resume',
+    )
+    parser.add_argument('--resume-epoch', type=int, default=0)
+    parser.add_argument('--resume-completed-rollouts', type=int, default=0)
     parser.add_argument("--source-command-json", default=None)
     parser.add_argument(
         "--source-command-key",
@@ -1866,12 +2395,24 @@ def _plan_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "ppo_epochs": args.ppo_epochs,
         "ppo_epoch": args.ppo_epoch,
         "bc_min_labels": args.bc_min_labels,
+        "ranking_min_labels": args.ranking_min_labels,
+        "ranking_loss_coef": args.ranking_loss_coef,
+        "timing_loss_coef": args.timing_loss_coef,
+        "ready_min_labels": args.ready_min_labels,
+        "ready_loss_coef": args.ready_loss_coef,
+        "ready_time_scale": args.ready_time_scale,
+        "device_bc_teacher": args.device_bc_teacher,
+        "resource_teacher_dir": args.resource_teacher_dir,
+        "resource_teacher_index": args.resource_teacher_index,
         "bc_min_rollouts": args.bc_min_rollouts,
         "bc_max_rollouts": args.bc_max_rollouts,
         "bc_lr": args.bc_lr,
         "plane_order_mode": args.plane_order_mode,
         "plane_pair_decoder": args.plane_pair_decoder,
         "global_feature_mode": args.global_feature_mode,
+        "resume_checkpoint": args.resume_checkpoint,
+        "resume_epoch": args.resume_epoch,
+        "resume_completed_rollouts": args.resume_completed_rollouts,
     }
 
 

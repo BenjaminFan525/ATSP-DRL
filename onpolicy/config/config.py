@@ -167,6 +167,15 @@ def get_config():
     parser.add_argument("--seed", type=int, default=42, help="Random seed for numpy/torch")
     parser.add_argument("--cuda", action='store_false', default=True, help="by default True, will use GPU to train; or else will use CPU;")
     parser.add_argument("--device", type=str, default='cuda:0', help="by default None, will use cuda if available; or else will use cpu. If set, use the device specified.")
+    parser.add_argument(
+        "--cuda_memory_fraction",
+        type=float,
+        default=0.0,
+        help=(
+            "optional per-process CUDA allocator limit as a fraction of the "
+            "visible device; 0 leaves the PyTorch default unlimited"
+        ),
+    )
     parser.add_argument("--cuda_deterministic",
                         action='store_false', default=True, help="by default, make sure random seed effective. if set, bypass such function.")
     parser.add_argument("--n_training_threads", type=int,
@@ -275,6 +284,125 @@ def get_config():
             "smallest balanced expansion that retains every unique case"
         ),
     )
+    parser.add_argument(
+        "--train_sampling_pool_size",
+        type=int,
+        default=0,
+        help=(
+            "optional balanced case pool retained by every rollout worker; "
+            "when this exceeds --train_sampling_size, only the latter number "
+            "of cases is consumed per epoch and successive epochs rotate "
+            "through the larger deterministic pool"
+        ),
+    )
+    parser.add_argument(
+        "--device_policy_head_mode",
+        type=str,
+        default="shared",
+        choices=["shared", "type_adapter", "per_type"],
+        help=(
+            "ordinary-mobile-device actor backend: the checkpoint-compatible "
+            "shared head, a shared head with a categorical type adapter, or "
+            "one independently recurrent actor head per ordinary device type"
+        ),
+    )
+    parser.add_argument(
+        "--ordinary_device_type_count",
+        type=int,
+        default=10,
+        help="number of non-R014 mobile resource types routed by Stage2 heads",
+    )
+    parser.add_argument(
+        "--device_timing_head",
+        action="store_true",
+        default=False,
+        help=(
+            "factor device dispatch-vs-defer timing through an explicit "
+            "scalar gate while retaining the request-ranking pointer"
+        ),
+    )
+    parser.add_argument(
+        "--device_global_matching",
+        action="store_true",
+        default=False,
+        help=(
+            "decode deterministic device actions with a global one-to-one "
+            "request matching instead of fixed device-order greedy claims"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_prediction",
+        action="store_true",
+        default=False,
+        help=(
+            "enable the request-level ready-time head; Stage2 supervised "
+            "training requires it and Stage3 must match the checkpoint"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_policy_injection",
+        type=str,
+        default="learned",
+        choices=["none", "dag", "learned"],
+        help=(
+            "how request-ready information enters the resource policy: none "
+            "trains the predictor without policy gradients, dag injects only "
+            "the deterministic dependency lower bound, and learned also "
+            "injects the predicted intrinsic ready time"
+        ),
+    )
+    parser.add_argument(
+        "--device_resource_adapter",
+        action="store_true",
+        default=False,
+        help=(
+            "add a zero-initialized resource-only residual adapter after the "
+            "shared encoder; the protected aircraft path remains unchanged"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_time_scale",
+        type=float,
+        default=3600.0,
+        help="seconds used to log-normalize request ready-time regression",
+    )
+    parser.add_argument(
+        "--request_ready_hard_blocking",
+        action="store_true",
+        default=False,
+        help=(
+            "route already-blocking requests to their exact zero lead time "
+            "instead of asking the non-negative residual head to approximate zero"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_context_features",
+        action="store_true",
+        default=False,
+        help=(
+            "give the predictor explicit request-kind, dependency-depth and "
+            "predecessor timing context in addition to frozen GNN embeddings"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_head_mode",
+        type=str,
+        default="shared",
+        choices=["shared", "horizon_split"],
+        help=(
+            "use one checkpoint-compatible ready-time output head or independent "
+            "H1/H2/departure/other output projections over a shared predictor trunk"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_quantile_head",
+        action="store_true",
+        default=False,
+        help=(
+            "predict ordered q20/q50/q80 ready-time residuals; q50 remains the "
+            "point prediction exposed to existing callers"
+        ),
+    )
     parser.add_argument("--user_name", type=str, default='marl', help="[for wandb usage], to specify user's name for simply collecting training data.")
     parser.add_argument("--use_wandb", action='store_false', default=True, help="[for wandb usage], by default True, will log date to wandb server. or else will use tensorboard to log data.")
 
@@ -333,10 +461,28 @@ def get_config():
                         help="Time length of chunks used to train a recurrent_policy")
     parser.add_argument("--max_graphs_per_forward", type=int, default=0,
                         help="fail fast when mini_batch_size * data_chunk_length exceeds this limit; 0 disables the guard")
+    parser.add_argument(
+        "--shared_encoder_activation_checkpoint",
+        action="store_true",
+        default=False,
+        help=(
+            "recompute the trainable shared graph encoder during backward to "
+            "bound Stage3 PPO activation memory"
+        ),
+    )
     parser.add_argument("--actor_warmup_shards", type=int, default=0,
                         help="critic-only rollout shards before the first actor PPO update")
     parser.add_argument("--clear_cuda_cache_after_update", action="store_true", default=False,
                         help="release unused CUDA allocator blocks after each rollout update")
+    parser.add_argument(
+        "--shared_gpu_phase_lock",
+        type=str,
+        default="",
+        help=(
+            "optional absolute advisory-lock path that serializes memory-heavy "
+            "PPO updates across trainers sharing one GPU"
+        ),
+    )
 
     # optimizer parameters
     parser.add_argument("--lr", type=float, default=0.0001,
@@ -348,6 +494,24 @@ def get_config():
     parser.add_argument("--weight_decay", type=float, default=0)
     parser.add_argument("--shared_actor_lr_scale", type=float, default=1.0,
                         help="learning-rate multiplier for the shared GNN encoder")
+    parser.add_argument(
+        "--shared_actor_lr_scale_schedule",
+        type=str,
+        default="",
+        help=(
+            "optional comma-separated per-epoch shared-encoder LR scales; "
+            "the final value is held for later epochs"
+        ),
+    )
+    parser.add_argument(
+        "--shared_actor_lr_max_multiplier",
+        type=float,
+        default=0.0,
+        help=(
+            "optional cap applied only to the shared-encoder portion of the "
+            "adaptive Actor-LR multiplier; 0 inherits the global cap"
+        ),
+    )
     parser.add_argument("--plane_actor_lr_scale", type=float, default=1.0,
                         help="learning-rate multiplier for the pretrained plane actor backend")
     parser.add_argument("--device_actor_lr_scale", type=float, default=1.0,
@@ -372,6 +536,25 @@ def get_config():
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument("--target_kl", type=float, default=0.0,
                         help="stop actor PPO updates when approximate KL exceeds this value; 0 disables")
+    parser.add_argument(
+        "--actor_kl_backtrack",
+        action="store_true",
+        default=False,
+        help=(
+            "retry an Actor optimizer group at smaller step scales when the "
+            "post-update old-policy KL gate rejects it; failed groups are "
+            "rolled back without aborting the remaining PPO shard"
+        ),
+    )
+    parser.add_argument(
+        "--actor_kl_backtrack_scales",
+        type=str,
+        default="0.5,0.25,0.125",
+        help=(
+            "comma-separated retry scales for --actor_kl_backtrack; values "
+            "must be strictly decreasing and in (0, 1)"
+        ),
+    )
     parser.add_argument(
         "--adaptive_actor_kl",
         action="store_true",
@@ -412,6 +595,16 @@ def get_config():
         ),
     )
     parser.add_argument(
+        "--bc_reference_checkpoint",
+        type=str,
+        default="",
+        help=(
+            "optional explicit checkpoint used as the immutable policy "
+            "reference for BC-reference KL; when empty, retain the legacy "
+            "post-BC sibling-checkpoint resolution"
+        ),
+    )
+    parser.add_argument(
         "--bc_reference_kl_coef_schedule",
         type=str,
         default="",
@@ -440,6 +633,25 @@ def get_config():
             "a soft regularizer"
         ),
     )
+    parser.add_argument(
+        "--adaptive_bc_reference_kl",
+        action="store_true",
+        default=False,
+        help=(
+            "adapt the soft BC-reference KL coefficient after each PPO shard "
+            "instead of using the BC-reference target as a hard stop"
+        ),
+    )
+    parser.add_argument("--adaptive_bc_reference_target_kl", type=float, default=0.03,
+                        help="target sampled KL used by the adaptive soft BC controller")
+    parser.add_argument("--adaptive_bc_reference_coef_min", type=float, default=0.02,
+                        help="minimum adaptive soft BC-reference coefficient")
+    parser.add_argument("--adaptive_bc_reference_coef_max", type=float, default=1.0,
+                        help="maximum adaptive soft BC-reference coefficient")
+    parser.add_argument("--adaptive_bc_reference_coef_up", type=float, default=1.5,
+                        help="coefficient multiplier when BC-reference KL is above target")
+    parser.add_argument("--adaptive_bc_reference_coef_down", type=float, default=0.8,
+                        help="coefficient multiplier when BC-reference KL is below half target")
     parser.add_argument("--mini_batch_size", type=int, default=10,
                         help='size of training batch for ppo (default: 1)')
     parser.add_argument("--entropy_coef", type=float, default=0.01,
@@ -450,6 +662,30 @@ def get_config():
                         action='store_false', default=True, help="by default, use max norm of gradients. If set, do not use.")
     parser.add_argument("--max_grad_norm", type=float, default=0.5,
                         help='max norm of gradients (default: 0.5)')
+    parser.add_argument(
+        "--actor_grad_clip_mode", type=str, default="global",
+        choices=["global", "per_group"],
+        help=(
+            "clip all actor gradients together (global) or independently "
+            "clip the shared encoder and each role head (per_group)"
+        ),
+    )
+    parser.add_argument(
+        "--shared_actor_max_grad_norm", type=float, default=-1.0,
+        help="shared-encoder actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--plane_actor_max_grad_norm", type=float, default=-1.0,
+        help="plane-head actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--device_actor_max_grad_norm", type=float, default=-1.0,
+        help="ordinary-device-head actor clip; <=0 inherits --max_grad_norm",
+    )
+    parser.add_argument(
+        "--transporter_actor_max_grad_norm", type=float, default=-1.0,
+        help="transporter-head actor clip; <=0 inherits --max_grad_norm",
+    )
     parser.add_argument("--use_gae", action='store_false',
                         default=True, help='use generalized advantage estimation')
     parser.add_argument("--gamma", type=float, default=1.00,
@@ -514,8 +750,14 @@ def get_config():
         "--training_stage",
         type=normalize_training_stage,
         default="auto",
-        choices=["auto", "plane_pretrain", "resource_joint"],
+        choices=["auto", "plane_pretrain", "resource_joint", "joint_finetune"],
         help="explicit HKBZ training stage; auto preserves legacy single-process behavior",
+    )
+    parser.add_argument(
+        '--stage2_frozen_manifest',
+        type=str,
+        default='',
+        help='explicit portable frozen B0 manifest for fresh Stage3 initialization; not a resume checkpoint',
     )
     parser.add_argument(
         "--resume_stage1",
@@ -528,8 +770,26 @@ def get_config():
         action="store_true",
         default=False,
         help=(
-            "explicitly resume resource_joint PPO from a complete "
-            "post_shard_recovery checkpoint"
+            "explicitly resume resource_joint from a compatible recovery "
+            "checkpoint (supervised Stage2 uses the DeviceBC cursor options)"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_resume_epoch",
+        type=int,
+        default=0,
+        help=(
+            "zero-based DeviceBC epoch containing the supervised recovery "
+            "cursor; valid only with --resume_stage2"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_resume_completed_rollouts",
+        type=int,
+        default=0,
+        help=(
+            "number of fully completed DeviceBC rollouts in the recovery "
+            "epoch; valid only with --resume_stage2"
         ),
     )
     parser.add_argument(
@@ -545,6 +805,15 @@ def get_config():
         help=(
             "restore model weights but discard checkpoint ValueNorm statistics; "
             "required when the PPO reward/return semantics change"
+        ),
+    )
+    parser.add_argument(
+        "--reset_value_normalizer_before_ppo",
+        action="store_true",
+        default=False,
+        help=(
+            "discard inherited ValueNorm statistics after Stage hand-off/BC "
+            "restore and calibrate the Critic on the current return semantics"
         ),
     )
     parser.add_argument(
@@ -668,6 +937,24 @@ def get_config():
                         help="number of training epochs between C_max validations")
     parser.add_argument("--canary_eval_interval_shards", type=int, default=0,
                         help="run an in-epoch deterministic validation every N shards; 0 disables")
+    parser.add_argument(
+        "--canary_eval_max_per_epoch",
+        type=int,
+        default=0,
+        help=(
+            "maximum in-epoch validations per epoch; 0 keeps the legacy "
+            "unlimited behavior"
+        ),
+    )
+    parser.add_argument(
+        "--canary_eval_max_cases",
+        type=int,
+        default=0,
+        help=(
+            "case count used only by shard canaries served through the shared "
+            "validator; 0 uses the full configured validation partition"
+        ),
+    )
     parser.add_argument("--canary_max_regression", type=float, default=0.0,
                         help="maximum relative C_max regression versus current Best accepted by the shard canary")
     parser.add_argument(
@@ -692,11 +979,11 @@ def get_config():
         "--selection_metric",
         type=str,
         default="iid",
-        choices=["iid", "composite", "composite_tail"],
+        choices=["raw", "iid", "composite", "composite_tail"],
         help=(
-            "checkpoint selection by IID mean, weighted IID/OOD validation, "
-            "or a convex combination of that composite and the validation "
-            "worst tail"
+            "checkpoint selection by the raw validation mean, IID mean, "
+            "weighted IID/OOD validation, or a convex combination of that "
+            "composite and the validation worst tail"
         ),
     )
     parser.add_argument("--selection_iid_weight", type=float, default=0.50)
@@ -727,14 +1014,52 @@ def get_config():
     parser.add_argument("--checkpoint_dir", type=str, default=None, help="by default None. set the path to pretrained model.")
     parser.add_argument("--gnn_checkpoint", type=str, default=None, help="the path to gnn checkpoint, default None")
     parser.add_argument("--device_bc_pretrain_epochs", type=int, default=0,
-                        help="supervised warmup epochs for mobile device and transporter policy heads before PPO")
+                        help="supervised Stage2 epochs for the ready-time and mobile-resource policy heads")
+    parser.add_argument(
+        "--device_bc_training_scope",
+        type=str,
+        default="policy_and_ready",
+        choices=["policy_and_ready", "ready_only", "policy_frozen_ready"],
+        help=(
+            "parameters optimized by supervised Stage2: the historical "
+            "resource-policy plus ready-time heads, or only the intrinsic "
+            "request-ready predictor, or resource policy with a frozen predictor"
+        ),
+    )
+    parser.add_argument('--request_ready_checkpoint', type=str, default='',
+                        help='predictor-only source for policy_frozen_ready BC')
+    parser.add_argument('--request_ready_checkpoint_sha256', type=str, default='',
+                        help='required immutable digest of the frozen ready source')
+    parser.add_argument('--stage2_policy_warmstart_checkpoint', type=str, default='',
+                        help='fork selected Stage2 policy weights with fresh optimizer/RNG (not resume)')
+    parser.add_argument('--stage2_policy_warmstart_sha256', type=str, default='',
+                        help='immutable digest of the selected policy fork source')
+    parser.add_argument('--stage2_policy_warmstart_evaluation', type=str, default='',
+                        help='case-level source evaluation that must replay exactly before BC')
+    parser.add_argument('--stage2_policy_warmstart_evaluation_sha256', type=str, default='',
+                        help='immutable digest of the warm-start reference evaluation')
+    parser.add_argument('--stage2_bc_deterministic', action='store_true', default=False,
+                        help='require deterministic CUDA algorithms in BC training and shared evaluation')
+    parser.add_argument('--device_bc_eval_each_epoch', action='store_true', default=False,
+                        help='save complete BC epoch boundaries and select by validation Cmax')
+    parser.add_argument('--train_sampling_seed', type=int, default=None,
+                        help='optional data-order seed independent of model/training seed')
+    parser.add_argument(
+        "--device_bc_only",
+        action="store_true",
+        default=False,
+        help=(
+            "legacy compatibility switch; canonical supervised Stage2 always "
+            "stops after its post-supervision validation"
+        ),
+    )
     parser.add_argument(
         '--resource_bc_checkpoint',
         type=str,
         default='',
         help=(
-            'optional completed checkpoint_DeviceBC.pt shared by parallel '
-            'Stage2 PPO branches; mutually exclusive with in-run DeviceBC'
+            'legacy resource-BC boundary used only by noncanonical research '
+            'launchers; canonical Stage2 rejects this option'
         ),
     )
     parser.add_argument("--device_bc_lr", type=float, default=0.0,
@@ -743,8 +1068,11 @@ def get_config():
         "--device_bc_teacher",
         type=str,
         default="heuristic",
-        choices=["heuristic", "iga"],
-        help="live-mask resource teacher used during Stage2 BC/DAgger",
+        choices=["heuristic", "iga", "joint_iga"],
+        help=(
+            "live-mask resource teacher used during BC/DAgger; joint_iga "
+            "decodes the strictly rebound Stage3 full-joint chromosome"
+        ),
     )
     parser.add_argument(
         "--resource_iga_teacher_dir",
@@ -759,10 +1087,249 @@ def get_config():
         help="strict SHA256/fingerprint sidecar index for Stage2 IGA teachers",
     )
     parser.add_argument(
+        "--joint_iga_teacher_dir",
+        type=str,
+        default="",
+        help="directory containing verified Stage3 full-joint IGA teacher JSON files",
+    )
+    parser.add_argument(
+        "--joint_iga_teacher_index",
+        type=str,
+        default="",
+        help=(
+            "strict per-case SHA256 and target-planning-contract index for "
+            "Stage3 joint IGA teachers"
+        ),
+    )
+    parser.add_argument(
         "--device_bc_role_balanced",
         action="store_true",
         default=False,
         help="normalize ordinary-device and R014 BC losses independently",
+    )
+    parser.add_argument(
+        "--device_bc_timing_balanced",
+        action="store_true",
+        default=False,
+        help=(
+            "normalize DeviceBC over blocking-dispatch, lookahead-dispatch, "
+            "and intentional-defer timing strata (crossed with role strata "
+            "when --device_bc_role_balanced is enabled)"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_legacy_noop_timing",
+        action="store_true",
+        default=False,
+        help=(
+            "comparison-only compatibility mode that classifies every "
+            "teacher no-op as a defer timing label, reproducing the Stage2 "
+            "supervision semantics used before no-op causes were separated"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_min_teacher_score_margin",
+        type=float,
+        default=-1.0,
+        help=(
+            "drop ambiguous non-noop IGA labels whose selected genome-score "
+            "distance to the nearest legal alternative is below this value; "
+            "a negative value disables filtering"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_ranking_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for listwise distillation of all legal IGA "
+            "candidate scores; 0 preserves categorical DeviceBC"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_categorical_loss_coef",
+        type=float,
+        default=1.0,
+        help=(
+            "coefficient for serialized per-device categorical BC; set to 0 "
+            "when the permutation-invariant final-matching target is used"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_min_ranking_labels_per_epoch",
+        type=int,
+        default=64,
+        help=(
+            "minimum legal-candidate listwise labels per supervised Stage2 "
+            "epoch; canonical Stage2 fails closed below this value"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_ranking_temperature",
+        type=float,
+        default=0.10,
+        help="softmax temperature for normalized IGA candidate-score targets",
+    )
+    parser.add_argument(
+        "--device_bc_assignment_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for permutation-invariant supervision of the final "
+            "teacher matching; this replaces chromosome-score distillation"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_assignment_margin_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for a set-level margin between teacher-selected and "
+            "non-selected requests"
+        ),
+    )
+    parser.add_argument(
+        "--device_bc_assignment_margin",
+        type=float,
+        default=0.20,
+        help="log-probability margin used by structured assignment supervision",
+    )
+    parser.add_argument(
+        "--device_bc_min_assignment_labels_per_epoch",
+        type=int,
+        default=0,
+        help=(
+            "minimum permutation-invariant device-type assignment groups per "
+            "Stage2 epoch; zero disables this gate for categorical controls"
+        ),
+    )
+    parser.add_argument('--device_bc_matching_audit', action='store_true', default=False,
+                        help='Audit full teacher matching and report actual deployment-decoder agreement')
+    parser.add_argument('--device_bc_teacher_deployment_projection', action='store_true', default=False,
+                        help='Explicit BC-only IGA-derived maximum-Blocking teacher; requires audit and no factual Ready labels')
+    parser.add_argument('--device_bc_full_edge_loss_coef', type=float, default=0.0,
+                        help='Additional identity-preserving structured matching margin; 0 keeps legacy loss')
+    parser.add_argument('--device_bc_empty_wait_loss_coef', type=float, default=0.0,
+                        help='Typed temporal-defer NLL for resource groups with no teacher dispatch')
+    parser.add_argument('--device_bc_min_wait_groups_per_epoch', type=int, default=0,
+                        help='Fail closed if an enabled wait arm has insufficient meaningful empty groups')
+    parser.add_argument(
+        "--device_bc_timing_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for an explicit dispatch-vs-defer binary BC loss "
+            "computed from the normalized request distribution"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_loss_coef",
+        type=float,
+        default=1.0,
+        help=(
+            "coefficient for request-level ready-time regression in Stage2 "
+            "supervised learning"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_seconds_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for an additional Smooth-L1 loss on absolute "
+            "ready-time error normalized by --request_ready_seconds_loss_scale; "
+            "zero preserves the historical log-time objective"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_seconds_loss_scale",
+        type=float,
+        default=600.0,
+        help="seconds used to normalize the optional absolute-time Smooth-L1 loss",
+    )
+    parser.add_argument(
+        "--request_ready_h1_weight",
+        type=float,
+        default=1.0,
+        help="loss weight for bounded_mobile_frontier_h1 ready-time labels",
+    )
+    parser.add_argument(
+        "--request_ready_h2_weight",
+        type=float,
+        default=1.0,
+        help="loss weight for bounded_mobile_frontier_h2 ready-time labels",
+    )
+    parser.add_argument(
+        "--request_ready_departure_weight",
+        type=float,
+        default=1.0,
+        help="loss weight for departure pickup ready-time labels",
+    )
+    parser.add_argument(
+        "--request_ready_underprediction_weight",
+        type=float,
+        default=1.0,
+        help=(
+            "multiplicative ready-time loss weight when the prediction is later "
+            "than the model estimate (underprediction is operationally riskier)"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_blocking_weight",
+        type=float,
+        default=1.0,
+        help="extra ready-time loss weight for already-blocking requests",
+    )
+    parser.add_argument(
+        "--request_ready_exclude_blocking_loss",
+        action="store_true",
+        default=False,
+        help=(
+            "exclude deterministic blocking_wait targets from neural regression; "
+            "use together with --request_ready_hard_blocking"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_kind_balanced_loss",
+        action="store_true",
+        default=False,
+        help=(
+            "average ready-time loss within request kinds before combining them "
+            "so the frequent H1 frontier cannot dominate H2"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_quantile_loss_coef",
+        type=float,
+        default=0.0,
+        help=(
+            "coefficient for ordered q20/q50/q80 pinball loss; requires "
+            "--request_ready_quantile_head"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_holdout_folds",
+        type=int,
+        default=0,
+        help=(
+            "number of deterministic case-hash folds for predictor-only holdout "
+            "validation; zero disables the extra frozen validation pass"
+        ),
+    )
+    parser.add_argument(
+        "--request_ready_holdout_fold",
+        type=int,
+        default=0,
+        help="zero-based holdout fold selected by case-path SHA256",
+    )
+    parser.add_argument(
+        "--request_ready_min_labels_per_epoch",
+        type=int,
+        default=64,
+        help=(
+            "minimum finite request ready-time labels per Stage2 epoch; the "
+            "canonical supervised pipeline fails closed below this value"
+        ),
     )
     parser.add_argument(
         "--device_bc_dagger_schedule",
@@ -770,6 +1337,18 @@ def get_config():
         default="1.0",
         help="comma-separated per-BC-epoch teacher execution probabilities",
     )
+    parser.add_argument('--stage2_policy_improvement_protocol', action='store_true', default=False,
+                        help='Common N0-N3 deterministic learner and exact selected-state prefix replay')
+    parser.add_argument('--stage2_cost_improvement', action='store_true', default=False,
+                        help='Bounded complete-joint Cmax improvement with frozen GPU student continuations')
+    parser.add_argument('--stage2_cost_scale_seconds', type=float, default=120.)
+    parser.add_argument('--stage2_cost_weight_clip', type=float, default=4.)
+    parser.add_argument('--stage2_cost_tie_seconds', type=float, default=1.)
+    parser.add_argument('--stage2_cost_loss_coef', type=float, default=1.)
+    parser.add_argument('--stage2_cost_snapshot_horizon', type=int, default=256)
+    parser.add_argument('--stage2_cost_branch_timeout_seconds', type=float, default=600.)
+    parser.add_argument('--stage2_research_train_cases', type=str, default='',
+                        help='Hash-bound train-only ordered cases for diagnostics/canary; never evaluation cases')
     parser.add_argument(
         "--device_bc_dagger_seed",
         type=int,
@@ -778,6 +1357,24 @@ def get_config():
     )
     parser.add_argument("--device_bc_min_labels_per_epoch", type=int, default=64,
                         help="minimum supervised device labels to collect per BC epoch before moving on")
+    parser.add_argument(
+        "--stage2_max_raw_regression_seconds",
+        type=float,
+        default=float("inf"),
+        help=(
+            "maximum post-supervised raw validation regression versus the "
+            "frozen pre-supervised checkpoint before Best is rejected"
+        ),
+    )
+    parser.add_argument(
+        "--stage2_max_stress_regression_seconds",
+        type=float,
+        default=float("inf"),
+        help=(
+            "maximum OOD-stress validation regression versus pre-supervised "
+            "before the Stage2 candidate is scientifically rejected"
+        ),
+    )
     parser.add_argument("--device_bc_min_rollouts_per_epoch", type=int, default=1,
                         help="minimum full vector rollouts to collect per BC epoch")
     parser.add_argument("--device_bc_max_rollouts_per_epoch", type=int, default=20,
@@ -787,9 +1384,11 @@ def get_config():
     parser.add_argument("--device_bc_stochastic_plane", dest='device_bc_plane_deterministic',
                         action='store_false', default=True,
                         help="use stochastic loaded plane policy while collecting BC labels")
+    parser.add_argument("--device_bc_skip_ready_targets", action='store_true', default=False,
+                        help="frozen-ready IGA policy training only: do not query or score trajectory-bound ready labels")
     parser.add_argument("--no_device_bc_reset_optim", dest='device_bc_reset_optim',
                         action='store_false', default=True,
-                        help="do not reset PPO optimizers after device BC warmup")
+                        help="do not create/reset a PPO optimizer after supervised resource training")
     parser.add_argument("--no_device_bc_save", dest='device_bc_save',
                         action='store_false', default=True,
                         help="do not save a checkpoint after device BC warmup")
@@ -798,13 +1397,13 @@ def get_config():
         type=str,
         default="joint",
         choices=["joint", "ordinary_then_joint", "r014_then_joint"],
-        help="which resource actor is updated during the initial Stage2 PPO epochs",
+        help="legacy joint-RL role schedule; canonical Stage2 never consumes it",
     )
     parser.add_argument(
         "--resource_ppo_warmup_epochs",
         type=int,
         default=1,
-        help="number of role-specific PPO epochs before switching to joint updates",
+        help="legacy joint-RL warmup length; canonical Stage2 never consumes it",
     )
 
     # specific for IA environment
@@ -851,11 +1450,11 @@ def get_config():
         '--device_future_intent_horizon',
         type=int,
         default=0,
-        choices=[0, 1],
+        choices=[0, 1, 2, 3],
         help=(
             'number of committed dependency edges exposed as mobile-resource '
-            'intents; the production implementation supports a conservative '
-            'one-edge horizon'
+            'intents; horizons above one use a bounded, soft-reservation '
+            'dependency frontier at the currently committed stand'
         ),
     )
     parser.add_argument(
@@ -873,7 +1472,17 @@ def get_config():
         '--device_frontier_max_requests',
         type=int,
         default=2,
-        help='maximum direct-successor intents exposed per aircraft',
+        help='maximum dependency-frontier intents exposed per aircraft',
+    )
+    parser.add_argument(
+        '--device_request_capacity_per_plane',
+        type=int,
+        default=0,
+        help=(
+            'fixed padded request slots per aircraft; zero derives the '
+            'smallest safe width from the configured lookahead frontier. '
+            'Causal arms sharing one validator must use the same nonzero width'
+        ),
     )
     parser.add_argument(
         '--resource_release_aware_eta',
@@ -924,6 +1533,17 @@ def get_config():
         default='joint_pair',
         choices=['cascade', 'joint_pair'],
         help='joint operation-site pair scorer; cascade is kept for legacy compatibility',
+    )
+    parser.add_argument(
+        '--stage1_baseline',
+        type=str,
+        default='proposed',
+        choices=['proposed', 'l2d', 'multi_ppo', 'fjsp_drl', 'daniel'],
+        help=(
+            'Stage-1 scheduling architecture. Non-proposed choices use the '
+            'same HKBZ environment, masks, PPO budget and heuristic Hungarian '
+            'resource backend.'
+        ),
     )
     parser.add_argument(
         '--plane_bc_pretrain_epochs',
@@ -1103,6 +1723,221 @@ def get_config():
         help='form one PPO ratio from the simultaneous plane action tuple',
     )
     parser.add_argument(
+        '--joint_team_ppo_scope',
+        type=str,
+        default='plane',
+        choices=['plane', 'all'],
+        help=(
+            'roles included in the joint PPO ratio; Stage1 uses plane and '
+            'Stage3 joint_finetune requires all'
+        ),
+    )
+    parser.add_argument(
+        '--role_atomic_ppo', action='store_true', default=False,
+        help=(
+            'form a separate joint-event PPO ratio for plane, ordinary-device, '
+            'and transporter roles, combine their scalar losses, and apply one '
+            'atomic optimizer step'
+        ),
+    )
+    parser.add_argument(
+        '--role_event_returns', action='store_true', default=False,
+        help=(
+            'construct team-time returns on each role\'s own physical decision '
+            'event sequence instead of broadcasting through the mixed timeline'
+        ),
+    )
+    parser.add_argument(
+        '--role_event_credit_mode', type=str, default='elapsed',
+        choices=['elapsed', 'critical_path', 'critical_path_v2'],
+        help=(
+            'elapsed keeps the exact physical-time reward decomposition; '
+            'critical_path redistributes the same role return over audited '
+            'post-episode Cmax-frontier and resource-lateness event scores; '
+            'critical_path_v2 additionally gates resource delay by terminal '
+            'slack and distinguishes blocking, avoidable wait, and rendezvous '
+            'synchronization'
+        ),
+    )
+    parser.add_argument(
+        '--role_event_credit_uniform_mix', type=float, default=0.15,
+        help=(
+            'fraction of the physical elapsed-time decomposition retained '
+            'when --role_event_credit_mode critical_path is active'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_q_baseline', action='store_true', default=False,
+        help=(
+            'interpret each existing role StepCritic as Q(s,a), train it on '
+            'the replayed action return, and use the policy-weighted legal '
+            'action expectation as the rollout control variate'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_q_topk', type=int, default=8,
+        help='maximum legal policy actions used in the Q expectation',
+    )
+    parser.add_argument(
+        '--counterfactual_q_min_mass', type=float, default=0.90,
+        help=(
+            'diagnostic target for probability mass represented by the '
+            'counterfactual top-k action set'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_baseline_mix', type=float, default=1.0,
+        help=(
+            'multiplier in [0,1] applied to the rollout counterfactual Q '
+            'expectation; replayed chosen-action Q targets are unchanged'
+        ),
+    )
+    parser.add_argument(
+        '--counterfactual_baseline_mix_schedule', type=str, default='',
+        help=(
+            'optional comma-separated per-epoch counterfactual baseline mix; '
+            'the last value is held for later epochs'
+        ),
+    )
+    parser.add_argument(
+        '--role_sequential_ppo', action='store_true', default=False,
+        help=(
+            'apply role heads in a rotating HAPPO-style sequence while '
+            'retaining one macro rollback boundary'
+        ),
+    )
+    parser.add_argument(
+        '--role_sequential_factor_clip', type=float, default=2.0,
+        help='symmetric cap for preceding-role importance products',
+    )
+    parser.add_argument(
+        '--role_sequential_min_ess', type=float, default=0.50,
+        help='minimum normalized ESS accepted for a sequential macro update',
+    )
+    parser.add_argument(
+        '--role_event_gae_lambda', type=float, default=1.0,
+        help=(
+            'GAE lambda on each role-specific physical event clock; 1.0 '
+            'exactly reproduces the role Monte-Carlo target'
+        ),
+    )
+    for role_name in ('plane', 'device', 'transporter'):
+        parser.add_argument(
+            f'--{role_name}_role_gae_lambda',
+            type=float,
+            default=-1.0,
+            help=(
+                f'{role_name}-clock GAE lambda; a negative value inherits '
+                '--role_event_gae_lambda'
+            ),
+        )
+    parser.add_argument(
+        '--role_loss_weighting', type=str, default='fixed',
+        choices=['fixed', 'sqrt_event'],
+        help=(
+            'fixed uses plane/device/R014 coefficients; sqrt_event assigns '
+            'each case role mass proportional to the square root of its role '
+            'event count'
+        ),
+    )
+    parser.add_argument(
+        '--role_loss_min_share', type=float, default=0.15,
+        help='minimum per-case role mass in sqrt_event weighting',
+    )
+    parser.add_argument(
+        '--role_loss_max_share', type=float, default=0.60,
+        help='maximum per-case role mass in sqrt_event weighting',
+    )
+    parser.add_argument(
+        '--role_valuenorm', action='store_true', default=False,
+        help='maintain independent ValueNorm statistics for the three roles',
+    )
+    parser.add_argument(
+        '--shared_gradient_diagnostics', action='store_true', default=False,
+        help=(
+            'measure per-role shared-encoder gradient norms/cosines on one '
+            'probe replay sample per PPO shard'
+        ),
+    )
+    parser.add_argument(
+        '--shared_encoder_pcgrad', action='store_true', default=False,
+        help=(
+            'project conflicting plane/device/R014 policy gradients only on '
+            'the unsplit shared encoder before the atomic Actor step'
+        ),
+    )
+    parser.add_argument(
+        '--shared_gradient_method', type=str, default='sum',
+        choices=['sum', 'norm_balance', 'norm_pcgrad', 'cagrad'],
+        help=(
+            'shared-encoder role-gradient combiner. sum preserves the ordinary '
+            'joint loss; norm_balance applies bounded EMA norm balancing; '
+            'norm_pcgrad additionally projects severe conflicts symmetrically; '
+            'cagrad uses a conflict-averse common direction. The legacy '
+            '--shared_encoder_pcgrad switch retains its historical projection.'
+        ),
+    )
+    parser.add_argument(
+        '--shared_grad_ema_beta', type=float, default=0.97,
+        help='EMA decay used by shared role-gradient norm balancing',
+    )
+    parser.add_argument(
+        '--shared_grad_norm_power', type=float, default=0.5,
+        help='power applied to target/EMA norm ratios',
+    )
+    parser.add_argument(
+        '--shared_grad_min_scale', type=float, default=0.5,
+        help='minimum role-gradient scale after EMA norm balancing',
+    )
+    parser.add_argument(
+        '--shared_grad_max_scale', type=float, default=2.0,
+        help='maximum role-gradient scale after EMA norm balancing',
+    )
+    parser.add_argument(
+        '--shared_grad_conflict_threshold', type=float, default=-0.05,
+        help=(
+            'norm_pcgrad projects only role pairs whose current cosine is '
+            'below this threshold'
+        ),
+    )
+    parser.add_argument(
+        '--shared_cagrad_c', type=float, default=0.2,
+        help='CAGrad conflict-aversion coefficient in [0, 1)',
+    )
+    parser.add_argument(
+        '--stage3_allow_shared_frozen', action='store_true', default=False,
+        help=(
+            'explicit Stage3 research arm that keeps the shared GNN frozen for '
+            'the complete run while training all role-specific heads'
+        ),
+    )
+    parser.add_argument(
+        '--stage3_handoff_mode',
+        type=str,
+        default='strict',
+        choices=['strict', 'critical_path_wave1', 'ppo_gain_wave'],
+        help=(
+            'Stage2-to-Stage3 contract mode. critical_path_wave1 permits only '
+            'the preregistered horizon/frontier and policy-invariant '
+            'critical-resource-potential transitions; ppo_gain_wave permits '
+            'the same horizon=3/frontier=4 planning transition and either the '
+            'exact Stage2 reward or a fully unshaped pure-Cmax reward, while '
+            'keeping the model handoff bit exact'
+        ),
+    )
+    parser.add_argument(
+        '--plane_target_kl', type=float, default=0.0025,
+        help='post-update joint-event KL limit for the plane role',
+    )
+    parser.add_argument(
+        '--device_target_kl', type=float, default=0.005,
+        help='post-update joint-event KL limit for ordinary mobile devices',
+    )
+    parser.add_argument(
+        '--transporter_target_kl', type=float, default=0.005,
+        help='post-update joint-event KL limit for R014 transporters',
+    )
+    parser.add_argument(
         '--central_team_critic', action='store_true', default=False,
         help='use one graph-level value for all simultaneous plane decisions',
     )
@@ -1118,6 +1953,7 @@ def get_config():
             'team_time',
             'team_time_potential',
             'team_time_resource_potential',
+            'team_time_resource_fitted_potential',
         ],
         help=(
             'HKBZ reward mode; team_cmax broadcasts one terminal target; '
@@ -1125,7 +1961,9 @@ def get_config():
             'decision; team_time_potential adds a versioned departure-aware '
             'IGA-calibrated telescoping potential; '
             'team_time_resource_potential instead uses an online critical '
-            'resource-slack potential without changing the terminal objective'
+            'resource-slack potential without changing the terminal objective; '
+            'team_time_resource_fitted_potential uses the same online resource '
+            'features with weights fitted only from matched Stage2 IGA replays'
         ),
     )
     parser.add_argument('--hindsight_cmax_coef', type=float, default=0.0,
@@ -1194,6 +2032,16 @@ def get_config():
         ),
     )
     parser.add_argument(
+        '--resource_slack_min_weight',
+        type=float,
+        default=0.25,
+        help=(
+            'minimum request weight in the online critical-path potential; '
+            'zero fully suppresses large-slack aircraft and one disables '
+            'slack discrimination'
+        ),
+    )
+    parser.add_argument(
         '--resource_slack_forecast_seconds',
         type=float,
         default=0.0,
@@ -1214,6 +2062,51 @@ def get_config():
         help=(
             'maximum late-decision policy weight at Cmax; weights are '
             'renormalized per case so every case keeps the same total mass'
+        ),
+    )
+    parser.add_argument(
+        '--cvar_policy_fraction', type=float, default=1.0,
+        help=(
+            'fraction of rollout cases in the high-Cmax tail that receive '
+            'extra PPO mass; 1.0 disables cross-case CVaR reweighting'
+        ),
+    )
+    parser.add_argument(
+        '--cvar_policy_weight', type=float, default=1.0,
+        help=(
+            'relative policy/value mass assigned to the high-Cmax tail; '
+            'the rollout-wide total mass is conserved'
+        ),
+    )
+    parser.add_argument(
+        '--cvar_case_metric', type=str, default='cmax',
+        choices=['cmax', 'paired_delta'],
+        help=(
+            'rank CVaR cases by raw Cmax or by the paired Cmax excess over '
+            'the configured per-case teacher baseline'
+        ),
+    )
+    parser.add_argument(
+        '--paired_case_baseline_dir', type=str, default='',
+        help=(
+            'compact JSON map or directory of verified per-case reference '
+            'results used as a variance-reducing paired terminal baseline'
+        ),
+    )
+    parser.add_argument(
+        '--paired_case_baseline_coef', type=float, default=0.0,
+        help=(
+            'add this fraction of the matched reference Cmax to the negative '
+            'terminal return; 1.0 trains directly on -delta_Cmax'
+        ),
+    )
+    parser.add_argument(
+        '--paired_case_baseline_scope', type=str, default='returns',
+        choices=['returns', 'actor'],
+        help=(
+            "apply the paired case baseline to both Actor/Critic return "
+            "targets (legacy 'returns') or only as an action-independent "
+            "Actor advantage offset ('actor')"
         ),
     )
     parser.add_argument('--device_deadlock_repeat_limit', type=int, default=300,

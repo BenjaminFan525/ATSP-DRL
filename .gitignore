@@ -7,3 +7,12 @@ onpolicy/scripts/results
 *.log
 *.orig
 __pycache__/
+
+# Local credentials and migration-only material are never publication inputs.
+/id_rsa
+/id_rsa.pub
+/.arts/
+/gnc-template/
+/migration/
+/lnvgy_utl_lxce_onecli01g-5.6.0_linux_indiv.tgz
+/relocation-report.tsv

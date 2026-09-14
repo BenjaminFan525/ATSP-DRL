@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python}"
 CONTROLLER="${ROOT_DIR}/onpolicy/scripts/train/run_stage1_tail_robustness_v2.py"
 EVALUATOR="${ROOT_DIR}/onpolicy/scripts/train/shared_hkbz_evaluator.py"
 

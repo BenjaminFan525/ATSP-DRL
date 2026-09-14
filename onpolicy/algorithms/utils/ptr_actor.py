@@ -710,7 +710,8 @@ class CascadePtrActor(Module):
 
 
 class DeviceRequestPtrActor(Module):
-    def __init__(self, query_dim, embed_dim=64, nhead=4, activation=F.relu, device=None, dtype=None) -> None:
+    def __init__(self, query_dim, embed_dim=64, nhead=4, activation=F.relu,
+                 timing_head=False, device=None, dtype=None) -> None:
         """
         设备派遣指针网络。
         对每个空闲移动设备，从 request 节点中选择一个服务请求；request 0 固定为 no-op。
@@ -726,8 +727,20 @@ class DeviceRequestPtrActor(Module):
         self.req_query_attn = nn.MultiheadAttention(self.embed_dim, nhead, dropout=0., batch_first=True, **self.factory_kwargs)
         self.req_query_norm = nn.LayerNorm(self.embed_dim, **self.factory_kwargs)
         self.req_ptr_net = MaPtrNet(query_dim=embed_dim, embed_dim=self.embed_dim, **self.factory_kwargs)
+        # The pointer score answers "which request".  Stage2 additionally
+        # needs an explicit, low-dimensional answer to "dispatch now or
+        # defer".  Keeping this gate optional preserves exact compatibility
+        # with every historical checkpoint and lets the structural screen
+        # isolate timing factorisation from the ranking loss.
+        self.timing_head = (
+            nn.Linear(self.embed_dim, 1, **self.factory_kwargs)
+            if bool(timing_head) else None
+        )
 
         self._reset_parameters()
+        if self.timing_head is not None:
+            nn.init.zeros_(self.timing_head.weight)
+            nn.init.zeros_(self.timing_head.bias)
 
     def _reset_parameters(self):
         for p in self.parameters():
@@ -753,6 +766,19 @@ class DeviceRequestPtrActor(Module):
 
         req_prob_v = self.req_ptr_net.dist(req_q, request_nodes, key_padding_mask=req_pad_mask, tau=tau).squeeze(1)
         req_logits = _masked_log_probs(req_prob_v, request_valid_mask)
+        if self.timing_head is not None:
+            dispatch_gate = self.timing_head(req_q.squeeze(1)).squeeze(-1)
+            # A positive gate shifts mass from no-op to every legal real
+            # request without changing their relative pointer ranking.  The
+            # final log-softmax makes the returned tensor a normalized action
+            # distribution, exactly like the legacy path.
+            adjusted = req_logits.clone()
+            adjusted[:, 0] = adjusted[:, 0] - 0.5 * dispatch_gate
+            adjusted[:, 1:] = adjusted[:, 1:] + 0.5 * dispatch_gate.unsqueeze(-1)
+            adjusted = adjusted.masked_fill(
+                ~request_valid_mask, float('-inf')
+            )
+            req_logits = torch.log_softmax(adjusted, dim=-1)
         req_logits = _safe_logits(req_logits, valid_mask=~req_pad_mask)
 
         if chosen_request is not None:

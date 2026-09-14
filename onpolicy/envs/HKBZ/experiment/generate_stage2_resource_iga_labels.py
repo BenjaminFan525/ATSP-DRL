@@ -49,13 +49,54 @@ from onpolicy.envs.HKBZ.experiment.evaluate_resource_iga_ablation import (
     _sha256_file,
     _validate_stage1_handoff,
     load_frozen_policy,
+    normalize_resource_lookahead_contract,
 )
 
 TEACHER_SCOPE = "stage2_resource_policy"
 TEACHER_METHOD = "resource_iga_all"
-TEACHER_SCHEMA_VERSION = 1
-SEARCH_CONTRACT_VERSION = 3
+TEACHER_SCHEMA_VERSION = 2
+SEARCH_CONTRACT_VERSION = 4
 BACKENDS = ARM_BACKENDS["iga_all"]
+
+
+def _case_sha256_from_metadata(metadata: Mapping) -> str | None:
+    """Read both current and legacy dataset fingerprint layouts."""
+
+    return (
+        metadata.get("case_sha256")
+        or metadata.get("fingerprints", {}).get("case_sha256")
+    )
+
+
+def _resource_lookahead_contract_from_args(args) -> dict:
+    """Materialize every planning semantic used by search and final replay."""
+
+    return normalize_resource_lookahead_contract(
+        {
+            "device_lookahead_dispatch": True,
+            "device_lookahead_safety_margin": (
+                args.device_lookahead_safety_margin
+            ),
+            "device_deadline_aware_dispatch": (
+                args.device_deadline_aware_dispatch
+            ),
+            "device_future_intent_horizon": (
+                args.device_future_intent_horizon
+            ),
+            "device_future_intent_mode": args.device_future_intent_mode,
+            "device_frontier_max_requests": (
+                args.device_frontier_max_requests
+            ),
+            "resource_release_aware_eta": args.resource_release_aware_eta,
+            "device_lookahead_reservation_mode": (
+                args.device_lookahead_reservation_mode
+            ),
+            "device_reservation_grace_seconds": (
+                args.device_reservation_grace_seconds
+            ),
+            "device_departure_lookahead": args.device_departure_lookahead,
+        }
+    )
 
 
 def _initial_population(
@@ -421,7 +462,7 @@ class _AnytimeCaseGA:
             "search_contract_version": SEARCH_CONTRACT_VERSION,
             "algorithm": (
                 "real_coded_ga_sbx15_pm20_elitist_tournament2_"
-                "case_parallel_anytime_v3"
+                "case_parallel_anytime_v4_matched_planning"
             ),
             "parallel_axis": "independent_cases",
             "gpu_inference": "one_cross_case_batch_per_step",
@@ -467,6 +508,10 @@ _VERIFIED_EPISODE_KEYS = (
     "error",
     "completion",
     "decision_trace",
+    "intrinsic_ready_time_label_schema_version",
+    "intrinsic_ready_time_semantics",
+    "intrinsic_ready_time_labels",
+    "intrinsic_ready_time_label_coverage",
     "plane_trajectory",
     "resource_trajectory",
     "resource_decision_log",
@@ -686,6 +731,7 @@ def _load_warm_start(
     command_key: str,
     case_sha: str | None,
     expected_budget: float,
+    resource_lookahead_contract: Mapping,
 ) -> tuple[np.ndarray | None, dict | None]:
     if warm_start_dir is None:
         return None, None
@@ -702,6 +748,9 @@ def _load_warm_start(
         "frozen_plane_checkpoint_sha256": checkpoint_sha,
         "frozen_plane_source_command_sha256": command_sha,
         "frozen_plane_source_command_key": command_key,
+        "resource_lookahead_contract": dict(
+            resource_lookahead_contract
+        ),
         "case": case,
     }
     mismatched = {
@@ -742,6 +791,7 @@ def _teacher_contract(
     command_sha: str,
     command_key: str,
     cumulative_budget: float,
+    resource_lookahead_contract: Mapping,
 ) -> dict:
     return {
         "status": "completed",
@@ -758,6 +808,15 @@ def _teacher_contract(
         "frozen_plane_checkpoint_sha256": checkpoint_sha,
         "frozen_plane_source_command_sha256": command_sha,
         "frozen_plane_source_command_key": command_key,
+        "resource_lookahead_contract": dict(
+            resource_lookahead_contract
+        ),
+        "intrinsic_ready_time_label_schema_version": (
+            AircraftScheduleEnv.INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+        ),
+        "intrinsic_ready_time_semantics": (
+            AircraftScheduleEnv.INTRINSIC_READY_TIME_SEMANTICS
+        ),
         "nominal_cumulative_budget_seconds": float(cumulative_budget),
         "completion_verified": True,
     }
@@ -779,6 +838,11 @@ def _teacher_is_reusable(path: Path, expected: Mapping) -> bool:
         and completion.get("completed")
         and isinstance(payload.get("decision_trace"), list)
         and payload.get("decision_trace")
+        and isinstance(payload.get("intrinsic_ready_time_labels"), list)
+        and payload.get("intrinsic_ready_time_labels")
+        and int(payload.get(
+            "intrinsic_ready_time_label_coverage", {}
+        ).get("labeled_request_count", 0)) > 0
         and isinstance(payload.get("search", {}).get("chromosome"), list)
     )
 
@@ -848,12 +912,12 @@ def run_shard(args) -> None:
         command_key,
     )
     semantic_chain = _validate_semantic_chain(handoff, policy_args, checkpoint)
+    resource_lookahead_contract = _resource_lookahead_contract_from_args(args)
     evaluator = FrozenPlaneEvaluator(
         policy,
         policy_args,
         max_steps=args.max_steps,
-        device_lookahead_dispatch=True,
-        device_lookahead_safety_margin=args.device_lookahead_safety_margin,
+        resource_lookahead_contract=resource_lookahead_contract,
     )
     digest_before = _model_digest(policy)
     checkpoint_sha = _sha256_file(checkpoint_path)
@@ -880,11 +944,12 @@ def run_shard(args) -> None:
         result_path = output_dir / "cases" / f"{case}.json"
         expected = _teacher_contract(
             case=case,
-            case_sha=metadata.get("case_sha256"),
+            case_sha=_case_sha256_from_metadata(metadata),
             checkpoint_sha=checkpoint_sha,
             command_sha=command_sha,
             command_key=command_key,
             cumulative_budget=args.cumulative_budget_seconds,
+            resource_lookahead_contract=resource_lookahead_contract,
         )
         if _teacher_is_reusable(teacher_path, expected) and result_path.is_file():
             completed_cases.append(case)
@@ -925,8 +990,9 @@ def run_shard(args) -> None:
                 checkpoint_sha=checkpoint_sha,
                 command_sha=command_sha,
                 command_key=command_key,
-                case_sha=entry["metadata"].get("case_sha256"),
+                case_sha=_case_sha256_from_metadata(entry["metadata"]),
                 expected_budget=args.warm_start_budget_seconds,
+                resource_lookahead_contract=resource_lookahead_contract,
             )
         print(
             f"[Stage2IGA] shard={args.shard_index} wave="
@@ -968,6 +1034,7 @@ def run_shard(args) -> None:
                 "device_lookahead_safety_margin": float(
                     args.device_lookahead_safety_margin
                 ),
+                "resource_lookahead_contract": resource_lookahead_contract,
                 "search": search,
                 **final,
                 "completion_verified": True,
@@ -983,6 +1050,9 @@ def run_shard(args) -> None:
                     "distribution": metadata.get("distribution"),
                     "makespan": float(final["makespan"]),
                     "completion": final["completion"],
+                    "intrinsic_ready_time_label_coverage": final[
+                        "intrinsic_ready_time_label_coverage"
+                    ],
                     "search": {
                         key: value
                         for key, value in search.items()
@@ -1037,6 +1107,7 @@ def run_shard(args) -> None:
             "source_command_sha256": command_sha,
             "stage1_handoff": handoff,
             "semantic_chain": semantic_chain,
+            "resource_lookahead_contract": resource_lookahead_contract,
             "shard_wall_seconds": float(time.monotonic() - shard_started),
             "completed_unix_time": time.time(),
         },
@@ -1044,6 +1115,7 @@ def run_shard(args) -> None:
 
 
 def summarize(args) -> dict:
+    resource_lookahead_contract = _resource_lookahead_contract_from_args(args)
     cases = list_case_folders(str(args.dataset_dir), args.max_cases)
     records = []
     missing = []
@@ -1064,7 +1136,20 @@ def summarize(args) -> dict:
             != SEARCH_CONTRACT_VERSION
             or teacher_payload.get("environment_semantics_version")
             != AircraftScheduleEnv.SEMANTICS_VERSION
+            or record.get("resource_lookahead_contract")
+            != resource_lookahead_contract
+            or teacher_payload.get("resource_lookahead_contract")
+            != resource_lookahead_contract
             or not teacher_payload.get("decision_trace")
+            or teacher_payload.get(
+                "intrinsic_ready_time_label_schema_version"
+            ) != AircraftScheduleEnv.INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+            or teacher_payload.get("intrinsic_ready_time_semantics")
+            != AircraftScheduleEnv.INTRINSIC_READY_TIME_SEMANTICS
+            or not teacher_payload.get("intrinsic_ready_time_labels")
+            or int(teacher_payload.get(
+                "intrinsic_ready_time_label_coverage", {}
+            ).get("labeled_request_count", 0)) <= 0
         ):
             raise RuntimeError(f"Invalid Stage2 IGA teacher for {case}.")
         records.append(record)
@@ -1078,6 +1163,14 @@ def summarize(args) -> dict:
         float(record["search"]["optimization_wall_seconds"])
         for record in records
     ]
+    ready_coverages = [
+        json.loads(
+            (args.output_dir / "teachers" / f"{case}.json").read_text(
+                encoding="utf-8"
+            )
+        )["intrinsic_ready_time_label_coverage"]
+        for case in cases
+    ]
     payload = {
         "status": "completed",
         "schema_version": 1,
@@ -1086,11 +1179,27 @@ def summarize(args) -> dict:
         "resource_policy": "drl",
         "backends": BACKENDS,
         "environment_semantics_version": AircraftScheduleEnv.SEMANTICS_VERSION,
+        "search_contract_version": SEARCH_CONTRACT_VERSION,
+        "resource_lookahead_contract": resource_lookahead_contract,
         "dataset_dir": str(args.dataset_dir.resolve()),
         "output_dir": str(args.output_dir.resolve()),
         "case_count": len(records),
         "completed_count": len(records),
         "replay_verified_count": len(records),
+        "intrinsic_ready_time_label_schema_version": (
+            AircraftScheduleEnv.INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+        ),
+        "intrinsic_ready_time_semantics": (
+            AircraftScheduleEnv.INTRINSIC_READY_TIME_SEMANTICS
+        ),
+        "intrinsic_ready_time_labeled_request_count": sum(
+            int(item["labeled_request_count"])
+            for item in ready_coverages
+        ),
+        "intrinsic_ready_time_observed_request_count": sum(
+            int(item["observed_request_count"])
+            for item in ready_coverages
+        ),
         "mean_makespan": statistics.mean(makespans),
         "std_makespan": statistics.pstdev(makespans),
         "median_makespan": statistics.median(makespans),
@@ -1145,6 +1254,26 @@ def parse_args(argv: Sequence[str] | None = None):
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--evaluation-tau", type=float, default=0.3)
     parser.add_argument("--device-lookahead-safety-margin", type=float, default=60.0)
+    parser.add_argument(
+        "--device-deadline-aware-dispatch", action="store_true"
+    )
+    parser.add_argument("--device-future-intent-horizon", type=int, default=0)
+    parser.add_argument(
+        "--device-future-intent-mode",
+        choices=("legacy_one", "bounded_frontier"),
+        default="legacy_one",
+    )
+    parser.add_argument("--device-frontier-max-requests", type=int, default=2)
+    parser.add_argument("--resource-release-aware-eta", action="store_true")
+    parser.add_argument(
+        "--device-lookahead-reservation-mode",
+        choices=("none", "soft", "hard"),
+        default="none",
+    )
+    parser.add_argument(
+        "--device-reservation-grace-seconds", type=float, default=300.0
+    )
+    parser.add_argument("--device-departure-lookahead", action="store_true")
     parser.add_argument("--population", type=int, default=20)
     parser.add_argument(
         "--case-batch-size",
@@ -1192,10 +1321,18 @@ def parse_args(argv: Sequence[str] | None = None):
         parser.error("shard-index must be in [0, shard-count)")
     if args.device_lookahead_safety_margin < 0.0:
         parser.error("device-lookahead-safety-margin must be non-negative")
+    if args.device_future_intent_horizon not in {0, 1, 2, 3}:
+        parser.error("device-future-intent-horizon must be 0, 1, 2 or 3")
+    if args.device_frontier_max_requests < 1:
+        parser.error("device-frontier-max-requests must be positive")
+    if args.device_reservation_grace_seconds < 0.0:
+        parser.error("device-reservation-grace-seconds must be non-negative")
     return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from onpolicy.utils.stage2_freeze_guard import reject_stage2_development
+    reject_stage2_development()
     args = parse_args(argv)
     if args.summarize_only:
         summarize(args)

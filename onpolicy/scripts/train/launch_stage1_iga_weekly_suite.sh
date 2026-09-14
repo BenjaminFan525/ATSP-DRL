@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python}"
 SUITE="${ROOT_DIR}/onpolicy/scripts/train/run_stage1_research_suite.py"
 TRAIN_DATA="${ROOT_DIR}/onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train"
 TEACHER_ROOT="${ROOT_DIR}/result/hkbz_train_logs/iga_teachers"

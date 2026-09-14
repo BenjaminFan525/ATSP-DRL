@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python}"
 SINGLE_LAUNCHER="${ROOT_DIR}/onpolicy/scripts/train/launch_stage1_iga_weekly_suite.sh"
 
 BASE_TAG="${BASE_TAG:-stage1_dual_a800_$(date +%Y%m%d_%H%M%S)}"

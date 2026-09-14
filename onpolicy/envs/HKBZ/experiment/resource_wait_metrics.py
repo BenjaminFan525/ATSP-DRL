@@ -71,6 +71,9 @@ def summarize_aircraft_resource_wait(
     transporter_type: str = "R014",
     aircraft_count: int | None = None,
     include_events: bool = False,
+    episode_cmax: float | None = None,
+    criticality_scale_seconds: float = 600.0,
+    criticality_min_weight: float = 0.0,
 ) -> dict:
     """Summarize non-overlapping aircraft waits caused by mobile resources.
 
@@ -233,7 +236,29 @@ def summarize_aircraft_resource_wait(
         aircraft_count = len(aircraft_ids)
     aircraft_count = max(int(aircraft_count), len(aircraft_ids))
 
+    criticality_scale_seconds = max(
+        1e-9, _non_negative(criticality_scale_seconds)
+    )
+    criticality_min_weight = min(
+        1.0, _non_negative(criticality_min_weight)
+    )
+    plane_completion = defaultdict(float)
+    for record in plane_trajectory:
+        plane_id = record.get("plane_id")
+        if plane_id is None:
+            continue
+        plane_completion[str(plane_id)] = max(
+            plane_completion[str(plane_id)],
+            _non_negative(record.get("end_time")),
+        )
+    observed_cmax = max(plane_completion.values(), default=0.0)
+    if episode_cmax is None:
+        episode_cmax = observed_cmax
+    episode_cmax = max(observed_cmax, _non_negative(episode_cmax))
+
     per_aircraft = defaultdict(float)
+    critical_wait_per_aircraft = defaultdict(float)
+    critical_avoidable_per_aircraft = defaultdict(float)
     by_phase = defaultdict(lambda: {
         "opportunity_count": 0,
         "positive_wait_event_count": 0,
@@ -250,9 +275,41 @@ def summarize_aircraft_resource_wait(
         'travel_after_dispatch_seconds': 0.0,
         'post_arrival_synchronization_seconds': 0.0,
     }
+    rendezvous_spreads = []
     for event in events:
         wait = float(event["wait_seconds"])
-        per_aircraft[event["plane_id"]] += wait
+        plane_id = event["plane_id"]
+        per_aircraft[plane_id] += wait
+        completion_time = plane_completion.get(plane_id, 0.0)
+        completion_slack = max(0.0, episode_cmax - completion_time)
+        critical_weight = (
+            criticality_min_weight
+            + (1.0 - criticality_min_weight)
+            * math.exp(-completion_slack / criticality_scale_seconds)
+        )
+        conservative_avoidable = (
+            float(event.get("waiting_before_dispatch_seconds", 0.0))
+            + float(event.get(
+                "post_arrival_synchronization_seconds", 0.0
+            ))
+        )
+        event["plane_completion_time"] = float(completion_time)
+        event["completion_slack_seconds"] = float(completion_slack)
+        event["criticality_weight"] = float(critical_weight)
+        event["critical_wait_seconds"] = float(critical_weight * wait)
+        event["avoidable_lateness_seconds"] = float(
+            conservative_avoidable
+        )
+        event["critical_avoidable_lateness_seconds"] = float(
+            critical_weight * conservative_avoidable
+        )
+        critical_wait_per_aircraft[plane_id] += critical_weight * wait
+        critical_avoidable_per_aircraft[plane_id] += (
+            critical_weight * conservative_avoidable
+        )
+        rendezvous_spreads.append(float(event.get(
+            "post_arrival_synchronization_seconds", 0.0
+        )))
         if wait > 1e-9:
             positive_events += 1
         for field in decomposition:
@@ -266,12 +323,24 @@ def summarize_aircraft_resource_wait(
             group[key]["total_wait_seconds"] += wait
 
     waits = list(per_aircraft.values())
+    critical_waits = list(critical_wait_per_aircraft.values())
+    critical_avoidable_waits = list(
+        critical_avoidable_per_aircraft.values()
+    )
     if aircraft_count > len(waits):
         waits.extend([0.0] * (aircraft_count - len(waits)))
+    if aircraft_count > len(critical_waits):
+        critical_waits.extend(
+            [0.0] * (aircraft_count - len(critical_waits))
+        )
+    if aircraft_count > len(critical_avoidable_waits):
+        critical_avoidable_waits.extend(
+            [0.0] * (aircraft_count - len(critical_avoidable_waits))
+        )
     total_wait = float(sum(waits))
     positive_aircraft = sum(value > 1e-9 for value in waits)
     result = {
-        "schema_version": 2,
+        "schema_version": 3,
         "unit": "seconds",
         "definition": (
             "time an aircraft is blocked by a required mobile resource; "
@@ -290,6 +359,29 @@ def summarize_aircraft_resource_wait(
         ),
         "p95_wait_seconds_per_aircraft": _quantile(waits, 0.95),
         "max_wait_seconds_per_aircraft": max(waits, default=0.0),
+        "critical_wait_seconds": float(sum(critical_waits)),
+        "critical_wait_p95_seconds_per_aircraft": _quantile(
+            critical_waits, 0.95
+        ),
+        "critical_wait_max_seconds_per_aircraft": max(
+            critical_waits, default=0.0
+        ),
+        "critical_avoidable_lateness_seconds": float(
+            sum(critical_avoidable_waits)
+        ),
+        "critical_avoidable_lateness_p95_seconds_per_aircraft": _quantile(
+            critical_avoidable_waits, 0.95
+        ),
+        "rendezvous_spread_seconds": float(sum(rendezvous_spreads)),
+        "rendezvous_spread_p95_seconds": _quantile(
+            rendezvous_spreads, 0.95
+        ),
+        "rendezvous_spread_max_seconds": max(
+            rendezvous_spreads, default=0.0
+        ),
+        "criticality_scale_seconds": float(criticality_scale_seconds),
+        "criticality_min_weight": float(criticality_min_weight),
+        "episode_cmax": float(episode_cmax),
         "aircraft_with_positive_wait_count": int(positive_aircraft),
         "zero_wait_aircraft_count": int(aircraft_count - positive_aircraft),
         "zero_wait_aircraft_fraction": (

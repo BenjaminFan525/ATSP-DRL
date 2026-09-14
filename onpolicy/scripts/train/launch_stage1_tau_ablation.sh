@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python3.11}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python3.11}"
 RUNNER="${ROOT_DIR}/onpolicy/scripts/train/run_stage1_tau_ablation.py"
 RUN_TAG="${RUN_TAG:-stage1_tau_schedule_screen_20260807_r1}"
 SUITE_DIR="${ROOT_DIR}/result/hkbz_train_logs/${RUN_TAG}"

@@ -275,13 +275,15 @@ def select_train_case_dirs(
     return selected, audit
 
 
-def make_train_env(all_args):
+def make_train_env(all_args, *, case_records=None, dataset_override=None, evaluation=False):
     # ================= 提前读取基础配置并打乱、切分数据集 =================
     env_config_base = {}
     if os.path.exists(all_args.env_config):
         with open(all_args.env_config, 'r', encoding='utf-8') as f:
             env_config_base = yaml.safe_load(f)
     env_config_base['hindsight_reward_mode'] = all_args.hindsight_reward_mode
+    if getattr(all_args, 'stage2_resource_v6_observations', False):
+        env_config_base['stage2_resource_v6_observations'] = True
     env_config_base['hindsight_cmax_coef'] = all_args.hindsight_cmax_coef
     env_config_base['hindsight_shaping_coef'] = all_args.hindsight_shaping_coef
     env_config_base['hindsight_terminal_cmax_coef'] = all_args.hindsight_terminal_cmax_coef
@@ -295,6 +297,8 @@ def make_train_env(all_args):
     env_config_base['resource_iga_teacher_index'] = (
         all_args.resource_iga_teacher_index
     )
+    env_config_base['joint_iga_teacher_dir'] = all_args.joint_iga_teacher_dir
+    env_config_base['joint_iga_teacher_index'] = all_args.joint_iga_teacher_index
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
     env_config_base['device_lookahead_dispatch'] = bool(
         all_args.device_lookahead_dispatch
@@ -314,6 +318,9 @@ def make_train_env(all_args):
     )
     env_config_base['device_frontier_max_requests'] = int(
         all_args.device_frontier_max_requests
+    )
+    env_config_base['device_request_capacity_per_plane'] = int(
+        all_args.device_request_capacity_per_plane
     )
     env_config_base['resource_release_aware_eta'] = bool(
         all_args.resource_release_aware_eta
@@ -339,6 +346,9 @@ def make_train_env(all_args):
     env_config_base['resource_slack_criticality_seconds'] = float(
         all_args.resource_slack_criticality_seconds
     )
+    env_config_base['resource_slack_min_weight'] = float(
+        all_args.resource_slack_min_weight
+    )
     env_config_base['resource_slack_forecast_seconds'] = float(
         all_args.resource_slack_forecast_seconds
     )
@@ -353,13 +363,28 @@ def make_train_env(all_args):
     env_config_base['use_domain_rand'] = bool(all_args.train_domain_rand)
     env_config_base['global_feature_mode'] = all_args.global_feature_mode
             
-    dataset_dir = env_config_base.get('dataset_dir', 'airport_dataset')
+    dataset_dir = str(dataset_override or env_config_base.get('dataset_dir', 'airport_dataset'))
+    if evaluation:
+        if case_records is None or Path(dataset_dir).name != 'tune':
+            raise ValueError('Explicit research evaluation is restricted to locked tune cases.')
+        env_config_base['use_domain_rand'] = False
+        for teacher_key in ('iga_teacher_dir', 'resource_iga_teacher_dir',
+                            'resource_iga_teacher_index', 'joint_iga_teacher_dir',
+                            'joint_iga_teacher_index'):
+            env_config_base[teacher_key] = ''
     case_dirs = sorted(glob.glob(os.path.join(dataset_dir, "case_*")))
     
     if not case_dirs:
         raise ValueError(f"🚨 错误：在目录 '{dataset_dir}' 中没有找到任何算例文件夹！请先生成数据集。")
         
     max_train_cases = max(0, int(getattr(all_args, 'max_train_cases', 0)))
+    cases_per_epoch = max(
+        0, int(getattr(all_args, 'train_sampling_size', 0))
+    )
+    sampling_pool_size = max(
+        0, int(getattr(all_args, 'train_sampling_pool_size', 0))
+    )
+    requested_pool_size = sampling_pool_size or cases_per_epoch
     case_dirs, sampling_audit = select_train_case_dirs(
         case_dirs,
         mode=str(getattr(all_args, 'train_sampling_mode', 'uniform')),
@@ -368,12 +393,68 @@ def make_train_env(all_args):
             'train_sampling_weights',
             'iid=0.50,ood_stress=0.45,ood_scale=0.05',
         )),
-        seed=all_args.seed,
+        seed=(all_args.seed if getattr(all_args, 'train_sampling_seed', None) is None
+              else all_args.train_sampling_seed),
         max_cases=max_train_cases,
-        sample_size=max(
-            0, int(getattr(all_args, 'train_sampling_size', 0))
-        ),
+        sample_size=requested_pool_size,
     )
+    if case_records is not None:
+        from onpolicy.utils.stage2_bc_replay import validate_case_content
+        if (sampling_pool_size or len(case_records) != max_train_cases
+                or len({row['case_dir'] for row in case_records}) != len(case_records)
+                or (not evaluation and Path(dataset_dir).name != 'train')):
+            raise ValueError('Explicit research cases must be fixed, unique and within budget.')
+        validate_case_content(case_records, dataset_dir)
+        case_dirs = [str(Path(dataset_dir) / row['case_dir']) for row in case_records]
+        sampling_audit = {'explicit_research_cases': True, 'evaluation': evaluation,
+                          'case_order': [row['case_dir'] for row in case_records],
+                          'case_count': len(case_records)}
+    if getattr(all_args, 'stage2_research_train_cases', ''):
+        from onpolicy.utils.stage2_bc_replay import validate_case_content
+        locked = json.loads(Path(all_args.stage2_research_train_cases).read_text())
+        if (Path(locked['dataset']).resolve() != Path(dataset_dir).resolve()
+                or locked.get('split') != 'train' or locked.get('outcome_selected') is not False
+                or Path(dataset_dir).name != 'train' or sampling_pool_size):
+            raise ValueError('Research case override must be fixed, nonrotating and train-only.')
+        rows = locked['cases']
+        if len(rows) != max_train_cases or len({row['case_dir'] for row in rows}) != len(rows):
+            raise ValueError('Research train-case override violates the declared case budget.')
+        validate_case_content(rows, dataset_dir)
+        case_dirs = [str(Path(dataset_dir) / row['case_dir']) for row in rows]
+        sampling_audit = {'research_fixed_case_file': all_args.stage2_research_train_cases,
+                          'case_order': [row['case_dir'] for row in rows], 'case_count': len(rows)}
+    if sampling_pool_size:
+        if cases_per_epoch <= 0:
+            raise ValueError(
+                '--train_sampling_pool_size requires a positive '
+                '--train_sampling_size epoch budget.'
+            )
+        if sampling_pool_size <= cases_per_epoch:
+            raise ValueError(
+                '--train_sampling_pool_size must exceed the per-epoch '
+                '--train_sampling_size budget.'
+            )
+        if len(case_dirs) != sampling_pool_size:
+            raise ValueError(
+                'The selected training pool was truncated; use '
+                '--max_train_cases 0 when rotating a larger sample pool. '
+                f'expected={sampling_pool_size}, selected={len(case_dirs)}.'
+            )
+        if cases_per_epoch % all_args.n_rollout_threads:
+            raise ValueError(
+                '--train_sampling_size must be divisible by '
+                '--n_rollout_threads when rotating a larger pool.'
+            )
+        shards_per_epoch = cases_per_epoch // all_args.n_rollout_threads
+    else:
+        shards_per_epoch = None
+    sampling_audit.update({
+        'pool_size': len(case_dirs),
+        'cases_per_epoch': (
+            cases_per_epoch if sampling_pool_size else len(case_dirs)
+        ),
+        'rotating_pool': bool(sampling_pool_size),
+    })
     print(
         '[TrainSampling] '
         + json.dumps(sampling_audit, ensure_ascii=False, sort_keys=True),
@@ -404,11 +485,15 @@ def make_train_env(all_args):
                 config['mobile_res_path'] = os.path.join(case_dir, "mobile_resources.json")
                 config['sites_path'] = os.path.join(case_dir, "sites.json")
                 config['flights_path'] = os.path.join(case_dir, "flights.json")
+                config['_train_epoch_case_budget_per_worker'] = int(
+                    shards_per_epoch or 0
+                )
                 config_list.append(config)
 
             # 传入配置列表
             env = AircraftScheduleEnv(config_list)
-            env.seed(all_args.seed + rank * 1000)
+            env.seed(all_args.seed * 50000 + rank * 10000 if evaluation
+                     else all_args.seed + rank * 1000)
             return env
         return init_env
 
@@ -418,7 +503,9 @@ def make_train_env(all_args):
             ipc_timeout_seconds=all_args.ipc_timeout_seconds,
             async_graph_clone_workers=all_args.safe_async_graph_clone_workers,
         ),
-        max(len(rank_cases) for rank_cases in split_case_dirs),
+        int(shards_per_epoch) if shards_per_epoch is not None else max(
+            len(rank_cases) for rank_cases in split_case_dirs
+        ),
     )
 
 
@@ -440,6 +527,8 @@ def make_eval_env(all_args):
     # into validation, including through an env YAML inherited from a run.
     env_config_base['resource_iga_teacher_dir'] = ''
     env_config_base['resource_iga_teacher_index'] = ''
+    env_config_base['joint_iga_teacher_dir'] = ''
+    env_config_base['joint_iga_teacher_index'] = ''
     env_config_base['device_deadlock_repeat_limit'] = all_args.device_deadlock_repeat_limit
     env_config_base['device_lookahead_dispatch'] = bool(
         all_args.device_lookahead_dispatch
@@ -459,6 +548,9 @@ def make_eval_env(all_args):
     )
     env_config_base['device_frontier_max_requests'] = int(
         all_args.device_frontier_max_requests
+    )
+    env_config_base['device_request_capacity_per_plane'] = int(
+        all_args.device_request_capacity_per_plane
     )
     env_config_base['resource_release_aware_eta'] = bool(
         all_args.resource_release_aware_eta
@@ -483,6 +575,9 @@ def make_eval_env(all_args):
     )
     env_config_base['resource_slack_criticality_seconds'] = float(
         all_args.resource_slack_criticality_seconds
+    )
+    env_config_base['resource_slack_min_weight'] = float(
+        all_args.resource_slack_min_weight
     )
     env_config_base['resource_slack_forecast_seconds'] = float(
         all_args.resource_slack_forecast_seconds
@@ -582,7 +677,13 @@ def parse_args(args, parser):
     parser.add_argument('--ac_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/ac.yaml', help="Path to the ac config file")
     parser.add_argument('--env_config', type=str, default='/home/fanyx/HKBZ-environment/onpolicy/config/env.yaml', help="Path to the environment config file")
 
-    all_args = parser.parse_known_args(args)[0]  
+    all_args = parser.parse_known_args(args)[0]
+    if (all_args.stage2_frozen_manifest
+            and not any(item == '--env_config' or item.startswith('--env_config=') for item in args)):
+        from onpolicy.utils.stage2_frozen import FrozenStage2Bundle
+        bundle = FrozenStage2Bundle(all_args.stage2_frozen_manifest)
+        if 'env_config' in bundle.files:
+            all_args.env_config = str(bundle.path('env_config'))
     if os.path.exists(all_args.env_config):
         with open(all_args.env_config, 'r', encoding='utf-8') as f:
             env_cfg = yaml.safe_load(f) or {}
@@ -605,6 +706,15 @@ def parse_args(args, parser):
 def main(args):
     parser = get_config()
     all_args = parse_args(args, parser)
+    from onpolicy.utils.stage2_freeze_guard import guard_training_stage
+    guard_training_stage(all_args.training_stage)
+    if all_args.stage2_frozen_manifest:
+        from onpolicy.utils.stage2_frozen import load_frozen_stage2
+        if all_args.training_stage not in ('auto', 'joint_finetune'):
+            raise ValueError('--stage2_frozen_manifest is only for fresh Stage3 initialization.')
+        if all_args.checkpoint_dir:
+            raise ValueError('Use either --stage2_frozen_manifest or --checkpoint_dir, not both.')
+        _, all_args, _ = load_frozen_stage2(all_args.stage2_frozen_manifest, all_args)
     pipeline_manifest = apply_formal_safe_pipeline_manifest(all_args)
     if int(all_args.safe_async_graph_clone_workers) < 0:
         raise ValueError('--safe_async_graph_clone_workers must be non-negative.')
@@ -676,6 +786,10 @@ def main(args):
     for flag, raw in (
         ('--iga_potential_beta_schedule', all_args.iga_potential_beta_schedule),
         ('--bc_reference_kl_coef_schedule', all_args.bc_reference_kl_coef_schedule),
+        (
+            '--counterfactual_baseline_mix_schedule',
+            all_args.counterfactual_baseline_mix_schedule,
+        ),
         ('--plane_bc_dagger_schedule', all_args.plane_bc_dagger_schedule),
         ('--device_bc_dagger_schedule', all_args.device_bc_dagger_schedule),
         (
@@ -693,8 +807,10 @@ def main(args):
             raise ValueError(f'{flag} must be a comma-separated float list.') from error
         if any(not np.isfinite(value) or value < 0.0 for value in values):
             raise ValueError(f'{flag} values must be finite and non-negative.')
-        if 'dagger' in flag and any(value > 1.0 for value in values):
-            raise ValueError(f'{flag} teacher rates must not exceed 1.')
+        if (
+            'dagger' in flag or 'counterfactual_baseline_mix' in flag
+        ) and any(value > 1.0 for value in values):
+            raise ValueError(f'{flag} values must not exceed 1.')
     if all_args.device_bc_teacher == 'iga':
         teacher_dir = Path(all_args.resource_iga_teacher_dir).expanduser()
         teacher_index = Path(all_args.resource_iga_teacher_index).expanduser()
@@ -710,13 +826,39 @@ def main(args):
             )
         all_args.resource_iga_teacher_dir = str(teacher_dir.resolve())
         all_args.resource_iga_teacher_index = str(teacher_index.resolve())
+        if all_args.joint_iga_teacher_dir or all_args.joint_iga_teacher_index:
+            raise ValueError(
+                'Stage3 joint teacher paths are only valid with '
+                '--device_bc_teacher joint_iga.'
+            )
+    elif all_args.device_bc_teacher == 'joint_iga':
+        teacher_dir = Path(all_args.joint_iga_teacher_dir).expanduser()
+        teacher_index = Path(all_args.joint_iga_teacher_index).expanduser()
+        if not teacher_dir.is_dir():
+            raise FileNotFoundError(
+                'Joint IGA BC requires an existing '
+                f'--joint_iga_teacher_dir, got {teacher_dir}.'
+            )
+        if not teacher_index.is_file():
+            raise FileNotFoundError(
+                'Joint IGA BC requires an existing '
+                f'--joint_iga_teacher_index, got {teacher_index}.'
+            )
+        all_args.joint_iga_teacher_dir = str(teacher_dir.resolve())
+        all_args.joint_iga_teacher_index = str(teacher_index.resolve())
+        if all_args.resource_iga_teacher_dir or all_args.resource_iga_teacher_index:
+            raise ValueError(
+                'Stage2 resource teacher paths are only valid with '
+                '--device_bc_teacher iga.'
+            )
     elif (
         all_args.resource_iga_teacher_dir
         or all_args.resource_iga_teacher_index
+        or all_args.joint_iga_teacher_dir
+        or all_args.joint_iga_teacher_index
     ):
         raise ValueError(
-            'Resource IGA teacher paths are only valid with '
-            '--device_bc_teacher iga.'
+            'IGA teacher paths require --device_bc_teacher iga or joint_iga.'
         )
     if all_args.resource_bc_checkpoint:
         resource_bc_checkpoint = Path(
@@ -773,7 +915,8 @@ def main(args):
     ):
         raise ValueError('--plane_bc_per_agent_dagger requires fixed plane order.')
     if all_args.hindsight_reward_mode in {
-        'iga_potential', 'team_time_potential'
+        'iga_potential', 'team_time_potential',
+        'team_time_resource_fitted_potential',
     }:
         weights_path = Path(all_args.iga_potential_weights_path).expanduser()
         if not all_args.iga_potential_weights_path or not weights_path.is_file():
@@ -783,7 +926,8 @@ def main(args):
             )
         all_args.iga_potential_weights_path = str(weights_path.resolve())
     if all_args.hindsight_reward_mode in {
-        'team_time_potential', 'team_time_resource_potential'
+        'team_time_potential', 'team_time_resource_potential',
+        'team_time_resource_fitted_potential',
     }:
         if not np.isclose(all_args.iga_potential_gamma, 1.0):
             raise ValueError(
@@ -799,6 +943,7 @@ def main(args):
         all_args.hindsight_reward_mode in {
             'team_cmax', 'team_time', 'team_time_potential',
             'team_time_resource_potential',
+            'team_time_resource_fitted_potential',
         }
         and all_args.hindsight_terminal_cmax_coef <= 0.0
     ):
@@ -813,6 +958,13 @@ def main(args):
         )
     if float(all_args.shared_eval_timeout_seconds) <= 0.0:
         raise ValueError('--shared_eval_timeout_seconds must be positive.')
+    if not np.isfinite(all_args.cuda_memory_fraction) or not (
+        all_args.cuda_memory_fraction == 0.0
+        or 0.0 < all_args.cuda_memory_fraction <= 1.0
+    ):
+        raise ValueError(
+            '--cuda_memory_fraction must be 0 or a finite value in (0, 1].'
+        )
     all_args.use_recurrent_policy = True
     faulthandler.enable(all_threads=True)
     torch.multiprocessing.set_sharing_strategy(all_args.torch_mp_sharing_strategy)
@@ -822,10 +974,27 @@ def main(args):
     )
     all_args.use_naive_recurrent_policy = False
 
+    from onpolicy.utils.stage2_bc_contract import configure_bc_determinism
+    configure_bc_determinism(all_args.stage2_bc_deterministic)
     # cuda
     if all_args.cuda and torch.cuda.is_available():
         print("choose to use gpu...")
         device = torch.device(str(all_args.device))
+        if all_args.cuda_memory_fraction > 0.0:
+            torch.cuda.set_per_process_memory_fraction(
+                float(all_args.cuda_memory_fraction), device=device
+            )
+            visible_total_gib = (
+                torch.cuda.get_device_properties(device).total_memory
+                / float(1024 ** 3)
+            )
+            print(
+                '[MemoryLimit] '
+                f'cuda_memory_fraction={all_args.cuda_memory_fraction:.6f} '
+                f'allocator_limit_gib='
+                f'{visible_total_gib * all_args.cuda_memory_fraction:.3f}.',
+                flush=True,
+            )
         torch.set_num_threads(all_args.n_training_threads)
         if all_args.cuda_deterministic:
             torch.backends.cudnn.benchmark = False
@@ -964,6 +1133,12 @@ def main(args):
                 'shared_eval_socket': str(all_args.shared_eval_socket or ''),
                 'shared_eval_cpu_set': str(
                     all_args.shared_eval_cpu_set or ''
+                ),
+                'shared_gpu_phase_lock': str(
+                    all_args.shared_gpu_phase_lock or ''
+                ),
+                'cuda_memory_fraction': float(
+                    all_args.cuda_memory_fraction
                 ),
                 'pid': os.getpid(),
                 'ppid': os.getppid(),

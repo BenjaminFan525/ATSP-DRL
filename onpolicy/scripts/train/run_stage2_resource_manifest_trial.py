@@ -21,6 +21,7 @@ from onpolicy.scripts.train.run_hkbz_two_stage_pipeline import (  # noqa: E402
     set_switch,
 )
 from onpolicy.utils.shared_eval import format_cpu_set, parse_cpu_set  # noqa: E402
+from onpolicy.utils.stage2_external_dispatch import guard_launch  # noqa: E402
 
 
 def atomic_json(path: Path, payload: dict) -> None:
@@ -45,7 +46,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-workers", type=int, required=True)
     parser.add_argument("--start-delay-seconds", type=float, default=0.0)
     parser.add_argument("--record", type=Path, required=True)
+    parser.add_argument("--external-owner-pid", type=int)
+    parser.add_argument("--cuda-memory-fraction", type=float)
     parser.add_argument("--experiment-name")
+    parser.add_argument("--n-rollout-threads", type=int)
     parser.add_argument("--mini-batch-size", type=int)
     parser.add_argument("--data-chunk-length", type=int)
     parser.add_argument("--max-graphs-per-forward", type=int)
@@ -65,6 +69,12 @@ def apply_runtime_overrides(command: list[str], args: argparse.Namespace) -> dic
     """Apply an explicitly recorded one-lane throughput override."""
 
     overrides = {}
+    memory_fraction = getattr(args, 'cuda_memory_fraction', None)
+    if memory_fraction is not None:
+        if not 0.0 < memory_fraction <= 1.0:
+            raise ValueError('CUDA allocator fraction must be in (0, 1].')
+        set_option(command, '--cuda_memory_fraction', memory_fraction)
+        overrides['cuda_memory_fraction'] = memory_fraction
     if args.experiment_name:
         set_option(command, "--experiment_name", args.experiment_name)
         overrides["experiment_name"] = args.experiment_name
@@ -99,6 +109,7 @@ def apply_runtime_overrides(command: list[str], args: argparse.Namespace) -> dic
         set_option(command, '--device_bc_pretrain_epochs', 0)
         overrides['resource_bc_checkpoint'] = str(resource_bc_checkpoint)
     numeric_options = (
+        ("n_rollout_threads", "--n_rollout_threads"),
         ("mini_batch_size", "--mini_batch_size"),
         ("data_chunk_length", "--data_chunk_length"),
         ("max_graphs_per_forward", "--max_graphs_per_forward"),
@@ -124,9 +135,25 @@ def apply_runtime_overrides(command: list[str], args: argparse.Namespace) -> dic
             raise ValueError(f"{option} must be positive, got {value}.")
         set_option(command, option, value)
         overrides[attribute] = int(value)
-    mini_batch_size = overrides.get("mini_batch_size")
-    data_chunk_length = overrides.get("data_chunk_length")
-    max_graphs = overrides.get("max_graphs_per_forward")
+    def effective_int(option: str):
+        if option not in command:
+            return None
+        return int(command[command.index(option) + 1])
+
+    n_rollout_threads = effective_int("--n_rollout_threads")
+    mini_batch_size = effective_int("--mini_batch_size")
+    data_chunk_length = effective_int("--data_chunk_length")
+    max_graphs = effective_int("--max_graphs_per_forward")
+    if (
+        n_rollout_threads is not None
+        and mini_batch_size is not None
+        and mini_batch_size > n_rollout_threads
+    ):
+        raise ValueError(
+            "Runtime PPO mini-batch exceeds rollout width: "
+            f"mini_batch_size={mini_batch_size} > "
+            f"n_rollout_threads={n_rollout_threads}."
+        )
     if None not in (mini_batch_size, data_chunk_length, max_graphs):
         requested_graphs = mini_batch_size * data_chunk_length
         if requested_graphs > max_graphs:
@@ -139,7 +166,12 @@ def apply_runtime_overrides(command: list[str], args: argparse.Namespace) -> dic
 
 
 def main() -> int:
+    from onpolicy.utils.stage2_freeze_guard import reject_stage2_development
+    reject_stage2_development()
     args = parse_args()
+    adopted_code = guard_launch(args, atomic_json)
+    if adopted_code is not None:
+        return adopted_code
     requested_cpus = parse_cpu_set(args.cpu_set)
     allowed_cpus = frozenset(os.sched_getaffinity(0))
     if requested_cpus != allowed_cpus:

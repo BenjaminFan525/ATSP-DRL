@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PYTHON = (ROOT.parent / 'conda/envs/maia/bin/python3.11').resolve()
+PYTHON = (ROOT.parent / 'conda/envs/maia-hkbz-cu124-20260903/bin/python3.11').resolve()
 TRAIN = ROOT / 'onpolicy/scripts/train/train_hkbz.py'
 COMPARE = ROOT / 'onpolicy/envs/HKBZ/experiment/valid_fjsp_v2_comparison.py'
 ANALYZE = ROOT / 'onpolicy/envs/HKBZ/experiment/analyze_stage1_tau_ablation.py'

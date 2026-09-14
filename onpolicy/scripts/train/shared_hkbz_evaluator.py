@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import gc
 import json
+from multiprocessing import AuthenticationError
 import os
 import signal
 import sys
@@ -37,6 +40,8 @@ from onpolicy.utils.shared_eval import (
     set_process_affinity,
 )
 from onpolicy.utils.checkpoint_contract import stage1_observation_metadata
+from onpolicy.utils.training_stage import protected_parameter_summary
+from onpolicy.utils.stage2_bc_contract import ready_head_config, ready_head_signature
 
 
 def atomic_json(path: Path, payload: dict) -> None:
@@ -86,6 +91,12 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument('--eval-dataset-dir', type=Path)
     parser.add_argument('--eval-case-offset', type=int)
     parser.add_argument('--max-eval-cases', type=int)
+    parser.add_argument(
+        '--cuda-memory-fraction',
+        type=float,
+        default=0.0,
+        help='per-process CUDA allocator fraction for the shared evaluator',
+    )
     parser.add_argument('--eval-partition-seed', type=int)
     parser.add_argument(
         '--eval-partition-stratify-by', choices=('', 'distribution', 'profile')
@@ -95,6 +106,13 @@ def parse_cli() -> argparse.Namespace:
     args.run_dir = args.run_dir.resolve()
     if not args.source_command_json.is_file():
         raise FileNotFoundError(args.source_command_json)
+    if not np.isfinite(args.cuda_memory_fraction) or not (
+        args.cuda_memory_fraction == 0.0
+        or 0.0 < args.cuda_memory_fraction <= 1.0
+    ):
+        raise ValueError(
+            '--cuda-memory-fraction must be 0 or a finite value in (0, 1].'
+        )
     if len(str(args.socket_path)) >= 100:
         raise ValueError(
             'AF_UNIX socket path must remain below 100 characters: '
@@ -116,6 +134,8 @@ def configure_runner(cli: argparse.Namespace):
 
     training_args = source_training_args(cli.source_command_json)
     all_args = parse_training_args(training_args, get_config())
+    from onpolicy.utils.stage2_bc_contract import configure_bc_determinism
+    configure_bc_determinism(all_args.stage2_bc_deterministic)
     apply_formal_safe_pipeline_manifest(all_args, repository_root=ROOT)
     if cli.eval_dataset_dir is not None:
         all_args.eval_dataset_dir = str(cli.eval_dataset_dir.resolve())
@@ -143,6 +163,16 @@ def configure_runner(cli: argparse.Namespace):
     all_args.reset_value_normalizer_on_resume = False
     all_args.plane_bc_pretrain_epochs = 0
     all_args.n_rollout_threads = all_args.n_eval_rollout_threads
+    # HKBZ_Runner validates recurrent *training* batches against the number of
+    # environment slices during construction.  A shared evaluator never builds
+    # or consumes PPO mini-batches, but small canary partitions can contain
+    # fewer cases than the source training manifest's mini_batch_size.  Clamp
+    # this otherwise-unused value so evaluation-only runners remain valid
+    # without weakening the training-side safety check.
+    all_args.mini_batch_size = min(
+        int(all_args.mini_batch_size),
+        int(all_args.n_rollout_threads),
+    )
 
     torch.multiprocessing.set_sharing_strategy(all_args.torch_mp_sharing_strategy)
     torch.manual_seed(all_args.seed)
@@ -150,6 +180,21 @@ def configure_runner(cli: argparse.Namespace):
     np.random.seed(all_args.seed)
     if all_args.cuda and torch.cuda.is_available():
         device = torch.device(str(all_args.device))
+        evaluator_fraction = float(cli.cuda_memory_fraction)
+        if evaluator_fraction > 0.0:
+            torch.cuda.set_per_process_memory_fraction(
+                evaluator_fraction, device=device
+            )
+            total_gib = (
+                torch.cuda.get_device_properties(device).total_memory
+                / float(1024 ** 3)
+            )
+            print(
+                '[SharedEvalMemoryLimit] '
+                f'fraction={evaluator_fraction:.6f} '
+                f'allocator_limit_gib={total_gib * evaluator_fraction:.3f}',
+                flush=True,
+            )
         torch.set_num_threads(all_args.n_training_threads)
         if all_args.cuda_deterministic:
             torch.backends.cudnn.benchmark = False
@@ -211,6 +256,237 @@ def bind_evaluator(eval_envs, requested, pool) -> None:
             eval_envs.resume_async_graph_cloning()
 
 
+def _request_cache_key(request: dict) -> str:
+    """Key deterministic validation by policy and evaluation semantics."""
+
+    payload = {
+        **ready_head_config(request),
+        'model_sha256': str(request.get('model_sha256', '')),
+        'evaluation_tau': float(request.get('evaluation_tau', 0.0)),
+        'seed': int(request.get('seed', 0)),
+        'max_eval_cases': int(request.get('max_eval_cases', 0)),
+        'plane_order_mode': str(request.get('plane_order_mode', '')),
+        'plane_pair_decoder': str(request.get('plane_pair_decoder', '')),
+        'stage1_baseline': str(request.get('stage1_baseline', 'proposed')),
+        'device_policy_head_mode': str(request.get(
+            'device_policy_head_mode', ''
+        )),
+        'ordinary_device_type_count': int(request.get(
+            'ordinary_device_type_count', 0
+        )),
+        'device_timing_head': bool(request.get(
+            'device_timing_head', False
+        )),
+        'device_global_matching': bool(request.get(
+            'device_global_matching', False
+        )),
+        'request_ready_prediction': bool(request.get(
+            'request_ready_prediction', False
+        )),
+        'request_ready_time_scale': float(request.get(
+            'request_ready_time_scale', 3600.0
+        )),
+        'request_ready_policy_injection': str(request.get(
+            'request_ready_policy_injection', 'learned'
+        )),
+        'device_resource_adapter': bool(request.get(
+            'device_resource_adapter', False
+        )),
+        'global_feature_mode': str(request.get('global_feature_mode', '')),
+        'observation_schema_id': str(request.get('observation_schema_id', '')),
+        'environment_semantics_version': str(request.get(
+            'environment_semantics_version', ''
+        )),
+        'resource_planning_config': request.get('resource_planning_config'),
+        'n_eval_rollout_threads': int(request.get(
+            'n_eval_rollout_threads', 0
+        )),
+    }
+    if not payload['model_sha256']:
+        raise ValueError('Shared-evaluator request has no model digest.')
+    return json.dumps(payload, sort_keys=True, separators=(',', ':'))
+
+
+def _limited_case_counts(case_counts, requested_max_cases):
+    """Select a balanced prefix from each persistent validation worker."""
+
+    original = [int(value) for value in case_counts]
+    total = sum(original)
+    requested = int(requested_max_cases)
+    if requested <= 0 or requested >= total:
+        return original
+    if requested < len(original):
+        raise ValueError(
+            'Shared shard-canary cases cannot be fewer than evaluator workers: '
+            f'cases={requested}, workers={len(original)}.'
+        )
+    limited = [1] * len(original)
+    remaining = requested - len(original)
+    while remaining > 0:
+        progressed = False
+        for rank, capacity in enumerate(original):
+            if remaining <= 0:
+                break
+            if limited[rank] < capacity:
+                limited[rank] += 1
+                remaining -= 1
+                progressed = True
+        if not progressed:
+            raise RuntimeError('Unable to construct shared-eval case prefix.')
+    return limited
+
+
+def _runner_for_request(runner, eval_envs, request: dict, cli):
+    """Rebuild only the lightweight model when an architecture changes.
+
+    Validation workers and their prefetched graphs remain persistent.  This lets
+    Scheduling-baseline and resource-head experiments on one GPU retain one
+    common validation pool without silently evaluating a checkpoint through a
+    different architecture.
+    """
+
+    requested_order = str(request.get('plane_order_mode', ''))
+    requested_decoder = str(request.get('plane_pair_decoder', ''))
+    requested_baseline = str(request.get(
+        'stage1_baseline', 'proposed'
+    )).strip().lower().replace('-', '_')
+    requested_mode = str(request.get('device_policy_head_mode', ''))
+    requested_count = int(request.get('ordinary_device_type_count', 0))
+    requested_timing_head = bool(request.get('device_timing_head', False))
+    requested_global_matching = bool(request.get(
+        'device_global_matching', False
+    ))
+    requested_ready_prediction = bool(request.get(
+        'request_ready_prediction', False
+    ))
+    requested_ready_scale = float(request.get(
+        'request_ready_time_scale', 3600.0
+    ))
+    requested_ready_injection = str(request.get(
+        'request_ready_policy_injection', 'learned'
+    ))
+    requested_resource_adapter = bool(request.get(
+        'device_resource_adapter', False
+    ))
+    supported_modes = {'shared', 'type_adapter', 'per_type'}
+    if requested_mode not in supported_modes:
+        raise ValueError(
+            'Unsupported shared-evaluator device head mode: '
+            f'{requested_mode!r}.'
+        )
+    if requested_count <= 0:
+        raise ValueError(
+            'Shared-evaluator ordinary device type count must be positive.'
+        )
+    if requested_order not in {'fixed', 'learned'}:
+        raise ValueError(
+            f'Unsupported shared-evaluator plane order: {requested_order!r}.'
+        )
+    if requested_decoder not in {'cascade', 'joint_pair'}:
+        raise ValueError(
+            'Unsupported shared-evaluator plane decoder: '
+            f'{requested_decoder!r}.'
+        )
+    if requested_baseline not in {
+        'proposed', 'l2d', 'multi_ppo', 'fjsp_drl', 'daniel'
+    }:
+        raise ValueError(
+            'Unsupported shared-evaluator Stage-1 baseline: '
+            f'{requested_baseline!r}.'
+        )
+    configured = (
+        str(runner.policy.ac.plane_order_mode),
+        str(runner.policy.ac.plane_pair_decoder),
+        str(getattr(runner.policy.ac, 'stage1_baseline', 'proposed')),
+        str(runner.policy.ac.device_policy_head_mode),
+        int(runner.policy.ac.ordinary_device_type_count),
+        bool(runner.policy.ac.device_timing_head),
+        bool(runner.policy.ac.device_global_matching),
+        bool(runner.policy.ac.request_ready_prediction),
+        float(runner.policy.ac.request_ready_time_scale),
+        str(runner.policy.ac.request_ready_policy_injection),
+        bool(runner.policy.ac.device_resource_adapter_enabled),
+        *ready_head_signature(runner.policy.ac),
+    )
+    requested = (
+        requested_order,
+        requested_decoder,
+        requested_baseline,
+        requested_mode,
+        requested_count,
+        requested_timing_head,
+        requested_global_matching,
+        requested_ready_prediction,
+        requested_ready_scale,
+        requested_ready_injection,
+        requested_resource_adapter,
+        *ready_head_signature(request),
+    )
+    if configured == requested:
+        return runner
+
+    all_args = copy.deepcopy(runner.all_args)
+    all_args.plane_order_mode = requested_order
+    all_args.plane_pair_decoder = requested_decoder
+    all_args.stage1_baseline = requested_baseline
+    all_args.device_policy_head_mode = requested_mode
+    all_args.ordinary_device_type_count = requested_count
+    all_args.device_timing_head = requested_timing_head
+    all_args.device_global_matching = requested_global_matching
+    all_args.request_ready_prediction = requested_ready_prediction
+    all_args.request_ready_time_scale = requested_ready_scale
+    all_args.request_ready_policy_injection = requested_ready_injection
+    all_args.device_resource_adapter = requested_resource_adapter
+    for key, value in ready_head_config(request).items():
+        setattr(all_args, key, value)
+    ac_config = copy.deepcopy(runner.ac_config)
+    case_counts = list(runner.eval_case_counts)
+    device = runner.device
+    num_agents = runner.num_agents
+
+    writer = getattr(runner, 'writter', None)
+    if writer is not None:
+        writer.close()
+    # Drop live CUDA tensors before constructing the replacement.  The worker
+    # pool is deliberately untouched, so graph preprocessing is still shared.
+    runner.policy = None
+    runner.trainer = None
+    runner.buffer = None
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    architecture_run_dir = (
+        cli.run_dir
+        / (
+            f'baseline_{requested_baseline}_order_{requested_order}_'
+            f'decoder_{requested_decoder}_head_{requested_mode}'
+        )
+    )
+    architecture_run_dir.mkdir(parents=True, exist_ok=True)
+    from onpolicy.runner.shared.hkbz_runner import HKBZ_Runner
+    replacement = HKBZ_Runner({
+        'all_args': all_args,
+        'envs': eval_envs,
+        'eval_envs': eval_envs,
+        'device': device,
+        'run_dir': architecture_run_dir,
+        'ac_config': ac_config,
+        'num_agents': num_agents,
+        'num_envs': max(case_counts),
+        'eval_case_counts': case_counts,
+        'eval_env_factory': None,
+        'release_eval_envs_after_eval': False,
+        'evaluation_only': True,
+    })
+    print(
+        '[SharedEval] rebuilt evaluator model '
+        f'configured={configured} requested={requested}',
+        flush=True,
+    )
+    return replacement
+
+
 def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
     if int(request.get('protocol_version', -1)) != PROTOCOL_VERSION:
         raise ValueError('Shared-evaluator protocol version mismatch.')
@@ -223,15 +499,45 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
     configured_arch = (
         runner.policy.ac.plane_order_mode,
         runner.policy.ac.plane_pair_decoder,
+        getattr(runner.policy.ac, 'stage1_baseline', 'proposed'),
     )
     requested_arch = (
         request.get('plane_order_mode'),
         request.get('plane_pair_decoder'),
+        request.get('stage1_baseline', 'proposed'),
     )
     if requested_arch != configured_arch:
         raise ValueError(
             f'Shared evaluator architecture mismatch: '
             f'requested={requested_arch}, service={configured_arch}'
+        )
+    configured_device_arch = (
+        str(runner.policy.ac.device_policy_head_mode),
+        int(runner.policy.ac.ordinary_device_type_count),
+        bool(runner.policy.ac.device_timing_head),
+        bool(runner.policy.ac.device_global_matching),
+        bool(runner.policy.ac.request_ready_prediction),
+        float(runner.policy.ac.request_ready_time_scale),
+        str(runner.policy.ac.request_ready_policy_injection),
+        bool(runner.policy.ac.device_resource_adapter_enabled),
+        *ready_head_signature(runner.policy.ac),
+    )
+    requested_device_arch = (
+        str(request.get('device_policy_head_mode', '')),
+        int(request.get('ordinary_device_type_count', 0)),
+        bool(request.get('device_timing_head', False)),
+        bool(request.get('device_global_matching', False)),
+        bool(request.get('request_ready_prediction', False)),
+        float(request.get('request_ready_time_scale', 3600.0)),
+        str(request.get('request_ready_policy_injection', 'learned')),
+        bool(request.get('device_resource_adapter', False)),
+        *ready_head_signature(request),
+    )
+    if requested_device_arch != configured_device_arch:
+        raise ValueError(
+            'Shared evaluator device architecture mismatch: '
+            f'requested={requested_device_arch}, '
+            f'service={configured_device_arch}'
         )
     requested_global_mode = str(request.get('global_feature_mode', ''))
     expected_observation = stage1_observation_metadata(
@@ -282,10 +588,42 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
     if not checkpoint_path.is_absolute() or not checkpoint_path.is_file():
         raise FileNotFoundError(checkpoint_path)
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    if ready_head_config(checkpoint) != ready_head_config(request):
+        raise ValueError('Shared-evaluator ready-head architecture/routing mismatch.')
     if checkpoint.get('request_id') != request.get('request_id'):
         raise ValueError('Shared-evaluator checkpoint request ID mismatch.')
     if checkpoint.get('global_feature_mode') != requested_global_mode:
         raise ValueError('Shared-evaluator global feature metadata mismatch.')
+    if (
+        checkpoint.get('plane_order_mode') != requested_arch[0]
+        or checkpoint.get('plane_pair_decoder') != requested_arch[1]
+        or checkpoint.get('stage1_baseline', 'proposed')
+        != requested_arch[2]
+    ):
+        raise ValueError(
+            'Shared-evaluator checkpoint scheduling architecture mismatch.'
+        )
+    if (
+        checkpoint.get('device_policy_head_mode')
+        != requested_device_arch[0]
+        or int(checkpoint.get('ordinary_device_type_count', 0))
+        != requested_device_arch[1]
+        or bool(checkpoint.get('device_timing_head', False))
+        != requested_device_arch[2]
+        or bool(checkpoint.get('device_global_matching', False))
+        != requested_device_arch[3]
+        or bool(checkpoint.get('request_ready_prediction', False))
+        != requested_device_arch[4]
+        or float(checkpoint.get('request_ready_time_scale', 3600.0))
+        != requested_device_arch[5]
+        or str(checkpoint.get('request_ready_policy_injection', 'learned'))
+        != requested_device_arch[6]
+        or bool(checkpoint.get('device_resource_adapter', False))
+        != requested_device_arch[7]
+    ):
+        raise ValueError(
+            'Shared-evaluator checkpoint device architecture mismatch.'
+        )
     if checkpoint.get('observation_schema_id') != expected_observation[
         'observation_schema_id'
     ]:
@@ -298,14 +636,51 @@ def evaluate_request(runner, eval_envs, pool, request: dict) -> dict:
         raise ValueError(
             'Shared-evaluator checkpoint resource planning mismatch.'
         )
+    observed_model_sha256 = protected_parameter_summary(
+        checkpoint['model'], prefixes=('',)
+    )['sha256']
+    if (
+        checkpoint.get('model_sha256') != observed_model_sha256
+        or request.get('model_sha256') != observed_model_sha256
+    ):
+        raise ValueError('Shared-evaluator model digest mismatch.')
     runner.policy.load_model_state(checkpoint['model'])
     runner.trainer.policy = runner.policy
     runner.policy.ac.tau = float(request['evaluation_tau'])
     runner.trainer.prep_rollout()
-    return runner._eval_with_envs(
-        evaluation_label=request.get('evaluation_label'),
-        finalize=False,
+    original_case_counts = list(runner.eval_case_counts)
+    runner.eval_case_counts = _limited_case_counts(
+        original_case_counts,
+        request.get('max_eval_cases', 0),
     )
+    try:
+        return runner._eval_with_envs(
+            evaluation_label=request.get('evaluation_label'),
+            finalize=False,
+        )
+    finally:
+        runner.eval_case_counts = original_case_counts
+
+
+def accept_connection(listener):
+    """Ignore clients that disappear during the Listener auth handshake.
+
+    ``multiprocessing.connection.Listener.accept`` authenticates a peer before
+    returning its Connection.  A trainer stopped during a BC/PPO hand-off can
+    therefore raise BrokenPipeError outside the normal per-request exception
+    handler.  Only peer/handshake failures are retried; listener failures such
+    as EBADF still propagate instead of causing a busy loop.
+    """
+
+    while True:
+        try:
+            return listener.accept()
+        except (AuthenticationError, EOFError, ConnectionError) as error:
+            print(
+                '[SharedEval][Warning] discarded client during auth '
+                f'handshake: {type(error).__name__}: {error}',
+                flush=True,
+            )
 
 
 def serve(cli: argparse.Namespace) -> int:
@@ -315,6 +690,7 @@ def serve(cli: argparse.Namespace) -> int:
     listener = None
     if socket_path.exists():
         socket_path.unlink()
+    evaluation_cache = {}
     try:
         listener = Listener(
             str(socket_path),
@@ -330,6 +706,7 @@ def serve(cli: argparse.Namespace) -> int:
             'cpu_pool': format_cpu_set(pool),
             'worker_pids': [process.pid for process in eval_envs.ps],
             'worker_count': len(eval_envs.ps),
+            'cuda_memory_fraction': float(cli.cuda_memory_fraction),
             'ready_unix_time': time.time(),
         })
         print(
@@ -339,7 +716,7 @@ def serve(cli: argparse.Namespace) -> int:
             flush=True,
         )
         while True:
-            connection = listener.accept()
+            connection = accept_connection(listener)
             request = None
             started = time.monotonic()
             try:
@@ -366,7 +743,18 @@ def serve(cli: argparse.Namespace) -> int:
                     f'label={request.get("evaluation_label")}',
                     flush=True,
                 )
-                evaluation = evaluate_request(runner, eval_envs, pool, request)
+                cache_key = _request_cache_key(request)
+                cache_hit = cache_key in evaluation_cache
+                if cache_hit:
+                    evaluation = evaluation_cache[cache_key]
+                else:
+                    runner = _runner_for_request(
+                        runner, eval_envs, request, cli
+                    )
+                    evaluation = evaluate_request(
+                        runner, eval_envs, pool, request
+                    )
+                    evaluation_cache[cache_key] = evaluation
                 elapsed = time.monotonic() - started
                 connection.send({
                     'ok': True,
@@ -374,11 +762,13 @@ def serve(cli: argparse.Namespace) -> int:
                     'request_id': request_id,
                     'evaluation_seconds': float(elapsed),
                     'evaluation': evaluation,
+                    'cache_hit': bool(cache_hit),
                 })
                 print(
                     f'[SharedEval] completed request={request_id} '
                     f'elapsed={elapsed:.1f}s '
-                    f'cases={evaluation["case_count"]}',
+                    f'cases={evaluation["case_count"]} '
+                    f'cache_hit={cache_hit}',
                     flush=True,
                 )
             except BaseException as error:

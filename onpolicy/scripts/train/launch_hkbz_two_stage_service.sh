@@ -4,10 +4,11 @@ set -euo pipefail
 # Canonical two-stage service entry point.  Stage 1 is an externally completed
 # Stage-1 M2 artifact; this launcher only registers it.  Stage 2 always starts
 # from that immutable M2 source and lets the Python controller perform the
-# resource-BC warm-up followed by frozen resource_joint PPO.
+# dense mobile-policy and intrinsic-ready-time supervision only.  Joint PPO
+# belongs exclusively to the separate Stage3 launcher.
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python3.11}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python3.11}"
 CONTROLLER="${ROOT_DIR}/onpolicy/scripts/train/run_hkbz_two_stage_pipeline.py"
 
 RUN_TAG="${RUN_TAG:-hkbz_two_stage_$(date +%Y%m%d_%H%M%S)}"
@@ -22,9 +23,21 @@ SOURCE_COMMAND_KEY="${SOURCE_COMMAND_KEY:-${STAGE1_COMMAND_KEY:-}}"
 SEED="${SEED:-1}"
 SOURCE_SEED="${SOURCE_SEED:-}"
 BC_EPOCHS="${BC_EPOCHS:-2}"
-PPO_EPOCHS="${PPO_EPOCHS:-8}"
-PPO_EPOCH="${PPO_EPOCH:-3}"
+PPO_EPOCHS="${PPO_EPOCHS:-0}"
+PPO_EPOCH="${PPO_EPOCH:-0}"
 BC_MIN_LABELS="${BC_MIN_LABELS:-64}"
+RANKING_MIN_LABELS="${RANKING_MIN_LABELS:-64}"
+RANKING_LOSS_COEF="${RANKING_LOSS_COEF:-1.0}"
+TIMING_LOSS_COEF="${TIMING_LOSS_COEF:-0.5}"
+READY_MIN_LABELS="${READY_MIN_LABELS:-64}"
+READY_LOSS_COEF="${READY_LOSS_COEF:-1.0}"
+READY_TIME_SCALE="${READY_TIME_SCALE:-3600.0}"
+DEVICE_BC_TEACHER="${DEVICE_BC_TEACHER:-iga}"
+RESOURCE_TEACHER_DIR="${RESOURCE_TEACHER_DIR:-}"
+RESOURCE_TEACHER_INDEX="${RESOURCE_TEACHER_INDEX:-}"
+STAGE2_RESUME_CHECKPOINT="${STAGE2_RESUME_CHECKPOINT:-}"
+DEVICE_BC_RESUME_EPOCH="${DEVICE_BC_RESUME_EPOCH:-0}"
+DEVICE_BC_RESUME_COMPLETED_ROLLOUTS="${DEVICE_BC_RESUME_COMPLETED_ROLLOUTS:-0}"
 BC_MIN_ROLLOUTS="${BC_MIN_ROLLOUTS:-1}"
 BC_MAX_ROLLOUTS="${BC_MAX_ROLLOUTS:-20}"
 BC_LR="${BC_LR:-0}"
@@ -43,7 +56,7 @@ if [[ ! "${RUN_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
   exit 2
 fi
 if [[ "${STOP_AFTER_STAGE}" != "1" && "${STOP_AFTER_STAGE}" != "2" ]]; then
-  echo "[Error] STOP_AFTER_STAGE must be 1 or 2; Stage 3/4 are retired." >&2
+  echo "[Error] STOP_AFTER_STAGE must be 1 or 2; launch joint RL through the separate Stage3 pipeline." >&2
   exit 2
 fi
 if [[ -n "${STAGE1_M2_CHECKPOINT}" && ! -f "${STAGE1_M2_CHECKPOINT}" ]]; then
@@ -52,6 +65,10 @@ if [[ -n "${STAGE1_M2_CHECKPOINT}" && ! -f "${STAGE1_M2_CHECKPOINT}" ]]; then
 fi
 if [[ -z "${STAGE1_M2_CHECKPOINT}" && ! -f "${STAGE1_HANDOFF}" ]]; then
   echo "[Error] Stage-1 hand-off is missing: ${STAGE1_HANDOFF}" >&2
+  exit 2
+fi
+if [[ -n "${STAGE2_RESUME_CHECKPOINT}" && ! -f "${STAGE2_RESUME_CHECKPOINT}" ]]; then
+  echo "[Error] Stage-2 recovery checkpoint is missing: ${STAGE2_RESUME_CHECKPOINT}" >&2
   exit 2
 fi
 if [[ "${PYTHON}" == */* ]]; then
@@ -77,6 +94,15 @@ COMMAND_ARGS=(
   --ppo-epochs "${PPO_EPOCHS}"
   --ppo-epoch "${PPO_EPOCH}"
   --bc-min-labels "${BC_MIN_LABELS}"
+  --ranking-min-labels "${RANKING_MIN_LABELS}"
+  --ranking-loss-coef "${RANKING_LOSS_COEF}"
+  --timing-loss-coef "${TIMING_LOSS_COEF}"
+  --ready-min-labels "${READY_MIN_LABELS}"
+  --ready-loss-coef "${READY_LOSS_COEF}"
+  --ready-time-scale "${READY_TIME_SCALE}"
+  --device-bc-teacher "${DEVICE_BC_TEACHER}"
+  --resource-teacher-dir "${RESOURCE_TEACHER_DIR}"
+  --resource-teacher-index "${RESOURCE_TEACHER_INDEX}"
   --bc-min-rollouts "${BC_MIN_ROLLOUTS}"
   --bc-max-rollouts "${BC_MAX_ROLLOUTS}"
   --bc-lr "${BC_LR}"
@@ -94,6 +120,13 @@ if [[ -n "${SOURCE_COMMAND_JSON}" ]]; then
 fi
 if [[ -n "${SOURCE_COMMAND_KEY}" ]]; then
   COMMAND_ARGS+=(--source-command-key "${SOURCE_COMMAND_KEY}")
+fi
+if [[ -n "${STAGE2_RESUME_CHECKPOINT}" ]]; then
+  COMMAND_ARGS+=(
+    --resume-checkpoint "${STAGE2_RESUME_CHECKPOINT}"
+    --resume-epoch "${DEVICE_BC_RESUME_EPOCH}"
+    --resume-completed-rollouts "${DEVICE_BC_RESUME_COMPLETED_ROLLOUTS}"
+  )
 fi
 if [[ -n "${PLANE_ORDER_MODE}" ]]; then
   COMMAND_ARGS+=(--plane-order-mode "${PLANE_ORDER_MODE}")
@@ -159,6 +192,9 @@ if [[ -n "${STAGE1_M2_CHECKPOINT}" ]]; then
   echo "[Info] Stage-1 M2=${STAGE1_M2_CHECKPOINT}"
 else
   echo "[Info] Stage-1 hand-off=${STAGE1_HANDOFF}, source seed=${SOURCE_SEED:-handoff-default}"
+fi
+if [[ -n "${STAGE2_RESUME_CHECKPOINT}" ]]; then
+  echo "[Info] Stage-2 recovery=${STAGE2_RESUME_CHECKPOINT}, epoch=${DEVICE_BC_RESUME_EPOCH}, completed rollouts=${DEVICE_BC_RESUME_COMPLETED_ROLLOUTS}"
 fi
 echo "[Info] Manifest=${MANIFEST_PATH}"
 

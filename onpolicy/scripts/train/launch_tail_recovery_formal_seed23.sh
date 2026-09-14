@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python}"
 SOURCE_COMMAND_JSON="${ROOT_DIR}/result/hkbz_train_logs/stage1_suite_tail_recovery_stage1_20260730_r1/formal_R3_tail_team_ratio_seed1.command.json"
 SUITE_DIR="${ROOT_DIR}/result/hkbz_train_logs/stage1_suite_tail_recovery_stage1_20260730_r1"
 RESULT_ROOT="${ROOT_DIR}/onpolicy/scripts/results/HKBZ/simple/gnn_mappo"
@@ -52,7 +52,7 @@ payload = json.loads(Path(source_json).read_text(encoding="utf-8"))
 command = [
     str(item)
     .replace("/home/fanyx/HKBZ-environment", str(root))
-    .replace("/home/fanyx/anaconda3/envs/maia/bin/python", python_text)
+    .replace("/home/fanyx/conda/envs/maia-hkbz-cu124-20260903-hkbz-cu124-20260903/bin/python", python_text)
     for item in payload["command"]
 ]
 

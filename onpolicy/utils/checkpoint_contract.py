@@ -51,6 +51,17 @@ def checkpoint_global_feature_mode(checkpoint: Mapping[str, object]):
     return None
 
 
+def checkpoint_stage1_baseline(checkpoint: Mapping[str, object]) -> str:
+    """Read the scheduling architecture, defaulting old artifacts to ours."""
+
+    value = checkpoint.get('stage1_baseline')
+    if value is None:
+        experiment_config = checkpoint.get('experiment_config', {})
+        if isinstance(experiment_config, Mapping):
+            value = experiment_config.get('stage1_baseline')
+    return str(value if value is not None else 'proposed')
+
+
 def stage1_observation_metadata(global_feature_mode: object) -> dict:
     contract = global_feature_contract(str(global_feature_mode))
     return {
@@ -67,6 +78,7 @@ def validate_stage1_checkpoint_contract(
     global_feature_mode: object,
     plane_order_mode: object | None = None,
     plane_pair_decoder: object | None = None,
+    stage1_baseline: object | None = None,
     strict_metadata: bool = True,
 ) -> dict:
     """Validate architecture plus observation semantics before loading.
@@ -116,11 +128,18 @@ def validate_stage1_checkpoint_contract(
     architecture = {
         'plane_order_mode': plane_order_mode,
         'plane_pair_decoder': plane_pair_decoder,
+        'stage1_baseline': stage1_baseline,
     }
     for field, configured in architecture.items():
         if configured is None:
             continue
-        observed = checkpoint.get(field)
+        observed = (
+            checkpoint_stage1_baseline(checkpoint)
+            if field == 'stage1_baseline' else checkpoint.get(field)
+        )
+        # Checkpoints predating the learning-baseline adapters necessarily
+        # used the proposed architecture.  Preserve that one unambiguous
+        # legacy interpretation while keeping every named baseline fail-closed.
         if observed is None and strict_metadata:
             raise ValueError(f'Checkpoint is missing {field}.')
         if observed is not None and str(observed) != str(configured):

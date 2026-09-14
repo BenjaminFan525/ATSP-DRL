@@ -92,6 +92,120 @@ ARM_BACKENDS = {
 PRIMARY_ARMS = ("iga_all", "iga_r014", "iga_ordinary")
 TRANSPORTER_TYPE = AircraftScheduleEnv.TRANSPORTER_RESOURCE_TYPE
 
+RESOURCE_LOOKAHEAD_CONTRACT_DEFAULTS = {
+    "device_lookahead_dispatch": False,
+    "device_lookahead_safety_margin": 60.0,
+    "device_deadline_aware_dispatch": False,
+    "device_future_intent_horizon": 0,
+    "device_future_intent_mode": "legacy_one",
+    "device_frontier_max_requests": 2,
+    "resource_release_aware_eta": False,
+    "device_lookahead_reservation_mode": "none",
+    "device_reservation_grace_seconds": 300.0,
+    "device_departure_lookahead": False,
+}
+
+
+def normalize_resource_lookahead_contract(
+    contract: Mapping | None,
+    *,
+    device_lookahead_dispatch: bool = False,
+    device_lookahead_safety_margin: float = 60.0,
+) -> dict:
+    """Return one complete, validated resource-planning contract.
+
+    Legacy callers may omit ``contract`` and keep the historical two-field
+    interface. Contract-aware callers must provide every field so a search,
+    replay, or warm start can never silently inherit environment defaults.
+    """
+
+    if contract is None:
+        values = dict(RESOURCE_LOOKAHEAD_CONTRACT_DEFAULTS)
+        values.update(
+            {
+                "device_lookahead_dispatch": bool(
+                    device_lookahead_dispatch
+                ),
+                "device_lookahead_safety_margin": float(
+                    device_lookahead_safety_margin
+                ),
+            }
+        )
+    else:
+        expected = set(RESOURCE_LOOKAHEAD_CONTRACT_DEFAULTS)
+        observed = set(contract)
+        if observed != expected:
+            raise ValueError(
+                "Resource lookahead contract must be complete; "
+                f"missing={sorted(expected - observed)!r}, "
+                f"unknown={sorted(observed - expected)!r}."
+            )
+        values = {
+            "device_lookahead_dispatch": bool(
+                contract["device_lookahead_dispatch"]
+            ),
+            "device_lookahead_safety_margin": float(
+                contract["device_lookahead_safety_margin"]
+            ),
+            "device_deadline_aware_dispatch": bool(
+                contract["device_deadline_aware_dispatch"]
+            ),
+            "device_future_intent_horizon": int(
+                contract["device_future_intent_horizon"]
+            ),
+            "device_future_intent_mode": str(
+                contract["device_future_intent_mode"]
+            ),
+            "device_frontier_max_requests": int(
+                contract["device_frontier_max_requests"]
+            ),
+            "resource_release_aware_eta": bool(
+                contract["resource_release_aware_eta"]
+            ),
+            "device_lookahead_reservation_mode": str(
+                contract["device_lookahead_reservation_mode"]
+            ),
+            "device_reservation_grace_seconds": float(
+                contract["device_reservation_grace_seconds"]
+            ),
+            "device_departure_lookahead": bool(
+                contract["device_departure_lookahead"]
+            ),
+        }
+
+    margin = values["device_lookahead_safety_margin"]
+    grace = values["device_reservation_grace_seconds"]
+    if not math.isfinite(margin) or margin < 0.0:
+        raise ValueError(
+            "device_lookahead_safety_margin must be finite and non-negative."
+        )
+    if not math.isfinite(grace) or grace < 0.0:
+        raise ValueError(
+            "device_reservation_grace_seconds must be finite and non-negative."
+        )
+    if values["device_future_intent_horizon"] not in {0, 1, 2, 3}:
+        raise ValueError(
+            "device_future_intent_horizon must be one of 0, 1, 2 or 3."
+        )
+    if values["device_future_intent_mode"] not in {
+        "legacy_one",
+        "bounded_frontier",
+    }:
+        raise ValueError(
+            "device_future_intent_mode must be legacy_one or bounded_frontier."
+        )
+    if values["device_frontier_max_requests"] < 1:
+        raise ValueError("device_frontier_max_requests must be positive.")
+    if values["device_lookahead_reservation_mode"] not in {
+        "none",
+        "soft",
+        "hard",
+    }:
+        raise ValueError(
+            "device_lookahead_reservation_mode must be none, soft or hard."
+        )
+    return values
+
 
 def _atomic_json(path: Path, payload: Mapping) -> None:
     write_json(str(path), dict(payload))
@@ -181,7 +295,7 @@ def _role(device) -> str:
 
 
 def _request_payload(request: Mapping) -> dict:
-    return {
+    payload = {
         "id": int(request.get("id", 0)),
         "plane_id": request.get("plane_id"),
         "plane_idx": int(request.get("plane_idx", -1)),
@@ -194,6 +308,15 @@ def _request_payload(request: Mapping) -> dict:
         "request_kind": request.get("request_kind", "blocking"),
         "lead_time": float(request.get("lead_time", 0.0)),
     }
+    # Label generation is a separate, replay-aware pass.  Preserve its exact
+    # absolute target when present, but never synthesize it from ``lead_time``:
+    # the latter is only the dependency-graph lower bound and was the source
+    # of the old late-dispatch blind spot.
+    if request.get("intrinsic_ready_time") is not None:
+        payload["intrinsic_ready_time"] = float(
+            request["intrinsic_ready_time"]
+        )
+    return payload
 
 
 def _plane_only_graph(graph, n_plane_agents: int = 24):
@@ -653,9 +776,22 @@ class ResourceAblationEnv(AircraftScheduleEnv):
             ),
         }
         if self._ablation_record:
+            trace, ready_labels, ready_coverage = (
+                self.attach_intrinsic_ready_time_labels(
+                    self._ablation_trace
+                )
+            )
             result.update(
                 {
-                    "decision_trace": copy.deepcopy(self._ablation_trace),
+                    "decision_trace": trace,
+                    "intrinsic_ready_time_label_schema_version": (
+                        self.INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+                    ),
+                    "intrinsic_ready_time_semantics": (
+                        self.INTRINSIC_READY_TIME_SEMANTICS
+                    ),
+                    "intrinsic_ready_time_labels": ready_labels,
+                    "intrinsic_ready_time_label_coverage": ready_coverage,
                     "plane_trajectory": copy.deepcopy(self.trajectory_log),
                     "resource_trajectory": copy.deepcopy(
                         self.device_trajectory_log
@@ -1309,14 +1445,22 @@ class FrozenPlaneEvaluator:
         max_steps: int,
         device_lookahead_dispatch: bool = False,
         device_lookahead_safety_margin: float = 60.0,
+        resource_lookahead_contract: Mapping | None = None,
     ):
         self.policy = policy
         self.policy_args = policy_args
         self.max_steps = int(max_steps)
-        self.device_lookahead_dispatch = bool(device_lookahead_dispatch)
-        self.device_lookahead_safety_margin = float(
-            device_lookahead_safety_margin
+        self.resource_lookahead_contract = normalize_resource_lookahead_contract(
+            resource_lookahead_contract,
+            device_lookahead_dispatch=device_lookahead_dispatch,
+            device_lookahead_safety_margin=device_lookahead_safety_margin,
         )
+        self.device_lookahead_dispatch = self.resource_lookahead_contract[
+            "device_lookahead_dispatch"
+        ]
+        self.device_lookahead_safety_margin = self.resource_lookahead_contract[
+            "device_lookahead_safety_margin"
+        ]
 
     def _env_config(self, case_path: Path) -> dict:
         config = build_case_env_config(
@@ -1337,6 +1481,7 @@ class FrozenPlaneEvaluator:
                 "device_lookahead_safety_margin": (
                     self.device_lookahead_safety_margin
                 ),
+                **self.resource_lookahead_contract,
             }
         )
         return config
@@ -1478,9 +1623,20 @@ class FrozenPlaneEvaluator:
             "completion": details,
         }
         if record_trace:
+            trace, ready_labels, ready_coverage = (
+                env.attach_intrinsic_ready_time_labels(trace)
+            )
             result.update(
                 {
                     "decision_trace": trace,
+                    "intrinsic_ready_time_label_schema_version": (
+                        env.INTRINSIC_READY_TIME_LABEL_SCHEMA_VERSION
+                    ),
+                    "intrinsic_ready_time_semantics": (
+                        env.INTRINSIC_READY_TIME_SEMANTICS
+                    ),
+                    "intrinsic_ready_time_labels": ready_labels,
+                    "intrinsic_ready_time_label_coverage": ready_coverage,
                     "plane_trajectory": copy.deepcopy(env.trajectory_log),
                     "resource_trajectory": copy.deepcopy(
                         env.device_trajectory_log

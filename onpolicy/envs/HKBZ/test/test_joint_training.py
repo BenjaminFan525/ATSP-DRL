@@ -147,6 +147,16 @@ class JointTrainingRegressionTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "Unsafe graph PPO batch"):
             HKBZ_Runner._validate_graph_batch_memory_config(4, 200, 64)
+        with self.assertRaisesRegex(
+            ValueError, "mini_batch_size cannot exceed n_rollout_threads"
+        ):
+            HKBZ_Runner._validate_graph_batch_memory_config(30, 50, 1500, 20)
+        self.assertEqual(
+            HKBZ_Runner._validate_graph_batch_memory_config(
+                30, 50, 1500, 30
+            ),
+            1500,
+        )
 
     def test_policy_does_not_rebatch_pyg_batch(self):
         env = _make_env()
@@ -592,6 +602,20 @@ class JointTrainingRegressionTest(unittest.TestCase):
         trainer.joint_team_ppo = False
 
         self.assertEqual(trainer._trainable_actor_roles(), {1, 2})
+
+    def test_stage3_joint_ratio_includes_every_trainable_role(self):
+        policy = _make_policy()
+        policy.set_joint_training_stage(
+            freeze_plane=False, freeze_shared=False
+        )
+        trainer = MAPPO_Trainer.__new__(MAPPO_Trainer)
+        trainer.policy = policy
+        trainer.joint_team_ppo = True
+        trainer.joint_team_ppo_scope = 'all'
+        self.assertEqual(trainer._trainable_actor_roles(), {0, 1, 2})
+
+        trainer.joint_team_ppo_scope = 'plane'
+        self.assertEqual(trainer._trainable_actor_roles(), {0})
 
     def test_terminal_cmax_is_assigned_once_per_agent(self):
         env = AircraftScheduleEnv.__new__(AircraftScheduleEnv)
@@ -1174,7 +1198,7 @@ class JointTrainingRegressionTest(unittest.TestCase):
         self.assertEqual(observed_per_rank.tolist(), case_counts)
         self.assertEqual(int(np.stack(masks).sum()), sum(case_counts))
 
-    def test_one_step_replay_and_ppo_update_is_finite(self):
+    def test_one_step_role_atomic_replay_and_ppo_update_is_finite(self):
         env = _make_env()
         try:
             args = get_config().parse_args([])
@@ -1189,6 +1213,16 @@ class JointTrainingRegressionTest(unittest.TestCase):
             args.resource_policy = "drl"
             args.use_valuenorm = True
             args.safe_graph_batch_pipeline = True
+            # Production Stage-2 uses role-atomic PPO.  Keep this enabled in
+            # the end-to-end replay regression so the post-step BC-reference
+            # probe is tested after role-event aggregation, not only in the
+            # simpler per-agent layout.
+            args.role_atomic_ppo = True
+            args.joint_team_ppo = True
+            args.joint_team_ppo_scope = "all"
+            args.plane_target_kl = 1.0
+            args.device_target_kl = 1.0
+            args.transporter_target_kl = 1.0
 
             with open(ROOT / "onpolicy/config/ac.yaml", "r", encoding="utf-8") as stream:
                 ac_config = yaml.safe_load(stream)

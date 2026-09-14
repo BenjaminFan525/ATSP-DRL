@@ -17,7 +17,7 @@ import yaml
 from onpolicy.scripts.train import run_hkbz_two_stage_pipeline as pipeline
 
 
-PYTHON = "/mnt/eb20f54b-f016-4501-a5b2-5dd6afff9d90/fanyixuan_files/conda/envs/maia/bin/python3.11"
+PYTHON = "/home/fanyx/conda/envs/maia-hkbz-cu124-20260903/bin/python3.11"
 ROOT = Path(__file__).resolve().parents[4]
 
 
@@ -108,6 +108,12 @@ class TwoStageOrchestrationTest(unittest.TestCase):
             "--bc_reference_kl_coef",
             "0.4",
             "--bc_reference_hard_gate",
+            "--hindsight_reward_mode",
+            "team_time_potential",
+            "--hindsight_cmax_coef",
+            "1.0",
+            "--iga_potential_weights_path",
+            "/tmp/stage1-only-potential.json",
         ]
         command = pipeline.build_stage2_command(
             self.source,
@@ -121,23 +127,118 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         self.assertEqual(values["--env_config"], str(pipeline.ENV_CONFIG))
         self.assertEqual(values["--seed"], "1")
         self.assertGreater(int(values["--device_bc_pretrain_epochs"]), 0)
-        self.assertGreater(int(values["--num_episodes"]), 0)
-        self.assertEqual(values["--gnn_freeze_epochs"], values["--num_episodes"])
-        self.assertEqual(values["--plane_freeze_epochs"], values["--num_episodes"])
+        self.assertEqual(int(values["--num_episodes"]), 0)
+        self.assertEqual(int(values["--ppo_epoch"]), 0)
+        self.assertEqual(int(values["--gnn_freeze_epochs"]), 0)
+        self.assertEqual(int(values["--plane_freeze_epochs"]), 0)
+        self.assertGreater(float(values["--device_bc_ranking_loss_coef"]), 0.0)
+        self.assertGreater(float(values["--device_bc_timing_loss_coef"]), 0.0)
+        self.assertGreater(float(values["--request_ready_loss_coef"]), 0.0)
         self.assertNotIn("--device_bc_train_gnn", switches)
-        self.assertNotIn("--no_device_bc_reset_optim", switches)
+        self.assertIn("--no_device_bc_reset_optim", switches)
         self.assertNotIn("--resume_stage1", switches)
         self.assertNotIn("--joint_team_ppo", switches)
         self.assertNotIn("--central_team_critic", switches)
         self.assertIn("--device_lookahead_dispatch", switches)
+        self.assertIn("--request_ready_prediction", switches)
+        self.assertIn("--device_bc_role_balanced", switches)
+        self.assertIn("--device_bc_timing_balanced", switches)
         self.assertIn("--strict_checkpoint_contract", switches)
         self.assertEqual(
             values["--device_lookahead_safety_margin"], "60.0"
         )
-        self.assertEqual(values["--hindsight_reward_mode"], "team_cmax")
-        self.assertEqual(values["--hindsight_terminal_cmax_coef"], "1.0")
+        self.assertNotIn("--hindsight_reward_mode", values)
+        self.assertNotIn("--hindsight_cmax_coef", values)
+        self.assertNotIn("--iga_potential_weights_path", values)
+        self.assertNotIn("--hindsight_terminal_cmax_coef", values)
         self.assertNotIn("--bc_reference_kl_coef", values)
         self.assertNotIn("--plane_bc_pretrain_epochs", values)
+
+    def test_stage2_command_binds_the_exact_h2_f4_teacher_contract(self):
+        teacher_dir = self.root / "teachers"
+        teacher_dir.mkdir()
+        contract = {
+            "device_lookahead_dispatch": True,
+            "device_lookahead_safety_margin": 60.0,
+            "device_deadline_aware_dispatch": True,
+            "device_future_intent_horizon": 2,
+            "device_future_intent_mode": "bounded_frontier",
+            "device_frontier_max_requests": 4,
+            "resource_release_aware_eta": True,
+            "device_lookahead_reservation_mode": "soft",
+            "device_reservation_grace_seconds": 300.0,
+            "device_departure_lookahead": True,
+        }
+        teacher_index = self.root / "teacher_index.json"
+        teacher_index.write_text(json.dumps({
+            "schema_version": 2,
+            "teacher_scope": "stage2_resource_policy",
+            "teacher_method": "resource_iga_all",
+            "teacher_dir": str(teacher_dir),
+            "frozen_plane_checkpoint_sha256": hashlib.sha256(
+                self.source.read_bytes()
+            ).hexdigest(),
+            "resource_lookahead_contract": contract,
+            "selected_H": 2,
+            "selected_F": 4,
+            "case_count": 1,
+            "entries": {"case_0001": {}},
+            "intrinsic_ready_time_label_schema_version": 1,
+            "intrinsic_ready_time_semantics": (
+                pipeline.INTRINSIC_READY_TIME_SEMANTICS
+            ),
+            "intrinsic_ready_time_observed_request_count": 100,
+            "intrinsic_ready_time_labeled_request_count": 99,
+            "intrinsic_ready_time_label_coverage": 0.99,
+        }), encoding="utf-8")
+
+        command = pipeline.build_stage2_command(
+            self.source,
+            run_tag="h2_f4_contract_test",
+            resource_teacher_dir=teacher_dir,
+            resource_teacher_index=teacher_index,
+        )
+        values, switches = option_map(command)
+        self.assertEqual(values["--device_future_intent_horizon"], "2")
+        self.assertEqual(values["--device_frontier_max_requests"], "4")
+        self.assertEqual(
+            values["--device_future_intent_mode"], "bounded_frontier"
+        )
+        self.assertEqual(
+            values["--device_lookahead_reservation_mode"], "soft"
+        )
+        for flag in (
+            "--device_lookahead_dispatch",
+            "--device_deadline_aware_dispatch",
+            "--resource_release_aware_eta",
+            "--device_departure_lookahead",
+        ):
+            self.assertIn(flag, switches)
+
+    def test_stage2_supervised_recovery_command_preserves_explicit_cursor(self):
+        recovery = self.root / "checkpoint_Emergency.pt"
+        recovery.write_bytes(b"synthetic-stage2-emergency")
+
+        command = pipeline.build_stage2_command(
+            self.source,
+            run_tag="supervised_resume_test",
+            bc_epochs=2,
+            bc_min_rollouts=16,
+            bc_max_rollouts=16,
+            resume_checkpoint=recovery,
+            resume_epoch=0,
+            resume_completed_rollouts=12,
+        )
+        values, switches = option_map(command)
+
+        self.assertEqual(
+            values["--checkpoint_dir"], str(recovery.resolve())
+        )
+        self.assertIn("--resume_stage2", switches)
+        self.assertEqual(values["--device_bc_resume_epoch"], "0")
+        self.assertEqual(
+            values["--device_bc_resume_completed_rollouts"], "12"
+        )
 
     def test_dry_run_writes_atomic_manifest_without_subprocess(self):
         with mock.patch.object(pipeline.subprocess, "run") as run:
@@ -161,7 +262,14 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         observed = json.loads(self.manifest.read_text(encoding="utf-8"))
         self.assertEqual(observed["migration_contract"]["to"], "resource_joint")
         self.assertEqual(observed["migration_contract"]["device_bc_train_gnn"], False)
-        self.assertEqual(observed["migration_contract"]["device_bc_reset_optim"], True)
+        self.assertEqual(observed["migration_contract"]["device_bc_reset_optim"], False)
+        self.assertEqual(
+            observed["migration_contract"]["training_mode"],
+            "supervised_only",
+        )
+        self.assertFalse(
+            observed["migration_contract"]["stage2_supervision_contract"]["ppo"]
+        )
         self.assertEqual(
             observed["migration_contract"]["device_lookahead_dispatch"], True
         )
@@ -276,40 +384,41 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         checkpoint = {
             "training_stage": "resource_joint",
             "phase": phase,
+            "stage2_training_mode": "supervised_only",
+            "stage2_supervision_contract": dict(
+                pipeline.STAGE2_SUPERVISION_CONTRACT
+            ),
+            "request_ready_prediction": True,
+            "request_ready_time_scale": 3600.0,
             "source_m2_checkpoint": self._source_identity(),
-            "resource_bc_optimizer_reset": True,
+            "resource_bc_optimizer_reset": False,
             "resource_bc_total_labels": 12,
+            "resource_dense_ranking_total_labels": 9,
+            "request_ready_total_labels": 12,
             "protected_parameter_summary": protected,
             "protected_parameter_summary_before_bc": protected,
             "protected_parameter_summary_after_bc": protected,
             "resource_actor_summary_before_bc": self._summary("actor-bc-before"),
             "resource_actor_summary_after_bc": self._summary("actor-bc-after"),
+            "request_ready_predictor_summary_before": self._summary(
+                "predictor-before"
+            ),
+            "request_ready_predictor_summary_after": self._summary(
+                "predictor-after"
+            ),
         }
-        if role == "last":
-            checkpoint.update(
-                {
-                    "protected_parameter_summary_after_ppo": protected,
-                    "resource_actor_summary_before_ppo": self._summary("actor-ppo-before"),
-                    "resource_actor_summary_after_ppo": self._summary("actor-ppo-after"),
-                }
-            )
-        elif role == "best":
-            # A Best checkpoint is allowed to be the post-BC baseline.  It is
-            # still written after the canonical resource_joint_ppo phase is
-            # entered, but may not yet contain post-PPO actor evidence.
-            checkpoint["resource_actor_summary_before_ppo"] = self._summary("actor-ppo-before")
         path.write_text(json.dumps(checkpoint), encoding="utf-8")
         return path
 
-    def test_mocked_execution_requires_and_records_warmup_best_last_lineage(self):
+    def test_frozen_execution_rejects_but_historical_lineage_remains_auditable(self):
         self._write_lineage_checkpoint(
-            "checkpoint_DeviceBC.pt", "resource_bc_warmup_completed", role="warmup"
+            "checkpoint_DeviceBC.pt", "resource_supervised_completed", role="warmup"
         )
         self._write_lineage_checkpoint(
-            "checkpoint_Best.pt", "resource_joint_ppo", role="best"
+            "checkpoint_Best.pt", "resource_supervised_completed", role="best"
         )
         self._write_lineage_checkpoint(
-            "checkpoint_Last.pt", "resource_joint_ppo", role="last"
+            "checkpoint_Last.pt", "resource_supervised_completed", role="last"
         )
         self._write_run_status()
         calls = []
@@ -318,17 +427,29 @@ class TwoStageOrchestrationTest(unittest.TestCase):
             calls.append((list(command), kwargs))
             return mock.Mock(returncode=0)
 
-        manifest = pipeline.run_stage2(
+        with self.assertRaisesRegex(RuntimeError, "Stage2 development is frozen"):
+            pipeline.run_stage2(
+                self.source,
+                run_tag="mocked_execution",
+                manifest_path=self.manifest,
+                artifact_dir=self.models,
+                runner=fake_run,
+                seed=3,
+            )
+        self.assertEqual(calls, [])
+        self.assertFalse(self.manifest.exists())
+
+        # Freeze forbids new execution, not inspection of existing artifacts.
+        pipeline.plan_stage2(
             self.source,
             run_tag="mocked_execution",
             manifest_path=self.manifest,
             artifact_dir=self.models,
-            runner=fake_run,
             seed=3,
         )
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][1]["check"], True)
-        self.assertEqual(manifest["status"], "completed")
+        manifest = pipeline.audit_stage2_manifest(self.manifest, require_artifacts=True)
+        self.assertEqual(calls, [])
+        self.assertEqual(manifest["status"], "planned")
         self.assertEqual(manifest["lineage_status"], "validated")
         self.assertEqual(manifest["lineage"]["run_status"]["status"], "validated")
         self.assertEqual(
@@ -357,15 +478,27 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         status = {
             "status": "completed",
             "training_stage": "resource_joint",
-            "phase": "resource_joint_completed",
+            "phase": "resource_supervised_completed",
+            "stage2_training_mode": "supervised_only",
+            "stage2_supervision_contract": dict(
+                pipeline.STAGE2_SUPERVISION_CONTRACT
+            ),
+            "request_ready_prediction": True,
+            "request_ready_time_scale": 3600.0,
             "source_m2_checkpoint": self._source_identity(),
             "protected_parameter_summary": protected,
             "resource_actor_summary_before_bc": self._summary("actor-bc-before"),
             "resource_actor_summary_after_bc": self._summary("actor-bc-after"),
-            "resource_actor_summary_before_ppo": self._summary("actor-ppo-before"),
-            "resource_actor_summary_after_ppo": self._summary("actor-ppo-after"),
+            "request_ready_predictor_summary_before": self._summary(
+                "predictor-before"
+            ),
+            "request_ready_predictor_summary_after": self._summary(
+                "predictor-after"
+            ),
             "resource_bc_total_labels": 12,
-            "resource_bc_optimizer_reset": True,
+            "resource_dense_ranking_total_labels": 9,
+            "request_ready_total_labels": 12,
+            "resource_bc_optimizer_reset": False,
         }
         (self.models.parent / "run_status.json").write_text(
             json.dumps(status), encoding="utf-8"
@@ -375,13 +508,13 @@ class TwoStageOrchestrationTest(unittest.TestCase):
         # Distinct files alone are not final-run evidence.  In particular,
         # three warm-up-shaped artifacts must not be promoted to completed.
         self._write_lineage_checkpoint(
-            "checkpoint_DeviceBC.pt", "resource_bc_warmup_completed", role="warmup"
+            "checkpoint_DeviceBC.pt", "resource_supervised_completed", role="warmup"
         )
         self._write_lineage_checkpoint(
-            "checkpoint_Best.pt", "resource_bc_warmup_completed", role="warmup"
+            "checkpoint_Best.pt", "resource_supervised_completed", role="warmup"
         )
         self._write_lineage_checkpoint(
-            "checkpoint_Last.pt", "resource_bc_warmup_completed", role="warmup"
+            "checkpoint_Last.pt", "resource_supervised_completed", role="warmup"
         )
         calls = []
 
@@ -389,7 +522,7 @@ class TwoStageOrchestrationTest(unittest.TestCase):
             calls.append(command)
             return mock.Mock(returncode=0)
 
-        with self.assertRaisesRegex(FileNotFoundError, "run_status"):
+        with self.assertRaisesRegex(RuntimeError, "Stage2 development is frozen"):
             pipeline.run_stage2(
                 self.source,
                 run_tag="missing_run_status",
@@ -397,9 +530,18 @@ class TwoStageOrchestrationTest(unittest.TestCase):
                 artifact_dir=self.models,
                 runner=fake_run,
             )
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls, [])
+        self.assertFalse(self.manifest.exists())
+        pipeline.plan_stage2(
+            self.source,
+            run_tag="missing_run_status",
+            manifest_path=self.manifest,
+            artifact_dir=self.models,
+        )
+        with self.assertRaisesRegex(FileNotFoundError, "run_status"):
+            pipeline.audit_stage2_manifest(self.manifest, require_artifacts=True)
         observed = json.loads(self.manifest.read_text(encoding="utf-8"))
-        self.assertEqual(observed["status"], "failed")
+        self.assertEqual(observed["status"], "planned")
         self.assertNotEqual(observed.get("lineage_status"), "validated")
         self.assertFalse("run_status" in observed and observed["run_status"].get("status") == "completed")
 

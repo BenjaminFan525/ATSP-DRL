@@ -56,8 +56,30 @@ from onpolicy.envs.HKBZ.resource_teacher import (  # noqa: E402
 TEACHER_SCOPE = "stage3_full_joint_policy"
 TEACHER_METHOD = "joint_iga_all"
 SCHEMA_VERSION = 1
-SEARCH_CONTRACT_VERSION = 2
+SEARCH_CONTRACT_VERSION = 4
+# Contract v2 IGA-180 teachers remain valid warm incumbents.  Version 3 only
+# changes continuation accounting so that a replay-verified incumbent skipped
+# in generation zero still counts as a resolved population member.  Version 4
+# binds every Stage3 planning field that changes the search/replay MDP.  A warm
+# incumbent is accepted only when those recorded fields match as well.
+NESTED_WARM_SEARCH_CONTRACT_VERSIONS = frozenset(
+    (2, 3, SEARCH_CONTRACT_VERSION)
+)
 BACKENDS = {"ordinary": "iga", "transporter": "iga"}
+PLANNING_CONTRACT_KEYS = (
+    "device_lookahead_dispatch",
+    "device_lookahead_safety_margin",
+    "device_deadline_aware_dispatch",
+    "device_future_intent_horizon",
+    "device_future_intent_mode",
+    "device_frontier_max_requests",
+    "device_request_capacity_per_plane",
+    "resource_release_aware_eta",
+    "device_lookahead_reservation_mode",
+    "device_reservation_grace_seconds",
+    "device_departure_lookahead",
+    "resource_slack_forecast_seconds",
+)
 CASE_FILES = (
     "job.json",
     "fixed_resources.json",
@@ -113,6 +135,36 @@ def _derived_seed(base_seed: int, case: str, phase: str) -> int:
     return int.from_bytes(hashlib.sha256(data).digest()[:4], "big")
 
 
+def _planning_contract(
+    *,
+    lookahead_margin: float,
+    future_intent_horizon: int,
+    future_intent_mode: str,
+    frontier_max_requests: int,
+    request_capacity_per_plane: int,
+    release_aware_eta: bool,
+    reservation_mode: str,
+    reservation_grace_seconds: float,
+    slack_forecast_seconds: float,
+) -> dict:
+    """Return the exact decision-opportunity contract used by search/replay."""
+
+    return {
+        "device_lookahead_dispatch": True,
+        "device_lookahead_safety_margin": float(lookahead_margin),
+        "device_deadline_aware_dispatch": True,
+        "device_future_intent_horizon": int(future_intent_horizon),
+        "device_future_intent_mode": str(future_intent_mode),
+        "device_frontier_max_requests": int(frontier_max_requests),
+        "device_request_capacity_per_plane": int(request_capacity_per_plane),
+        "resource_release_aware_eta": bool(release_aware_eta),
+        "device_lookahead_reservation_mode": str(reservation_mode),
+        "device_reservation_grace_seconds": float(reservation_grace_seconds),
+        "device_departure_lookahead": True,
+        "resource_slack_forecast_seconds": float(slack_forecast_seconds),
+    }
+
+
 def _env_config(
     case_path: Path,
     *,
@@ -120,6 +172,14 @@ def _env_config(
     max_device_num: int,
     max_steps: int,
     lookahead_margin: float,
+    future_intent_horizon: int,
+    future_intent_mode: str,
+    frontier_max_requests: int,
+    request_capacity_per_plane: int,
+    release_aware_eta: bool,
+    reservation_mode: str,
+    reservation_grace_seconds: float,
+    slack_forecast_seconds: float,
 ) -> dict:
     config = build_case_env_config(
         str(case_path),
@@ -129,22 +189,28 @@ def _env_config(
         seed=42,
         global_feature_mode="f1f2",
     )
+    planning = _planning_contract(
+        lookahead_margin=lookahead_margin,
+        future_intent_horizon=future_intent_horizon,
+        future_intent_mode=future_intent_mode,
+        frontier_max_requests=frontier_max_requests,
+        request_capacity_per_plane=request_capacity_per_plane,
+        release_aware_eta=release_aware_eta,
+        reservation_mode=reservation_mode,
+        reservation_grace_seconds=reservation_grace_seconds,
+        slack_forecast_seconds=slack_forecast_seconds,
+    )
     config.update(
         {
             "use_domain_rand": False,
             "plane_cycle_repeat_limit": 8,
             "plane_no_progress_limit": 120,
             "plane_relocation_limit": 40,
-            "device_lookahead_dispatch": True,
-            "device_lookahead_safety_margin": float(lookahead_margin),
             # Match the currently trained Wave-3 decision-opportunity
             # contract.  These controls change which future requests are
             # exposed and legal; omitting them would create labels for a
             # different MDP even though the base semantics version is equal.
-            "device_deadline_aware_dispatch": True,
-            "device_future_intent_horizon": 1,
-            "device_departure_lookahead": True,
-            "resource_slack_forecast_seconds": 0.0,
+            **planning,
             # Kept as provenance even though the loop, rather than the env,
             # enforces this limit.
             "max_episode_steps": int(max_steps),
@@ -225,8 +291,11 @@ def _plain_request(request: Mapping) -> dict:
         "waiting_time",
         "lead_time",
         "is_lookahead",
+        "intrinsic_ready_time",
     ):
         value = request.get(key)
+        if key == "intrinsic_ready_time" and value is None:
+            continue
         if isinstance(value, np.generic):
             value = value.item()
         result[key] = value
@@ -438,6 +507,7 @@ def _load_joint_warm(
     layout: JointGenomeLayout,
     warm_start_dir: Path | None,
     expected_budget: float,
+    expected_contract: Mapping,
 ) -> tuple[np.ndarray | None, float | None, dict | None]:
     if warm_start_dir is None:
         return None, None, None
@@ -449,18 +519,27 @@ def _load_joint_warm(
         "status": "completed",
         "teacher_scope": TEACHER_SCOPE,
         "teacher_method": TEACHER_METHOD,
-        "search_contract_version": SEARCH_CONTRACT_VERSION,
         "environment_semantics_version": AircraftScheduleEnv.SEMANTICS_VERSION,
         "case": case,
         "completion_verified": True,
+        **{
+            key: expected_contract[key]
+            for key in PLANNING_CONTRACT_KEYS
+            if key in expected_contract
+        },
     }
     mismatch = {
         key: (payload.get(key), value)
         for key, value in required.items()
         if payload.get(key) != value
     }
+    source_contract = int(payload.get("search_contract_version", -1))
     source_budget = float(payload.get("nominal_cumulative_budget_seconds", -1))
-    if mismatch or not math.isclose(source_budget, expected_budget, abs_tol=1e-9):
+    if (
+        mismatch
+        or source_contract not in NESTED_WARM_SEARCH_CONTRACT_VERSIONS
+        or not math.isclose(source_budget, expected_budget, abs_tol=1e-9)
+    ):
         raise ValueError(f"Incompatible nested warm start {source}: {mismatch}")
     chromosome = _valid_vector(
         payload.get("search", {}).get("chromosome", []), layout.n_var
@@ -469,6 +548,7 @@ def _load_joint_warm(
         "kind": "verified_stage3_nested_incumbent",
         "path": str(source.resolve()),
         "sha256": _sha256_file(source),
+        "source_search_contract_version": source_contract,
         "source_nominal_budget_seconds": source_budget,
         "source_makespan": float(payload["makespan"]),
     }
@@ -531,6 +611,14 @@ def _search_case(task: Mapping) -> dict:
         max_device_num=int(task["max_device_num"]),
         max_steps=int(task["max_steps"]),
         lookahead_margin=float(task["lookahead_margin"]),
+        future_intent_horizon=int(task["future_intent_horizon"]),
+        future_intent_mode=str(task["future_intent_mode"]),
+        frontier_max_requests=int(task["frontier_max_requests"]),
+        request_capacity_per_plane=int(task["request_capacity_per_plane"]),
+        release_aware_eta=bool(task["release_aware_eta"]),
+        reservation_mode=str(task["reservation_mode"]),
+        reservation_grace_seconds=float(task["reservation_grace_seconds"]),
+        slack_forecast_seconds=float(task["slack_forecast_seconds"]),
     )
     layout = _build_layout(config)
     joint_warm, joint_objective, warm_evidence = _load_joint_warm(
@@ -538,6 +626,7 @@ def _search_case(task: Mapping) -> dict:
         layout,
         Path(task["warm_start_dir"]) if task.get("warm_start_dir") else None,
         float(task["warm_start_budget"]),
+        task["expected"],
     )
     if joint_warm is None:
         joint_warm, warm_evidence = _load_split_warm(
@@ -581,11 +670,15 @@ def _search_case(task: Mapping) -> dict:
     while generation < int(task["max_generations"]):
         fitness = np.full(population_size, math.inf, dtype=np.float64)
         evaluated_this_generation = 0
+        resolved_this_generation = 0
+        inherited_this_generation = 0
         for index, chromosome in enumerate(population):
             # A nested warm incumbent is already replay verified.  Do not
             # spend a second evaluation on its exact elite in generation zero.
             if generation == 0 and index == 0 and joint_objective is not None:
                 fitness[index] = joint_objective
+                resolved_this_generation += 1
+                inherited_this_generation += 1
                 continue
             if best is not None and time.monotonic() >= deadline:
                 break
@@ -600,6 +693,7 @@ def _search_case(task: Mapping) -> dict:
                 break
             evaluated += 1
             evaluated_this_generation += 1
+            resolved_this_generation += 1
             if episode["completed"]:
                 completed_candidates += 1
                 objective = float(episode["makespan"])
@@ -612,6 +706,8 @@ def _search_case(task: Mapping) -> dict:
             {
                 "generation": generation,
                 "evaluated": evaluated_this_generation,
+                "resolved": resolved_this_generation,
+                "inherited": inherited_this_generation,
                 "best_makespan": (
                     float(best_objective) if math.isfinite(best_objective) else None
                 ),
@@ -620,7 +716,14 @@ def _search_case(task: Mapping) -> dict:
         )
         if best is None:
             raise RuntimeError(f"{case} produced no completed joint candidate.")
-        if evaluated_this_generation < population_size or time.monotonic() >= deadline:
+        # A verified nested incumbent is deliberately not reevaluated.  It is
+        # nevertheless a resolved member of generation zero; comparing only
+        # the number of newly evaluated candidates to population_size made
+        # every continuation stop at 19/20 before crossover and mutation.
+        if (
+            resolved_this_generation < population_size
+            or time.monotonic() >= deadline
+        ):
             break
         generation += 1
         population = _next_population(rng, population, fitness)
@@ -654,6 +757,7 @@ def _search_case(task: Mapping) -> dict:
         "max_generations": int(task["max_generations"]),
         "completed_generations": generation,
         "partial_generation_evaluations": partial,
+        "partial_generation_resolved_members": resolved_this_generation,
         "evaluated_candidates": evaluated,
         "completed_candidates": completed_candidates,
         "inherited_verified_candidates": inherited,
@@ -677,11 +781,6 @@ def _search_case(task: Mapping) -> dict:
         "distribution": metadata.get("distribution"),
         "dataset_dir": str(Path(task["dataset_dir"]).resolve()),
         "case_sha256": case_sha,
-        "device_lookahead_dispatch": True,
-        "device_lookahead_safety_margin": float(task["lookahead_margin"]),
-        "device_deadline_aware_dispatch": True,
-        "device_future_intent_horizon": 1,
-        "device_departure_lookahead": True,
         "global_feature_mode": "f1f2",
         "max_plane_agents": int(task["max_plane_agents"]),
         "max_device_num": int(task["max_device_num"]),
@@ -722,6 +821,15 @@ def _contract(
     case_sha: str,
     cumulative_budget: float,
     lookahead_margin: float,
+    *,
+    future_intent_horizon: int = 1,
+    future_intent_mode: str = "legacy_one",
+    frontier_max_requests: int = 2,
+    request_capacity_per_plane: int = 0,
+    release_aware_eta: bool = False,
+    reservation_mode: str = "none",
+    reservation_grace_seconds: float = 300.0,
+    slack_forecast_seconds: float = 0.0,
 ) -> dict:
     return {
         "status": "completed",
@@ -735,11 +843,17 @@ def _contract(
         "case": case,
         "case_sha256": case_sha,
         "nominal_cumulative_budget_seconds": float(cumulative_budget),
-        "device_lookahead_dispatch": True,
-        "device_lookahead_safety_margin": float(lookahead_margin),
-        "device_deadline_aware_dispatch": True,
-        "device_future_intent_horizon": 1,
-        "device_departure_lookahead": True,
+        **_planning_contract(
+            lookahead_margin=lookahead_margin,
+            future_intent_horizon=future_intent_horizon,
+            future_intent_mode=future_intent_mode,
+            frontier_max_requests=frontier_max_requests,
+            request_capacity_per_plane=request_capacity_per_plane,
+            release_aware_eta=release_aware_eta,
+            reservation_mode=reservation_mode,
+            reservation_grace_seconds=reservation_grace_seconds,
+            slack_forecast_seconds=slack_forecast_seconds,
+        ),
         "completion_verified": True,
     }
 
@@ -783,6 +897,17 @@ def _summary(output_dir: Path, expected_cases: list[str], args) -> dict:
         "completed_case_count": len(records),
         "missing_cases": missing,
         "nominal_cumulative_budget_seconds": float(args.cumulative_budget_seconds),
+        "planning_contract": _planning_contract(
+            lookahead_margin=args.device_lookahead_safety_margin,
+            future_intent_horizon=args.device_future_intent_horizon,
+            future_intent_mode=args.device_future_intent_mode,
+            frontier_max_requests=args.device_frontier_max_requests,
+            request_capacity_per_plane=args.device_request_capacity_per_plane,
+            release_aware_eta=args.resource_release_aware_eta,
+            reservation_mode=args.device_lookahead_reservation_mode,
+            reservation_grace_seconds=args.device_reservation_grace_seconds,
+            slack_forecast_seconds=args.resource_slack_forecast_seconds,
+        ),
         "workers": int(args.workers),
         "makespan_mean": statistics.fmean(makespans) if makespans else None,
         "makespan_median": statistics.median(makespans) if makespans else None,
@@ -793,11 +918,21 @@ def _summary(output_dir: Path, expected_cases: list[str], args) -> dict:
 
 
 def run(args) -> int:
-    cases = list_case_folders(
-        str(args.dataset_dir),
-        args.max_cases,
-        case_offset=args.case_offset,
-    )
+    if getattr(args, "case_list_json", None):
+        if args.max_cases or args.case_offset:
+            raise ValueError("case-list-json cannot be combined with max-cases/case-offset")
+        cases = json.loads(Path(args.case_list_json).read_text(encoding="utf-8"))
+        if (not isinstance(cases, list) or not cases or len(set(cases)) != len(cases)
+                or any(not isinstance(case, str) or Path(case).name != case
+                       or not case.startswith("case_")
+                       or not (args.dataset_dir / case).is_dir() for case in cases)):
+            raise ValueError("case-list-json must name unique existing case directories")
+    else:
+        cases = list_case_folders(
+            str(args.dataset_dir),
+            args.max_cases,
+            case_offset=args.case_offset,
+        )
     output_dir = args.output_dir.resolve()
     output_dir.joinpath("teachers").mkdir(parents=True, exist_ok=True)
     output_dir.joinpath("cases").mkdir(parents=True, exist_ok=True)
@@ -816,6 +951,14 @@ def run(args) -> int:
             case_sha,
             args.cumulative_budget_seconds,
             args.device_lookahead_safety_margin,
+            future_intent_horizon=args.device_future_intent_horizon,
+            future_intent_mode=args.device_future_intent_mode,
+            frontier_max_requests=args.device_frontier_max_requests,
+            request_capacity_per_plane=args.device_request_capacity_per_plane,
+            release_aware_eta=args.resource_release_aware_eta,
+            reservation_mode=args.device_lookahead_reservation_mode,
+            reservation_grace_seconds=args.device_reservation_grace_seconds,
+            slack_forecast_seconds=args.resource_slack_forecast_seconds,
         )
         teacher_path = output_dir / "teachers" / f"{case}.json"
         result_path = output_dir / "cases" / f"{case}.json"
@@ -848,6 +991,14 @@ def run(args) -> int:
                 "max_plane_agents": args.max_plane_agents,
                 "max_device_num": args.max_device_num,
                 "lookahead_margin": args.device_lookahead_safety_margin,
+                "future_intent_horizon": args.device_future_intent_horizon,
+                "future_intent_mode": args.device_future_intent_mode,
+                "frontier_max_requests": args.device_frontier_max_requests,
+                "request_capacity_per_plane": args.device_request_capacity_per_plane,
+                "release_aware_eta": args.resource_release_aware_eta,
+                "reservation_mode": args.device_lookahead_reservation_mode,
+                "reservation_grace_seconds": args.device_reservation_grace_seconds,
+                "slack_forecast_seconds": args.resource_slack_forecast_seconds,
             }
         )
     print(
@@ -927,7 +1078,7 @@ def run(args) -> int:
     return 0 if not failures and summary["status"] == "completed" else 1
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -945,16 +1096,48 @@ def parse_args():
     parser.add_argument("--max-plane-agents", type=int, default=24)
     parser.add_argument("--max-device-num", type=int, default=80)
     parser.add_argument("--device-lookahead-safety-margin", type=float, default=60.0)
+    parser.add_argument("--device-future-intent-horizon", type=int, default=1)
+    parser.add_argument(
+        "--device-future-intent-mode",
+        choices=("legacy_one", "bounded_frontier"),
+        default="legacy_one",
+    )
+    parser.add_argument("--device-frontier-max-requests", type=int, default=2)
+    parser.add_argument("--device-request-capacity-per-plane", type=int, default=0)
+    parser.add_argument(
+        "--resource-release-aware-eta",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
+    parser.add_argument(
+        "--device-lookahead-reservation-mode",
+        choices=("none", "soft", "hard"),
+        default="none",
+    )
+    parser.add_argument("--device-reservation-grace-seconds", type=float, default=300.0)
+    parser.add_argument("--resource-slack-forecast-seconds", type=float, default=0.0)
     parser.add_argument("--max-cases", type=int, default=0)
     parser.add_argument("--case-offset", type=int, default=0)
+    parser.add_argument("--case-list-json", type=Path,
+                        help="Explicit outcome-independent subset; no offset or truncation")
     parser.add_argument("--summarize-only", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.population < 2 or args.workers < 1 or args.max_generations < 1:
         parser.error("population>=2, workers>=1 and max-generations>=1 are required")
     if args.time_budget_seconds <= 0 or args.cumulative_budget_seconds <= 0:
         parser.error("time budgets must be positive")
     if args.warm_start_dir and args.warm_start_budget_seconds <= 0:
         parser.error("nested warm-start budget must be positive")
+    if args.device_future_intent_horizon not in {0, 1, 2, 3}:
+        parser.error("device-future-intent-horizon must be one of 0, 1, 2 or 3")
+    if args.device_frontier_max_requests < 1:
+        parser.error("device-frontier-max-requests must be positive")
+    if args.device_request_capacity_per_plane < 0:
+        parser.error("device-request-capacity-per-plane must be non-negative")
+    if args.device_reservation_grace_seconds < 0:
+        parser.error("device-reservation-grace-seconds must be non-negative")
+    if args.resource_slack_forecast_seconds < 0:
+        parser.error("resource-slack-forecast-seconds must be non-negative")
     if not args.dataset_dir.is_dir():
         parser.error(f"dataset directory does not exist: {args.dataset_dir}")
     return args

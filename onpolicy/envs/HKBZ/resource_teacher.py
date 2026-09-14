@@ -206,10 +206,11 @@ def mixed_resource_actions(
     env._refresh_request_pool()
     hungarian_preferences = env._heuristic_device_assignment_preferences()
     iga_preference_map: dict[str, int] = {}
+    iga_assignment_scores: dict[tuple[str, int], float] = {}
     if "iga" in backends.values():
         if decoded is None:
             raise ValueError("IGA resource actions require a decoded genome.")
-        iga_preference_map, _ = iga_preferences(env, decoded)
+        iga_preference_map, iga_assignment_scores = iga_preferences(env, decoded)
 
     actions = np.zeros((env.n_agents, 2), dtype=np.int64)
     claimed_requests: set[int] = set()
@@ -255,16 +256,57 @@ def mixed_resource_actions(
                 chosen = env._nearest_request_for_device(device, valid_requests)
             reason = "last_chance_fallback"
         elif chosen is None:
-            reason = "deferred_noop"
+            if not valid_requests:
+                # The same request was already consumed by an earlier row in
+                # the serialized environment action.  This is a matching
+                # consequence, not evidence that dispatch should be delayed.
+                reason = "claimed_noop"
+            elif backend == "iga":
+                assignment_candidates = [
+                    int(request["id"])
+                    for request in valid_requests
+                    if (device.code, int(request["id"]))
+                    in iga_assignment_scores
+                ]
+                reason = (
+                    "capacity_unmatched"
+                    if assignment_candidates else "temporal_defer"
+                )
+            else:
+                # The heuristic Hungarian solution can leave surplus devices
+                # unmatched.  Do not turn those private no-op columns into a
+                # false timing target either.
+                reason = "capacity_unmatched"
 
         selected_id = 0
         selected_score = None
+        selected_score_margin = None
+        candidate_scores = None
+        if backend == "iga":
+            candidate_scores = {
+                int(request["id"]): float(
+                    decoded.score(env, device_idx, device, request)
+                )
+                for request in valid_requests
+            }
         if chosen is not None:
             selected_id = int(chosen["id"])
             actions[agent_id] = [selected_id, 0]
             claimed_requests.add(selected_id)
             if backend == "iga":
-                selected_score = decoded.score(env, device_idx, device, chosen)
+                selected_score = float(candidate_scores[selected_id])
+                alternative_scores = [
+                    score for request_id, score in candidate_scores.items()
+                    if request_id != selected_id
+                ]
+                selected_score_margin = (
+                    None
+                    if not alternative_scores
+                    else min(
+                        abs(selected_score - score)
+                        for score in alternative_scores
+                    )
+                )
         if record:
             decisions.append(
                 {
@@ -286,10 +328,67 @@ def mixed_resource_actions(
                     ),
                     "selected_request_id": selected_id,
                     "selected_score": selected_score,
+                    "selected_score_margin": selected_score_margin,
+                    "candidate_scores": candidate_scores,
+                    "assignment_candidate_request_ids": (
+                        [
+                            int(request["id"])
+                            for request in valid_requests
+                            if (device.code, int(request["id"]))
+                            in iga_assignment_scores
+                        ]
+                        if backend == "iga" else [
+                            int(request["id"]) for request in valid_requests
+                        ]
+                    ),
+                    "noop_cause": reason if selected_id == 0 else None,
                     "reason": reason,
                 }
             )
     return actions, decisions
+
+
+def deployment_compatible_teacher(env, actions, decisions, decoded):
+    """Opt-in BC-only projection; historical IGA/search decoding is unchanged."""
+    from onpolicy.utils.stage2_matching import project_teacher_matching
+
+    agents = [int(row['agent_id']) for row in decisions]
+    legal = np.zeros((len(agents), len(env.request_list)), dtype=bool)
+    legal[:, 0] = True
+    for row, decision in enumerate(decisions):
+        legal[row, decision['candidate_request_ids']] = True
+    lookahead = np.asarray([bool(req.get('is_lookahead', False))
+                            for req in env.request_list], dtype=bool)
+    target = actions[agents, 0]
+    projected, stats = project_teacher_matching(legal, target, lookahead)
+    if not stats['teacher_projection_events']:
+        return actions, decisions, stats
+    actions = actions.copy()
+    actions[agents, 0] = projected
+    revised, claimed = [], set()
+    for agent, selected, original in zip(agents, projected, decisions):
+        dev_idx = agent - env.n_plane_agents
+        device = env.device_list[dev_idx]
+        valid, allow_noop = env._sequential_device_options(dev_idx, claimed)
+        valid_ids = [int(req['id']) for req in valid]
+        if (selected and selected not in valid_ids) or (not selected and not allow_noop):
+            raise ValueError('Derived teacher disagrees with live serialized environment masks.')
+        candidate_scores = {int(req['id']): float(decoded.score(env, dev_idx, device, req))
+                            for req in valid}
+        revised.append({**original, 'original_selected_request_id': int(original['selected_request_id']),
+                        'original_noop_cause': original.get('noop_cause'),
+                        'selected_request_id': int(selected), 'legal_request_ids': valid_ids,
+                        'allow_noop': bool(allow_noop), 'candidate_scores': candidate_scores,
+                        'selected_score': candidate_scores.get(int(selected)),
+                        # A feasibility repair is not a new score-confidence label.
+                        'selected_score_margin': None,
+                        'reason': 'blocking_projection',
+                        'noop_cause': 'blocking_projection_noop' if not selected else None})
+        if selected:
+            claimed.add(int(selected))
+    # Static planning validates without mutating environment/device state.
+    env._plan_device_actions(actions)
+    return actions, revised, stats
 
 
 # Backwards-compatible names used by existing experiment scripts/tests.

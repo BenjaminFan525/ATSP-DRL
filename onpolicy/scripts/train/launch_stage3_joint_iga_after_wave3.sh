@@ -7,7 +7,7 @@ set -euo pipefail
 #      after every Wave-3 arm has completed.
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia/bin/python}"
+PYTHON="${PYTHON:-${ROOT_DIR}/../conda/envs/maia-hkbz-cu124-20260903/bin/python}"
 RUNNER="${ROOT_DIR}/onpolicy/envs/HKBZ/experiment/generate_stage3_joint_iga_labels.py"
 DATASET="${DATASET:-${ROOT_DIR}/onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train}"
 

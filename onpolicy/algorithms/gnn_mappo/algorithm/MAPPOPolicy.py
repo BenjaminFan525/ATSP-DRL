@@ -26,6 +26,15 @@ class GNN_MAPPOPolicy:
         if self.tau_anneal_epochs < 0:
             raise ValueError('--tau_anneal_epochs must be non-negative.')
         self.shared_actor_lr_scale = float(getattr(args, 'shared_actor_lr_scale', 1.0))
+        self.shared_actor_lr_max_multiplier = float(getattr(
+            args, 'shared_actor_lr_max_multiplier', 0.0
+        ))
+        if self.shared_actor_lr_scale < 0.0:
+            raise ValueError('--shared_actor_lr_scale must be non-negative.')
+        if self.shared_actor_lr_max_multiplier < 0.0:
+            raise ValueError(
+                '--shared_actor_lr_max_multiplier must be non-negative.'
+            )
         self.plane_actor_lr_scale = float(getattr(args, 'plane_actor_lr_scale', 1.0))
         self.device_actor_lr_scale = float(getattr(args, 'device_actor_lr_scale', 1.0))
         self.transporter_actor_lr_scale = float(getattr(args, 'transporter_actor_lr_scale', 1.0))
@@ -44,10 +53,77 @@ class GNN_MAPPOPolicy:
                                    plane_pair_decoder=getattr(
                                        args, 'plane_pair_decoder', 'joint_pair'
                                    ),
+                                   stage1_baseline=getattr(
+                                       args, 'stage1_baseline', 'proposed'
+                                   ),
                                    central_team_critic=bool(getattr(
                                        args, 'central_team_critic', False
                                    )),
+                                   counterfactual_q_baseline=bool(getattr(
+                                       args, 'counterfactual_q_baseline', False
+                                   )),
+                                   counterfactual_q_topk=int(getattr(
+                                       args, 'counterfactual_q_topk', 8
+                                   )),
+                                   counterfactual_q_min_mass=float(getattr(
+                                       args, 'counterfactual_q_min_mass', 0.90
+                                   )),
+                                   counterfactual_baseline_mix=float(getattr(
+                                       args, 'counterfactual_baseline_mix', 1.0
+                                   )),
+                                   device_policy_head_mode=str(getattr(
+                                       args, 'device_policy_head_mode', 'shared'
+                                   )),
+                                   ordinary_device_type_count=int(getattr(
+                                       args, 'ordinary_device_type_count', 10
+                                   )),
+                                   device_timing_head=bool(getattr(
+                                       args, 'device_timing_head', False
+                                   )),
+                                   device_global_matching=bool(getattr(
+                                       args, 'device_global_matching', False
+                                   )),
+                                   request_ready_prediction=bool(getattr(
+                                       args, 'request_ready_prediction', False
+                                   )),
+                                   request_ready_time_scale=float(getattr(
+                                       args, 'request_ready_time_scale', 3600.0
+                                   )),
+                                   request_ready_policy_injection=str(getattr(
+                                       args,
+                                       'request_ready_policy_injection',
+                                       'learned',
+                                   )),
+                                   request_ready_hard_blocking=bool(getattr(
+                                       args,
+                                       'request_ready_hard_blocking',
+                                       False,
+                                   )),
+                                   request_ready_context_features=bool(getattr(
+                                       args,
+                                       'request_ready_context_features',
+                                       False,
+                                   )),
+                                   request_ready_head_mode=str(getattr(
+                                       args,
+                                       'request_ready_head_mode',
+                                       'shared',
+                                   )),
+                                   request_ready_quantile_head=bool(getattr(
+                                       args,
+                                       'request_ready_quantile_head',
+                                       False,
+                                   )),
+                                   device_resource_adapter=bool(getattr(
+                                       args, 'device_resource_adapter', False
+                                   )),
                                    device=device)
+        self.shared_encoder_activation_checkpoint = bool(getattr(
+            args, 'shared_encoder_activation_checkpoint', False
+        ))
+        self.ac.shared_encoder_activation_checkpoint = (
+            self.shared_encoder_activation_checkpoint
+        )
         self.bc_reference_ac = None
         
         self.reset_optimizers()
@@ -118,13 +194,12 @@ class GNN_MAPPOPolicy:
         train_device=True,
         train_transporter=True,
     ):
-        """Configure the canonical resource-joint PPO trainability contract.
+        """Configure selective joint-RL trainability for Stage3 schedules.
 
-        Stage 2 adapts only the resource actors and all critics.  The
-        protected scope is deliberately explicit: the shared GNN encoder,
-        the plane selection GRU, the plane pair actor and (when present) the
-        learned plane-order actor.  ``plane_actor_param`` owns the latter
-        three modules, so one switch protects the complete plane backend.
+        This method is intentionally separate from supervised Stage2, which
+        calls :meth:`set_resource_supervised_training_stage` and never enables
+        a critic.  The switches here let Stage3 protect the shared GNN and/or
+        aircraft backend during a stabilization window before full joint RL.
         """
         self._set_module_group_trainable(self.ac.shared_actor_param, not freeze_shared)
         self._set_module_group_trainable(self.ac.plane_actor_param, not freeze_plane)
@@ -136,12 +211,22 @@ class GNN_MAPPOPolicy:
         )
         self._set_module_group_trainable(self.ac.critic_param, True)
 
-    def set_joint_training_stage(self, freeze_plane=False, freeze_shared=False):
-        """Compatibility wrapper for the historical joint-stage entry point.
+    def set_resource_supervised_training_stage(self):
+        """Freeze S1 and critics; train only prediction/resource policy heads."""
 
-        New callers should use :meth:`set_resource_joint_training_stage` so
-        the intended Stage-2 semantics are visible at the call site.  The
-        wrapper is retained because old runners/tests still invoke it.
+        self._set_module_group_trainable(self.ac.shared_actor_param, False)
+        self._set_module_group_trainable(self.ac.plane_actor_param, False)
+        self._set_module_group_trainable(self.ac.device_actor_param, True)
+        self._set_module_group_trainable(self.ac.transporter_actor_param, True)
+        self._set_module_group_trainable(self.ac.critic_param, False)
+
+    def set_joint_training_stage(self, freeze_plane=False, freeze_shared=False):
+        """Configure canonical Stage3 full-joint trainability.
+
+        Plane, ordinary-device, and transporter actors share the existing
+        encoder; no encoder split or extra policy network is introduced.
+        Freeze switches provide a short stabilization schedule before every
+        actor group and the shared encoder train jointly.
         """
         return self.set_resource_joint_training_stage(
             freeze_plane=freeze_plane,
@@ -175,6 +260,10 @@ class GNN_MAPPOPolicy:
     def _build_inputs(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices,
                       agent_types=None):
         """将 Numpy/List 数据组装成网络所需的 Tensor/Batch"""
+        runtime = getattr(self, 'stage3_execution_cache', None)
+        stage3_prepared = runtime is not None and runtime.active
+        if stage3_prepared:
+            graph_obs = runtime.prepare_graph(graph_obs)
         
         # 1. 图数据自动 Batching (兼容单环境测试与多线程环境收集)
         # A PyG Batch is also a HeteroData instance.  Handle it first or an
@@ -188,7 +277,8 @@ class GNN_MAPPOPolicy:
         elif isinstance(graph_obs, HeteroData):
             graph_obs = Batch.from_data_list([graph_obs])
             
-        graph_obs = graph_obs.to(self.device)
+        if not stage3_prepared:
+            graph_obs = graph_obs.to(self.device)
         
         # 2. 构建输入字典
         data = {
@@ -217,13 +307,7 @@ class GNN_MAPPOPolicy:
         """衰减学习率"""
         factor = max(0.0, 1.0 - float(episode) / max(1, episodes))
         self.actor_lr_decay_factor = factor
-        for group in self.actor_optimizer.param_groups:
-            group['lr'] = (
-                self.lr
-                * group.get('lr_scale', 1.0)
-                * factor
-                * self.actor_lr_multiplier
-            )
+        self._apply_actor_group_lrs()
         for group in self.critic_optimizer.param_groups:
             group['lr'] = self.critic_lr * factor
 
@@ -256,18 +340,72 @@ class GNN_MAPPOPolicy:
             previous = float(self.actor_lr_multiplier)
         updated = float(multiplier)
         self.actor_lr_multiplier = updated
-        for group in self.actor_optimizer.param_groups:
-            group['lr'] = (
-                self.lr
-                * group.get('lr_scale', 1.0)
-                * self.actor_lr_decay_factor
-                * updated
-            )
+        self._apply_actor_group_lrs()
+        shared_lr = self._actor_group_lr('shared_encoder')
         return {
             'actor_lr_multiplier': updated,
             'actor_lr_multiplier_previous': previous,
             'actor_lr_adapted': float(not np.isclose(previous, updated)),
-            'actor_lr': float(self.actor_optimizer.param_groups[0]['lr']),
+            'actor_lr': float(shared_lr),
+            'shared_actor_lr': float(shared_lr),
+            'shared_actor_lr_multiplier_effective': float(
+                self._shared_actor_lr_multiplier()
+            ),
+        }
+
+    def _shared_actor_lr_multiplier(self):
+        multiplier = float(self.actor_lr_multiplier)
+        if self.shared_actor_lr_max_multiplier > 0.0:
+            multiplier = min(
+                multiplier, float(self.shared_actor_lr_max_multiplier)
+            )
+        return multiplier
+
+    def _apply_actor_group_lrs(self):
+        """Refresh group LRs while keeping shared adaptation independently capped."""
+
+        for group in self.actor_optimizer.param_groups:
+            multiplier = (
+                self._shared_actor_lr_multiplier()
+                if str(group.get('name', '')) == 'shared_encoder'
+                else float(self.actor_lr_multiplier)
+            )
+            group['lr'] = (
+                self.lr
+                * float(group.get('lr_scale', 1.0))
+                * self.actor_lr_decay_factor
+                * multiplier
+            )
+
+    def _actor_group_lr(self, name):
+        for group in self.actor_optimizer.param_groups:
+            if str(group.get('name', '')) == str(name):
+                return float(group['lr'])
+        raise KeyError(f'Unknown Actor optimizer group: {name!r}')
+
+    def set_shared_actor_lr_scale(self, scale):
+        """Apply one epoch's shared-encoder LR scale without touching heads."""
+
+        scale = float(scale)
+        if not np.isfinite(scale) or scale < 0.0:
+            raise ValueError('Shared Actor LR scale must be finite and non-negative.')
+        self.shared_actor_lr_scale = scale
+        found = False
+        for group in self.actor_optimizer.param_groups:
+            if str(group.get('name', '')) != 'shared_encoder':
+                continue
+            group['lr_scale'] = scale
+            found = True
+            break
+        if not found:
+            raise RuntimeError('Actor optimizer has no shared_encoder group.')
+        self._apply_actor_group_lrs()
+        return {
+            'shared_actor_lr_scale': scale,
+            'shared_actor_lr': self._actor_group_lr('shared_encoder'),
+            'shared_actor_lr_multiplier_effective': (
+                self._shared_actor_lr_multiplier()
+            ),
         }
 
     def downshift_actor_lr(self, *, min_scale, down):
@@ -316,6 +454,16 @@ class GNN_MAPPOPolicy:
             ('transporter_actor.', 'device_actor.'),
         ):
             copied_role_state += copy_missing_prefix(dst_prefix, src_prefix)
+        if self.ac.device_policy_head_mode == 'per_type':
+            for type_id in range(self.ac.ordinary_device_type_count):
+                copied_role_state += copy_missing_prefix(
+                    f'device_type_sel_encs.{type_id}.',
+                    'device_sel_enc.',
+                )
+                copied_role_state += copy_missing_prefix(
+                    f'device_type_actors.{type_id}.',
+                    'device_actor.',
+                )
 
         self.ac.load_state_dict(current_state)
         skipped = len(state_dict) - len(compatible_state)
@@ -336,6 +484,15 @@ class GNN_MAPPOPolicy:
         )
         if self.bc_reference_ac is not None:
             self.bc_reference_ac.tau = self.ac.tau
+
+    def set_counterfactual_baseline_mix(self, mix):
+        return self.ac.set_counterfactual_baseline_mix(mix)
+
+    def reset_counterfactual_diagnostics(self):
+        self.ac.reset_counterfactual_diagnostics()
+
+    def consume_counterfactual_diagnostics(self):
+        return self.ac.consume_counterfactual_diagnostics()
 
     def get_actions(self, graph_obs, rnn_states, active_agents, last_op_indices, last_site_indices,
                     deterministic=False, agent_types=None, return_decision_mask=False):

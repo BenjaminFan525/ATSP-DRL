@@ -1,6 +1,6 @@
 """Runtime contracts shared by the HKBZ staged trainer.
 
-The stage-2 hand-off is intentionally kept in a small dependency-free module.
+The staged hand-offs are intentionally kept in a small dependency-free module.
 It is used by configuration/tests as well as by :class:`HKBZ_Runner`, so a
 checkpoint cannot accidentally be accepted merely because a permissive model
 loader found a few compatible tensors.
@@ -9,6 +9,7 @@ loader found a few compatible tensors.
 from __future__ import annotations
 
 import hashlib
+import math
 import warnings
 from pathlib import Path
 from typing import Mapping, MutableMapping, Sequence
@@ -16,6 +17,30 @@ from typing import Mapping, MutableMapping, Sequence
 
 CANONICAL_RESOURCE_JOINT = "resource_joint"
 RESOURCE_JOINT_STAGE = CANONICAL_RESOURCE_JOINT
+CANONICAL_JOINT_FINETUNE = "joint_finetune"
+JOINT_FINETUNE_STAGE = CANONICAL_JOINT_FINETUNE
+STAGE2_SUPERVISION_CONTRACT = {
+    "schema_version": 2,
+    "training_mode": "supervised_only",
+    "mobile_policy_targets": (
+        "categorical_or_permutation_invariant_final_matching"
+    ),
+    "noop_cause_taxonomy": (
+        "temporal_defer,capacity_unmatched,claimed_noop,no_demand"
+    ),
+    "chromosome_scores_are_action_values": False,
+    "ready_target": "absolute_intrinsic_ready_time",
+    "ready_label_schema_version": 1,
+    "ready_label_required_fields": (
+        "request_id,intrinsic_ready_time,observation_time,"
+        "label_schema_version,target_semantics"
+    ),
+    "ready_target_semantics": (
+        "earliest_physical_ready_time_excluding_mobile_resource_delay"
+    ),
+    "dag_role": "input_and_lower_bound_only",
+    "ppo": False,
+}
 STAGE_AUTO = "auto"
 STAGE_PLANE_PRETRAIN = "plane_pretrain"
 DEPRECATED_STAGE_ALIASES = {
@@ -27,6 +52,7 @@ SUPPORTED_TRAINING_STAGES = (
     STAGE_AUTO,
     STAGE_PLANE_PRETRAIN,
     CANONICAL_RESOURCE_JOINT,
+    CANONICAL_JOINT_FINETUNE,
     *DEPRECATED_STAGE_ALIASES,
 )
 
@@ -53,9 +79,9 @@ def normalize_training_stage(stage: object, *, warn_deprecated: bool = True) -> 
     value = str(stage if stage is not None else STAGE_AUTO).strip().lower()
     if value in RETIRED_STAGES:
         raise ValueError(
-            "training_stage='full_joint' is retired; Stage 2 ends at "
-            "frozen resource_joint PPO and no Stage-4/full-joint transition "
-            "is supported."
+            "training_stage='full_joint' is retired; use the canonical "
+            "training_stage='joint_finetune' for the Stage2-to-Stage3 "
+            "full-neural transition."
         )
     if value in DEPRECATED_STAGE_ALIASES:
         if warn_deprecated:
@@ -66,9 +92,19 @@ def normalize_training_stage(stage: object, *, warn_deprecated: bool = True) -> 
                 stacklevel=2,
             )
         return CANONICAL_RESOURCE_JOINT
-    if value not in {STAGE_AUTO, STAGE_PLANE_PRETRAIN, CANONICAL_RESOURCE_JOINT}:
+    if value not in {
+        STAGE_AUTO,
+        STAGE_PLANE_PRETRAIN,
+        CANONICAL_RESOURCE_JOINT,
+        CANONICAL_JOINT_FINETUNE,
+    }:
         allowed = ", ".join(
-            (STAGE_AUTO, STAGE_PLANE_PRETRAIN, CANONICAL_RESOURCE_JOINT)
+            (
+                STAGE_AUTO,
+                STAGE_PLANE_PRETRAIN,
+                CANONICAL_RESOURCE_JOINT,
+                CANONICAL_JOINT_FINETUNE,
+            )
         )
         raise ValueError(
             f"Unsupported training_stage={value!r}; expected one of {allowed}."
@@ -325,12 +361,11 @@ def validate_stage2_recovery_checkpoint(
     global_feature_mode: object,
     protected_prefixes: Sequence[str] = PROTECTED_RESOURCE_JOINT_PREFIXES,
 ) -> dict[str, object]:
-    """Validate a complete, cursor-bearing Stage-2 recovery checkpoint.
+    """Validate a historical cursor-bearing resource-PPO checkpoint.
 
-    Stage-2 recovery must be exact: unlike the Stage-1 hand-off, every model
-    tensor is required and shape-compatible.  Only a checkpoint written after
-    a completed shard is accepted, so an emergency snapshot taken halfway
-    through an update can never be mistaken for a resumable cursor.
+    This remains only so old experiment artifacts can be audited. Canonical
+    Stage2 is supervised-only, rejects ``--resume_stage2``, and never writes
+    this checkpoint kind.
     """
 
     if not isinstance(checkpoint, Mapping):
@@ -454,9 +489,273 @@ def validate_stage2_recovery_checkpoint(
     }
 
 
+def validate_stage2_joint_finetune_checkpoint(
+    checkpoint: Mapping[str, object],
+    target_state: Mapping[str, object],
+    *,
+    plane_order_mode: object,
+    plane_pair_decoder: object,
+    global_feature_mode: object,
+    planning_contract: Mapping[str, object] | None = None,
+    reward_contract: Mapping[str, object] | None = None,
+    request_ready_time_scale: float | None = None,
+    resource_decoder: str | None = None,
+    provenance_resolver=None,
+) -> dict[str, object]:
+    """Validate a complete Stage-2 artifact used to initialize Stage 3.
+
+    Historical supervised and versioned resource-RL artifacts use separate
+    fail-closed validators. Both retain complete tensors, immutable lineage and
+    predictor/resource training evidence. Stage3 never inherits optimizer or
+    ValueNorm state, and an RL source must explicitly retain its decoder.
+    """
+
+    if isinstance(checkpoint, Mapping) and checkpoint.get('stage2_training_mode') == 'bc_resource_rl':
+        from onpolicy.utils.stage2_resource_rl_handoff import validate_rl_handoff
+        return validate_rl_handoff(checkpoint, target_state,
+            plane_order_mode=plane_order_mode, plane_pair_decoder=plane_pair_decoder,
+            global_feature_mode=global_feature_mode, planning_contract=planning_contract,
+            reward_contract=reward_contract, request_ready_time_scale=request_ready_time_scale,
+            resource_decoder=resource_decoder)
+    if not isinstance(checkpoint, Mapping):
+        raise ValueError("Stage-3 hand-off checkpoint must contain a mapping payload.")
+    model = checkpoint.get("model")
+    if not isinstance(model, Mapping):
+        raise ValueError("Stage-3 hand-off checkpoint is missing its model state mapping.")
+    training_stage = str(checkpoint.get("training_stage", "")).strip().lower()
+    if training_stage != CANONICAL_RESOURCE_JOINT:
+        raise ValueError(
+            "joint_finetune requires a completed resource_joint checkpoint; got "
+            f"training_stage={checkpoint.get('training_stage')!r}."
+        )
+    phase = str(checkpoint.get("phase", "")).strip().lower()
+    if phase != "resource_supervised_completed":
+        raise ValueError(
+            "joint_finetune requires a completed supervised Stage-2 policy; got "
+            f"phase={checkpoint.get('phase')!r}."
+        )
+    if checkpoint.get("stage2_training_mode") != "supervised_only":
+        raise ValueError(
+            "Stage-2 -> Stage-3 hand-off requires "
+            "stage2_training_mode='supervised_only'."
+        )
+    if checkpoint.get("request_ready_prediction") is not True:
+        raise ValueError(
+            "Stage-2 -> Stage-3 hand-off is missing the request-ready head."
+        )
+    observed_ready_scale = float(checkpoint.get(
+        "request_ready_time_scale", float("nan")
+    ))
+    if not math.isfinite(observed_ready_scale) or observed_ready_scale <= 0.0:
+        raise ValueError(
+            "Stage-2 -> Stage-3 hand-off has no valid request-ready time scale."
+        )
+    if (
+        request_ready_time_scale is not None
+        and not math.isclose(
+            observed_ready_scale,
+            float(request_ready_time_scale),
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        )
+    ):
+        raise ValueError(
+            "Stage-2 -> Stage-3 request-ready time-scale mismatch: "
+            f"checkpoint={observed_ready_scale}, "
+            f"runtime={float(request_ready_time_scale)}."
+        )
+    observed_supervision = checkpoint.get("stage2_supervision_contract")
+    if (
+        not isinstance(observed_supervision, Mapping)
+        or dict(observed_supervision) != STAGE2_SUPERVISION_CONTRACT
+    ):
+        raise ValueError(
+            "Stage-2 -> Stage-3 hand-off has an incompatible dense "
+            f"supervision contract: {observed_supervision!r}."
+        )
+    forbidden_rl_state = sorted(
+        key
+        for key in (
+            "actor_optim",
+            "critic_optim",
+            "value_normalizer",
+            "role_value_normalizers",
+            "lagrangmdvrpn_optimizer",
+            "shared_gradient_state",
+        )
+        if checkpoint.get(key) is not None
+    )
+    if forbidden_rl_state:
+        raise ValueError(
+            "Supervised Stage2 must not carry PPO/critic/ValueNorm state into "
+            f"Stage3: {forbidden_rl_state}."
+        )
+
+    expected_semantics = {
+        "plane_order_mode": str(plane_order_mode),
+        "plane_pair_decoder": str(plane_pair_decoder),
+        "global_feature_mode": str(global_feature_mode),
+    }
+    observed_semantics = {
+        "plane_order_mode": checkpoint.get("plane_order_mode"),
+        "plane_pair_decoder": checkpoint.get("plane_pair_decoder"),
+        "global_feature_mode": _checkpoint_global_feature_mode(checkpoint),
+    }
+    incompatible = {
+        key: {"checkpoint": observed_semantics[key], "configured": value}
+        for key, value in expected_semantics.items()
+        if observed_semantics[key] is None
+        or str(observed_semantics[key]) != value
+    }
+    if incompatible:
+        raise ValueError(
+            "Stage-2 -> Stage-3 semantic mismatch for "
+            f"{sorted(incompatible)}: {incompatible}."
+        )
+
+    if planning_contract is not None:
+        observed_planning = checkpoint.get("resource_lookahead_contract")
+        if (
+            not isinstance(observed_planning, Mapping)
+            or dict(observed_planning) != dict(planning_contract)
+        ):
+            raise ValueError(
+                "Stage-2 -> Stage-3 planning contract mismatch: "
+                f"checkpoint={observed_planning!r}, "
+                f"configured={dict(planning_contract)!r}."
+            )
+
+    if reward_contract is not None:
+        raise ValueError(
+            "Supervised Stage2 has no reward/dual contract; do not validate it "
+            "against a Stage3 PPO reward contract."
+        )
+
+    missing = []
+    mismatched = []
+    for name, target_value in target_state.items():
+        source_value = model.get(name)
+        if source_value is None:
+            missing.append(str(name))
+            continue
+        if not _is_tensor_like(source_value) or not _is_tensor_like(target_value):
+            mismatched.append((str(name), "non_tensor"))
+            continue
+        if tuple(source_value.shape) != tuple(target_value.shape):
+            mismatched.append(
+                (
+                    str(name),
+                    f"checkpoint={tuple(source_value.shape)} "
+                    f"target={tuple(target_value.shape)}",
+                )
+            )
+    unexpected = sorted(set(model).difference(target_state))
+    if missing or mismatched or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing model tensors={missing[:8]}")
+        if mismatched:
+            details.append(f"shape/type mismatches={mismatched[:8]}")
+        if unexpected:
+            details.append(f"unexpected model tensors={unexpected[:8]}")
+        raise ValueError("Strict Stage-2 -> Stage-3 hand-off rejected: " + "; ".join(details))
+
+    source_path = str(checkpoint.get("source_m2_path", "") or "")
+    source_sha256 = str(checkpoint.get("source_m2_sha256", "") or "")
+    if not source_path or len(source_sha256) != 64:
+        raise ValueError(
+            "Stage-3 hand-off is missing its immutable Stage-1 M2 lineage."
+        )
+
+    resource_before = checkpoint.get("resource_actor_summary_before_bc")
+    resource_after_bc = checkpoint.get("resource_actor_summary_after_bc")
+    resource_updated = (
+        isinstance(resource_before, Mapping)
+        and isinstance(resource_after_bc, Mapping)
+        and resource_before.get("sha256") != resource_after_bc.get("sha256")
+    )
+    predictor_before = checkpoint.get(
+        "request_ready_predictor_summary_before"
+    )
+    predictor_after = checkpoint.get(
+        "request_ready_predictor_summary_after"
+    )
+    predictor_updated = (
+        isinstance(predictor_before, Mapping)
+        and isinstance(predictor_after, Mapping)
+        and predictor_before.get("sha256") != predictor_after.get("sha256")
+    )
+    if not resource_updated:
+        raise ValueError(
+            "Stage-3 hand-off has no bitwise evidence of a supervised resource "
+            "policy-head update."
+        )
+    frozen_ready_verified = None
+    if checkpoint.get('device_bc_training_scope') == 'policy_frozen_ready':
+        # A projection update is not evidence that the ready predictor trained.
+        # A separately trained, immutable R1 is a valid source even for B0.
+        from onpolicy.utils.stage2_policy_transfer import verified_frozen_ready_source
+        frozen_ready_verified = verified_frozen_ready_source(
+            checkpoint, provenance_resolver=provenance_resolver)
+        predictor_updated = False
+    if not predictor_updated and frozen_ready_verified is None:
+        raise ValueError(
+            "Stage-3 hand-off has no bitwise evidence of a supervised "
+            "request-ready predictor update."
+        )
+    if int(checkpoint.get("resource_bc_total_labels", 0)) <= 0:
+        raise ValueError(
+            "Stage-3 hand-off has no supervised mobile-policy labels."
+        )
+    if int(checkpoint.get("request_ready_total_labels", 0)) <= 0 and frozen_ready_verified is None:
+        raise ValueError(
+            "Stage-3 hand-off has no request-ready supervision labels."
+        )
+    assignment_labels = int(checkpoint.get(
+        "resource_assignment_total_labels", 0
+    ))
+    categorical_coef = float(checkpoint.get(
+        "device_bc_categorical_loss_coef", 1.0
+    ))
+    if assignment_labels <= 0 and categorical_coef <= 0.0:
+        raise ValueError(
+            "Stage-3 hand-off has neither final-matching groups nor active "
+            "categorical mobile-policy supervision."
+        )
+
+    model_summary = protected_parameter_summary(model, prefixes=("",))
+    return {
+        "training_stage": training_stage,
+        "phase": phase,
+        "stage": str(checkpoint.get("stage", "")),
+        "episodes": int(checkpoint.get("episodes", 0)),
+        "semantic_config": expected_semantics,
+        "planning_contract": (
+            dict(planning_contract) if planning_contract is not None else None
+        ),
+        "reward_contract": None,
+        "source_m2_path": source_path,
+        "source_m2_sha256": source_sha256,
+        "model_summary": model_summary,
+        "resource_supervised_updated": bool(resource_updated),
+        "request_ready_predictor_updated": bool(predictor_updated),
+        "frozen_ready_source_verified": frozen_ready_verified,
+        "request_ready_time_scale": observed_ready_scale,
+        "dense_ranking_labels": int(
+            checkpoint.get("resource_dense_ranking_total_labels", 0)
+        ),
+        "final_matching_labels": assignment_labels,
+        "resource_bc_updated": bool(resource_updated),
+        "resource_ppo_updated": False,
+    }
+
+
 __all__ = [
     "CANONICAL_RESOURCE_JOINT",
     "RESOURCE_JOINT_STAGE",
+    "CANONICAL_JOINT_FINETUNE",
+    "JOINT_FINETUNE_STAGE",
+    "STAGE2_SUPERVISION_CONTRACT",
     "STAGE_AUTO",
     "STAGE_PLANE_PRETRAIN",
     "DEPRECATED_STAGE_ALIASES",
@@ -473,4 +772,5 @@ __all__ = [
     "protected_parameters_equal",
     "validate_stage1_m2_checkpoint",
     "validate_stage2_recovery_checkpoint",
+    "validate_stage2_joint_finetune_checkpoint",
 ]

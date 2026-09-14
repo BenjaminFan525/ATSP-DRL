@@ -21,7 +21,7 @@ import torch
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PYTHON = (ROOT.parent / 'conda/envs/maia/bin/python').resolve()
+PYTHON = (ROOT.parent / 'conda/envs/maia-hkbz-cu124-20260903/bin/python').resolve()
 TRAIN = ROOT / 'onpolicy/scripts/train/train_hkbz.py'
 COMPARE = ROOT / 'onpolicy/envs/HKBZ/experiment/valid_fjsp_v2_comparison.py'
 AC_CONFIG = ROOT / 'onpolicy/config/ac.yaml'
@@ -80,7 +80,7 @@ def relocate(value: str) -> str:
     return (
         str(value)
         .replace('/home/fanyx/HKBZ-environment', str(ROOT))
-        .replace('/home/fanyx/anaconda3/envs/maia/bin/python', str(PYTHON))
+        .replace('/home/fanyx/conda/envs/maia-hkbz-cu124-20260903-hkbz-cu124-20260903/bin/python', str(PYTHON))
     )
 
 

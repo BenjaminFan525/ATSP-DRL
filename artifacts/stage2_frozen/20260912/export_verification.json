@@ -1,0 +1,10 @@
+{
+  "archived_result_files_verified": 2943,
+  "archived_source_bytes": 275503655,
+  "bundled_files_verified": 19,
+  "checkpoint_bytes": 22793069,
+  "compressed_result_bytes": 28650777,
+  "passed": true,
+  "protocol": "stage2_frozen_b0_v1",
+  "verification_scope": "byte identity and archive completeness; no model rollout or new scientific experiment"
+}

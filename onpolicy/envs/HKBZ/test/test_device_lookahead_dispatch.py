@@ -156,6 +156,29 @@ class DeviceLookaheadDispatchTest(unittest.TestCase):
         finally:
             env.close()
 
+    def test_intent_ledger_attributes_dispatch_delay_to_four_timestamps(self):
+        env = _make_env(True, safety_margin=1e9)
+        try:
+            _commit_plane_to_future_mobile_job(env)
+            request = env.request_list[1]
+            identity = env._request_identity(request)
+            intent = env.resource_intent_ledger[identity]
+            self.assertIn('first_visible_time', intent)
+            self.assertIn('first_legal_time', intent)
+            self.assertIn('first_compatible_idle_time', intent)
+            env.total_time += 7.0
+            actions = env.heuristic_device_actions()
+            env._dispatch_device_actions(actions)
+            intent = env.resource_intent_ledger[identity]
+            self.assertEqual(intent['dispatch_time'], env.total_time)
+            metrics = env.get_resource_lateness_metrics()
+            self.assertGreaterEqual(metrics['visibility_to_legal_seconds'], 0.0)
+            self.assertGreaterEqual(metrics['legal_to_idle_seconds'], 0.0)
+            self.assertGreaterEqual(metrics['policy_defer_seconds'], 7.0)
+            self.assertGreater(metrics['policy_defer_count'], 0)
+        finally:
+            env.close()
+
     def test_hungarian_teacher_does_not_arrive_excessively_early(self):
         env = _make_env(True)
         try:

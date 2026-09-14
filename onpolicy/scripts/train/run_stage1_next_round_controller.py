@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
 from onpolicy.utils.shared_eval import SharedEvalClient
 
 
-PYTHON = (ROOT.parent / 'conda/envs/maia/bin/python3.11').resolve()
+PYTHON = (ROOT.parent / 'conda/envs/maia-hkbz-cu124-20260903/bin/python3.11').resolve()
 TRIAL = ROOT / 'onpolicy/scripts/train/run_stage1_next_round_trial.py'
 EVALUATOR = ROOT / 'onpolicy/scripts/train/shared_hkbz_evaluator.py'
 OFFLINE_EVAL = ROOT / 'onpolicy/scripts/train/evaluate_stage1_shared_checkpoint.py'
