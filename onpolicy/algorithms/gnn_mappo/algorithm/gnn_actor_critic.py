@@ -1037,6 +1037,7 @@ class GNN_Actor_Critic(nn.Module):
         op_choice,
         log_prob,
         decision_validated,
+        raw_scores=None,
     ):
         """Decode deterministic resource actions as one bipartite matching.
 
@@ -1060,9 +1061,18 @@ class GNN_Actor_Critic(nn.Module):
             scores = resource_action_logits[
                 batch_idx, rows
             ].detach().cpu().double().numpy()
-            assignments = solve_resource_matching(
-                scores, request_is_lookahead[batch_idx].detach().cpu().numpy()
-            )
+            if raw_scores is not None:
+                from onpolicy.utils.stage3_canonical_h import solve_canonical_matching
+                raw = raw_scores[batch_idx, rows].detach().cpu().numpy()
+                if not np.array_equal(np.isfinite(raw), np.isfinite(scores)):
+                    raise RuntimeError('Canonical raw matching support differs from policy probabilities')
+                assignments = solve_canonical_matching(raw,
+                    request_is_lookahead[batch_idx].detach().cpu().numpy(),
+                    device_ids=rows.detach().cpu().tolist())
+            else:
+                assignments = solve_resource_matching(
+                    scores, request_is_lookahead[batch_idx].detach().cpu().numpy()
+                )
             for local_row, request_id in enumerate(assignments.tolist()):
                 selected_log_prob = resource_action_logits[
                     batch_idx, rows[local_row], request_id
@@ -1537,6 +1547,10 @@ class GNN_Actor_Critic(nn.Module):
             if return_log_prob_components or use_device_global_matching or return_actor_details
             else None
         )
+        canonical_h = bool(getattr(self, 'canonical_h_decode', False))
+        if canonical_h and not use_device_global_matching:
+            raise ValueError('Canonical H can only run deterministic global-matching evaluation')
+        resource_raw_scores = torch.full_like(resource_action_logits, float('-inf')) if canonical_h else None
         
         # 继承并克隆 GRU 的历史记忆
         team_value = None
@@ -1887,6 +1901,8 @@ class GNN_Actor_Critic(nn.Module):
                     cur_log_prob[role_index] = role_log_prob
                     cur_dist[role_index] = role_dist
                     cur_selected_valid[role_index] = selected_req_valid
+                    if resource_raw_scores is not None:
+                        resource_raw_scores[role_batch_indices, agent_idx, :] = actor_head._canonical_h_raw
 
                     if eval_action or dist_only:
                         dist_req = torch.distributions.Categorical(logits=role_dist)
@@ -2223,6 +2239,7 @@ class GNN_Actor_Critic(nn.Module):
                 op_choice,
                 log_prob,
                 decision_validated,
+                raw_scores=resource_raw_scores,
             )
 
         # ========================================================

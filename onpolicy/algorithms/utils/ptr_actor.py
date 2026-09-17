@@ -89,7 +89,7 @@ class MaPtrNet(Module):
             nn.init.constant_(self.q_proj_weight.bias, 0.)
             nn.init.constant_(self.k_proj_weight.bias, 0.)
 
-    def dist(self, query: torch.Tensor, key: torch.Tensor, key_padding_mask: Optional[torch.Tensor] = None, tau: float = 1.0):
+    def dist(self, query: torch.Tensor, key: torch.Tensor, key_padding_mask: Optional[torch.Tensor] = None, tau: float = 1.0, return_raw: bool = False):
         """
         输出经过 Mask 屏蔽后的概率分布。
         注意：PyTorch 标准中，key_padding_mask 为 True 代表是被屏蔽的非法位置 (Padding)。
@@ -112,6 +112,8 @@ class MaPtrNet(Module):
             valid_mask = ~key_padding_mask
             ptr = ptr.masked_fill(key_padding_mask, float('-inf'))
             
+        if return_raw:
+            return ptr
         prob = F.softmax(ptr / tau, dim=-1)
         return _safe_normalize_probs(prob, valid_mask=valid_mask)
 
@@ -498,7 +500,13 @@ class JointPairPtrActor(Module):
                 )
             logits = self.pair_score(pair_latent).squeeze(-1)
             logits = logits.reshape(batch_size, -1)
-        logits = logits / max(float(tau), 1e-6)
+        canonical_raw = None
+        if getattr(self, 'canonical_h_decode', False):
+            if not deterministic or chosen_op is not None or chosen_site is not None or not (0 < float(tau) < float('inf')):
+                raise ValueError('Canonical H is restricted to positive-temperature deterministic evaluation')
+            canonical_raw = _safe_logits(logits, valid_mask=flat_valid)
+            logits = logits.to(torch.float64)
+        logits = logits / (float(tau) if canonical_raw is not None else max(float(tau), 1e-6))
         logits = _safe_logits(logits, valid_mask=flat_valid)
         log_probs = F.log_softmax(logits, dim=-1)
 
@@ -525,13 +533,16 @@ class JointPairPtrActor(Module):
             flat_idx = op_idx * site_count + site_idx
         else:
             flat_idx = _select_masked_index(
-                log_probs, flat_valid, deterministic
+                canonical_raw if canonical_raw is not None else log_probs, flat_valid, deterministic
             )
             op_idx = flat_idx // site_count
             site_idx = flat_idx % site_count
         selected_log_prob = log_probs.gather(
             1, flat_idx.unsqueeze(-1)
         ).squeeze(-1)
+        if canonical_raw is not None:
+            selected_log_prob = selected_log_prob.to(query.dtype)
+            log_probs = log_probs.to(query.dtype)
         return op_idx, site_idx, selected_log_prob, log_probs
 
 
@@ -764,8 +775,17 @@ class DeviceRequestPtrActor(Module):
         req_attn_out, _ = self.req_query_attn(req_q, request_nodes, request_nodes, key_padding_mask=req_pad_mask)
         req_q = self.req_query_norm(req_q + req_attn_out)
 
-        req_prob_v = self.req_ptr_net.dist(req_q, request_nodes, key_padding_mask=req_pad_mask, tau=tau).squeeze(1)
-        req_logits = _masked_log_probs(req_prob_v, request_valid_mask)
+        canonical = bool(getattr(self, 'canonical_h_decode', False))
+        if canonical:
+            if not deterministic or chosen_request is not None or self.timing_head is not None or not (0 < float(tau) < float('inf')):
+                raise ValueError('Canonical H excludes training, replay and timing gates')
+            raw = self.req_ptr_net.dist(req_q, request_nodes, key_padding_mask=req_pad_mask,
+                                        tau=tau, return_raw=True).squeeze(1)
+            self._canonical_h_raw = raw
+            req_logits = F.log_softmax(raw.to(torch.float64)/float(tau), dim=-1).to(query.dtype)
+        else:
+            req_prob_v = self.req_ptr_net.dist(req_q, request_nodes, key_padding_mask=req_pad_mask, tau=tau).squeeze(1)
+            req_logits = _masked_log_probs(req_prob_v, request_valid_mask)
         if self.timing_head is not None:
             dispatch_gate = self.timing_head(req_q.squeeze(1)).squeeze(-1)
             # A positive gate shifts mass from no-op to every legal real
@@ -790,7 +810,7 @@ class DeviceRequestPtrActor(Module):
                 raise RuntimeError("PPO replay contains a device request rejected by the current mask.")
         else:
             req_idx = _select_masked_index(
-                req_logits,
+                raw if canonical else req_logits,
                 request_valid_mask,
                 deterministic,
             )
