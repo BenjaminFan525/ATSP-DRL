@@ -20,6 +20,7 @@ from onpolicy.algorithms.utils.stage1_baselines import (
 )
 from onpolicy.config.config import get_config
 from onpolicy.envs.HKBZ.environment import AircraftScheduleEnv
+from onpolicy.envs.HKBZ.test.regression_fixtures import case_dir
 from onpolicy.scripts.train.prepare_stage1_learning_baselines import (
     baseline_command,
 )
@@ -33,10 +34,7 @@ from onpolicy.utils.checkpoint_contract import (
 
 
 ROOT = Path(__file__).resolve().parents[4]
-CASE_DIR = (
-    ROOT
-    / "onpolicy/envs/HKBZ/dataset/fjsp_v3_t600_v120_test60/train/case_0012"
-)
+CASE_DIR = case_dir('train_case_0012')
 
 
 def _ac_config():

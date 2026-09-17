@@ -77,10 +77,18 @@ def _environment_worker(connection):
                         env.close()
                     payload = dict(payload)
                     diagnostics = bool(payload.pop("_stage3_diagnostics", False))
+                    native_reset_seed = payload.pop("_stage3_native_reset_seed", None)
                     actual_resets = 0
                     env = AircraftScheduleEnv(payload)
                     steps = 0
-                    result = env.reset(seed=payload["seed"])
+                    if native_reset_seed is None:
+                        result = env.reset(seed=payload["seed"])
+                    else:
+                        # Opt-in B0 evaluator matches production construction,
+                        # seeding and cursor reset without changing old studies.
+                        env.seed(int(native_reset_seed))
+                        env.reset_data_cursor()
+                        result = env.reset()
                 elif command == "step":
                     before_jobs = [(p, set(p.finished_jobs) & set(p.LONG_OCCUPANCY_JOBS))
                                    for p in env.planes.values()] if diagnostics else []

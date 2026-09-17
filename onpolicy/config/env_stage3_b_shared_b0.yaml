@@ -1,0 +1,43 @@
+# Environment architecture/planning comes from the immutable Stage2 bundle.
+protocol: stage3_b_shared_b0_native_v1
+arm: B_SHARED
+seed: 2026091202
+epochs: 8
+global_batch: 32
+ppo_epochs: 2
+microbatch: 8
+rollout_workers: 16
+validation_workers: 12  # Native fixed-shape batches; validator remains inside its 8 physical CPU cores.
+evaluation_batch_contract: b0_fixed12_keep_completed_slots_v1
+evaluation_cudnn_allow_tf32: true  # Preserve the published B0 cuDNN inference runtime; training remains false.
+train_tau: 0.03
+evaluation_tau: 0.3
+evaluation_seed: 1
+actor_lr: 0.00001
+critic_lr: 0.0001
+actor_lr_scales: [1.0, 0.25, 1.0, 0.5]
+clip: 0.2
+tbptt: 8
+gradient_clip: 1.0
+soft_kl: 0.02
+hard_kl: 0.04
+reward_scale: 0.01
+rollout_max_steps: 4000
+ipc_timeout_seconds: 600
+input_cache_mib: 512
+history: b0_authoritative_native_v1
+primary_decoder: hungarian
+confirmation_seed: 2026091217
+confirmation_namespace: stage3_b0_confirm_20260912
+gpu: 0
+gpu_uuid: GPU-744c1334-98c8-5318-e799-7ad15eea1fbf
+cpus: 0-31,64-95
+trainer_cpus: 0-21,64-85
+validator_cpus: 22-29,86-93
+controller_cpus: 30-31,94-95
+memory_high_gib: 96
+memory_max_gib: 128
+gpu_headroom_mib: 6144
+wall_timeout_seconds: 1209600
+evaluation_timeout_seconds: 21600
+queue_max_pending: 4  # two epochs, validation and Tune per epoch

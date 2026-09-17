@@ -6402,7 +6402,7 @@ class AircraftScheduleEnv(gym.Env):
         if self.config.get('stage2_resource_v6_observations', False):
             from onpolicy.utils.stage2_resource_v6_observation import attach_resource_view
             attach_resource_view(self, data, coordinate_scale)
-            
+
         return data
 
     def _get_reward(self):

@@ -22,10 +22,11 @@ def identity(manifest):
     return digest_json({k: v for k, v in manifest.items() if k != "manifest_sha256"})
 
 
-def schedule(cases, seed, batch_size=32, epochs=8):
+def schedule(cases, seed, batch_size=32, epochs=8, *, allow_variable_batch=False):
     if Counter(c["distribution"] for c in cases) != COUNTS or len({c["path"] for c in cases}) != 600:
         raise ValueError("Full-data training requires exactly the unique Stage1 train600")
-    if batch_size != 32 or not 1 <= epochs <= 8:
+    allowed = (32,64,128,240,256,512) if allow_variable_batch else (32,)
+    if batch_size not in allowed or not 1 <= epochs <= 8:
         raise ValueError("Full-data protocol fixes batch32 and at most eight coverage epochs")
     result = []
     for epoch in range(epochs):
@@ -41,8 +42,8 @@ def schedule(cases, seed, batch_size=32, epochs=8):
             result.append({"cases": [c for c, _ in batch], "visit": epoch, "data_epoch": epoch + 1,
                 "seeds": [int(digest_json([seed, "full-data-trajectory", epoch, c["content_sha256"], r])[:15], 16)
                           % (2**31 - 1) for c, r in batch],
-                "visit_ids": [f"{epoch}:{first+i}" for i in range(batch_size)],
-                "group": len(result) + 1, "training_episodes": (len(result) + 1) * batch_size})
+                "visit_ids": [f"{epoch}:{first+i}" for i in range(len(batch))],
+                "group": len(result) + 1, "training_episodes": epoch*960+first+len(batch)})
     return result
 
 

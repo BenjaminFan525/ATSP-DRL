@@ -23,14 +23,24 @@ from onpolicy.config.config import get_config
 from onpolicy.algorithms.gnn_mappo.algorithm.MAPPOPolicy import GNN_MAPPOPolicy as Policy
 
 def parse_args(args, parser):
-    parser.add_argument('--ac_config', type=str,
-                        default=os.path.join(root_dir, 'onpolicy/config/ac.yaml'),
-                        help="Path to the actor-critic config file")
-    parser.add_argument('--checkpoint', required=True,
-                        help="Checkpoint produced by train_hkbz.py")
-    parser.add_argument('--dataset-dir',
-                        default=os.path.join(root_dir, 'onpolicy/envs/HKBZ/dataset/test_large'))
+    parser.add_argument('--ac_config', type=str, default=os.path.join(root_dir, 'onpolicy/config/ac.yaml'), help="Path to the ac config file")
+    parser.add_argument('--env_config', type=str, default=os.path.join(root_dir, 'onpolicy/config/env.yaml'), help="Path to the environment config file")
+    parser.add_argument('--checkpoint', dest='checkpoint_dir',
+                        help="Checkpoint produced by train_hkbz.py; alias of --checkpoint_dir.")
+    parser.add_argument('--dataset_test_dir', '--dataset-dir', dest='dataset_test_dir', type=str,
+                        default=os.path.join(root_dir, 'onpolicy/envs/HKBZ/dataset/fjsp_v2_t480_v60_test60/test'),
+                        help="Path to the test dataset directory.")
+    parser.add_argument('--output_json', type=str, default=None, help="Optional path to save evaluation results as JSON.")
+    parser.add_argument('--max_cases', type=int, default=0, help="Limit number of cases for quick smoke tests; 0 means all cases.")
     all_args = parser.parse_known_args(args)[0]  
+    if all_args.checkpoint_dir is None:
+        parser.error('A checkpoint is required: use --checkpoint or --checkpoint_dir.')
+    if os.path.exists(all_args.env_config):
+        with open(all_args.env_config, 'r', encoding='utf-8') as f:
+            env_cfg = yaml.safe_load(f) or {}
+        all_args.max_agent_num = int(env_cfg.get('n_agents', all_args.max_agent_num))
+        all_args.max_device_num = int(env_cfg.get('max_device_num', all_args.max_device_num))
+        all_args.resource_policy = env_cfg.get('resource_policy', all_args.resource_policy)
     return all_args
 
 def _t2n(x):
@@ -47,10 +57,8 @@ def run_single_episode(env_config, policy, all_args, deterministic=True):
     env.use_domain_rand = False 
     obs, done, info = env.reset()
     
-    rnn_states = np.zeros(
-        (1, all_args.max_agent_num, all_args.recurrent_N, all_args.hidden_size), 
-        dtype=np.float32
-    )
+    total_agent_num = all_args.max_agent_num + (all_args.max_device_num if all_args.resource_policy == 'drl' else 0)
+    rnn_states = np.zeros((1, total_agent_num, all_args.recurrent_N, all_args.hidden_size), dtype=np.float32)
 
     step_count = 0
     start_time = time.perf_counter()
@@ -104,21 +112,23 @@ def main(args):
             
     policy = Policy(all_args, ac_config, device=device)
 
-    checkpoint_dir = os.path.abspath(os.path.expanduser(all_args.checkpoint))
+    checkpoint_dir = os.path.abspath(os.path.expanduser(all_args.checkpoint_dir))
     if not os.path.isfile(checkpoint_dir):
         raise FileNotFoundError(f"Checkpoint does not exist: {checkpoint_dir}")
     print(f">>> 成功加载权重: {checkpoint_dir}")
     checkpoint = torch.load(checkpoint_dir, map_location=device)
-    policy.ac.load_state_dict(checkpoint['model'])
+    policy.load_model_state(checkpoint['model'])
     policy.ac.tau = checkpoint['tau']
         
     policy.ac.eval()
 
-    dataset_test_dir = os.path.abspath(os.path.expanduser(all_args.dataset_dir))
+    dataset_test_dir = os.path.abspath(os.path.expanduser(all_args.dataset_test_dir))
     if not os.path.isdir(dataset_test_dir):
         raise FileNotFoundError(f"Dataset does not exist: {dataset_test_dir}")
     case_folders = sorted([d for d in os.listdir(dataset_test_dir) 
                            if os.path.isdir(os.path.join(dataset_test_dir, d)) and d.startswith('case_')])
+    if all_args.max_cases > 0:
+        case_folders = case_folders[:all_args.max_cases]
 
     KNOWN_OPTIMAL_CMAX = {
     'case_01': 6670.0,
@@ -147,6 +157,7 @@ def main(args):
     metrics = {
         'DRL-G': {'c_max_list': [], 'time_sum': 0.0, 'gap_sum': 0.0, 'count': 0}
     }
+    case_results = []
 
     print(f"\n🚀 开始 DRL-G (Greedy) 性能评估，共 {len(case_folders)} 个测试用例。")
     print("="*70)
@@ -160,10 +171,12 @@ def main(args):
         if os.path.exists(flights_path):
             with open(flights_path, 'r', encoding='utf-8') as f:
                 n_agents = len(json.load(f))
-        all_args.max_agent_num = max(all_args.max_agent_num, n_agents)
+        configured_plane_agents = max(all_args.max_agent_num, n_agents)
 
         env_config = {
-            'batch_num': 1, 'plane_num_per_batch': n_agents, 'n_agents': n_agents,
+            'batch_num': 1, 'plane_num_per_batch': n_agents, 'n_agents': configured_plane_agents,
+            'max_device_num': all_args.max_device_num,
+            'resource_policy': all_args.resource_policy,
             'jobs_path': os.path.join(case_path, 'job.json'),
             'fixed_res_path': os.path.join(case_path, 'fixed_resources.json'),
             'mobile_res_path': os.path.join(case_path, 'mobile_resources.json'),
@@ -186,6 +199,13 @@ def main(args):
             metrics['DRL-G']['time_sum'] += time_g
             metrics['DRL-G']['gap_sum'] += gap_g
             metrics['DRL-G']['count'] += 1
+            case_results.append({
+                'case': case_name,
+                'c_max': float(c_max_g),
+                'gap': float(gap_g),
+                'time': float(time_g),
+                'optimal_cmax': float(optimal_val),
+            })
             print(f"[{case_name}] C_max: {c_max_g:<8.1f} | Gap: {gap_g:>5.2f}% | Time: {time_g:.3f}s")
 
     # ======== 3. 打印最终统计表格 ========
@@ -201,6 +221,22 @@ def main(args):
         cmax_display = f"{avg_cmax:.1f} ± {std_cmax:.1f}"
         
         print(f"{'DRL-G':<10} {cmax_display:<20} {m['time_sum']/m['count']:<12.3f} {m['gap_sum']/m['count']:<10.2f}")
+        if all_args.output_json:
+            output_dir = os.path.dirname(all_args.output_json)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            with open(all_args.output_json, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'method': 'DRL-G',
+                    'checkpoint_dir': checkpoint_dir,
+                    'dataset_test_dir': dataset_test_dir,
+                    'count': int(m['count']),
+                    'avg_cmax': float(avg_cmax),
+                    'std_cmax': float(std_cmax),
+                    'avg_time': float(m['time_sum'] / m['count']),
+                    'avg_gap': float(m['gap_sum'] / m['count']),
+                    'cases': case_results,
+                }, f, indent=2, ensure_ascii=False)
     print("="*65)
 
 if __name__ == "__main__":
