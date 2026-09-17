@@ -3831,10 +3831,10 @@ class HKBZ_Runner(Runner):
         )
         return self.resource_wait_dual_value
 
-    def run(self):   
+    def run(self):
         from onpolicy.utils.stage2_freeze_guard import guard_training_stage
         guard_training_stage(self.training_stage)
-        
+
         start = time.time()
         episodes = self.num_episodes
         self.total_num_steps = int(self.resume_total_num_steps)
