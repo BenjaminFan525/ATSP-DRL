@@ -52,3 +52,11 @@
 - `onpolicy/envs/HKBZ/test/test_stage3_h3_frozen.py`：新行为契约和预算/冻结输入回归。
 
 运行目录包含 `manifest.json`、`frozen_iga.json`、`run_status.json`、`resource_samples.jsonl`、`proofs/`、`baselines.json`、`physical_configuration.json`、`commits/`、`validator/` 和 `final_result.json`。`run_status` 中的当前阶段不等于 PPO 已开始；正式学习以 epoch 提交及其实际 Adam 步为准。
+
+> 2026-09-18 更新：本文引用的 Tune60 IGA 运行目录
+> `result/hkbz_train_logs/stage3_matched_iga_h3f4_tune60_20260831_r1`
+> 已按用户要求删除，删除清单与冻结摘要见
+> `result/stage3_analysis/iga_tune60_deletion_20260918/receipt.json`。
+> 之后的所有 RL/IGA 比较只使用 Validation120 参考
+> `result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1`，
+> 规则见 `STAGE3_IGA_FROZEN_20260918.md`。本文其余内容保持原样，作为当时的记录。

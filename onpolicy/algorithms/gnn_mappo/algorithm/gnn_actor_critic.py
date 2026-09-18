@@ -1901,6 +1901,10 @@ class GNN_Actor_Critic(nn.Module):
                     cur_log_prob[role_index] = role_log_prob
                     cur_dist[role_index] = role_dist
                     cur_selected_valid[role_index] = selected_req_valid
+                    observer = getattr(self, 'stage3_decision_observer', None)
+                    if observer is not None and role_chosen is None and not deterministic:
+                        observer.record(2 if role_name == 'transporter' else 1,
+                                        role_batch_indices, role_dist, role_req)
                     if resource_raw_scores is not None:
                         resource_raw_scores[role_batch_indices, agent_idx, :] = actor_head._canonical_h_raw
 
@@ -2148,6 +2152,10 @@ class GNN_Actor_Critic(nn.Module):
                         tau=self.tau,
                         **pair_actor_kwargs,
                     )
+            observer = getattr(self, 'stage3_decision_observer', None)
+            if observer is not None and cur_chosen_op is None and not plane_deterministic:
+                observer.record(0, torch.nonzero(active_mask_i, as_tuple=False).flatten(),
+                                cur_dist, cur_op * n_sites + cur_site)
             selected_pair_valid = cur_agent_mask[active_mask_i].gather(
                 1,
                 cur_op.unsqueeze(-1),

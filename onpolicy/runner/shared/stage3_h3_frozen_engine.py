@@ -12,7 +12,9 @@ import torch
 from onpolicy.runner.shared.stage3_b_shared_b0_engine import PPOContractError
 from onpolicy.runner.shared.stage3_research_engine import gradient_mode
 from onpolicy.utils.stage3_b0_single_model import ThroughputEngine as SingleModelEngine
-from onpolicy.utils.stage3_h3_frozen import PLANNING, PROTOCOL, optimizer_orders
+from onpolicy.utils.stage3_h3_frozen import (
+    PLANNING, POST_PASS_REPLAY_SKIP, PROTOCOL, optimizer_orders,
+)
 from onpolicy.utils.stage3_b_shared_b0 import HISTORY, SOURCE_SHA
 from onpolicy.utils.stage3_performance import DeferredScalars
 from onpolicy.utils.stage3_research import digest_file, digest_json
@@ -36,7 +38,14 @@ class H3FrozenEngine(SingleModelEngine):
                    encoder_activation_checkpoint=config['encoder_activation_checkpoint'])
         if torch.device(device).type == 'cuda':
             # Leave space for CUDA context/workspaces outside the Torch allocator.
-            run['cuda_memory_headroom_mib'] = config['gpu_headroom_mib'] + 1024
+            if config.get('cuda_allocator_mib') is not None:
+                total = torch.cuda.get_device_properties(0).total_memory / 2**20
+                ceiling = config['cuda_allocator_mib']
+                if not 0 < ceiling < total:
+                    raise ValueError('Invalid per-process CUDA allocator ceiling')
+                run['cuda_memory_headroom_mib'] = total - ceiling
+            else:
+                run['cuda_memory_headroom_mib'] = config['gpu_headroom_mib'] + 1024
         super().__init__(frozen_manifest, config=config, runtime=run, device=device,
                          training=training, width=config['rollout_workers'], create_pool=False)
         self.initialization_sha256 = SOURCE_SHA
@@ -102,8 +111,7 @@ class H3FrozenEngine(SingleModelEngine):
                 expected = tensor(np.stack([s['mask'] for s in states]))
                 diff = lp - tensor(np.stack([s['old_logp'] for s in states]))
                 ratio = diff.clamp(-40, 40).exp()
-                advantage = tensor([.01 * (source_costs[chunk[i]['case_id']] - chunk[i]['makespan'])
-                                    for i in ids])[:, None]
+                advantage = self.actor_advantage(chunk, ids, states, source_costs)[:, None]
                 loss = -(torch.minimum(ratio * advantage, ratio.clamp(.8, 1.2) * advantage)
                          * expected).sum() / count
                 deferred.add(health, 'nonfinite', (~torch.isfinite(lp)).sum())
@@ -148,6 +156,36 @@ class H3FrozenEngine(SingleModelEngine):
                                  kl=sum(row['kl_sum'] for row in roles.values()) / max(decisions, 1))
         return result
 
+    def actor_advantage(self, chunk, ids, states, source_costs):
+        """The historical source-relative estimator; extensions override explicitly."""
+        return torch.as_tensor([.01 * (source_costs[chunk[i]['case_id']] - chunk[i]['makespan'])
+                                for i in ids], dtype=torch.float32, device=self.device)
+
+    def pass_metrics_from_minibatches(self, metrics, pass_index):
+        """Registered skip profile: derive the pass gate without re-replaying.
+
+        Every value comes from the applied minibatch pre-step records of the same
+        pass. They are measured before that minibatch's optimizer step, so the
+        record excludes the effect of the final step and says so explicitly.
+        """
+        rows = [row for row in metrics if row['ppo_pass'] == pass_index + 1]
+        if not rows:
+            raise PPOContractError('Derived pass metrics need an applied minibatch')
+        names = sorted({name for row in rows for name in row['pre_step']['roles']})
+        roles = {}
+        for name in names:
+            entries = [row['pre_step']['roles'][name] for row in rows if name in row['pre_step']['roles']]
+            roles[name] = dict(decisions=sum(e['decisions'] for e in entries),
+                               kl=max(e['kl'] for e in entries),
+                               clip_count=sum(e['clip_count'] for e in entries))
+        decisions = sum(row['pre_step']['decisions'] for row in rows)
+        clipped = sum(role['clip_count'] for role in roles.values())
+        return dict(decisions=decisions,
+                    kl=max(row['pre_step']['kl'] for row in rows),
+                    roles=roles, clip_fraction=clipped / max(decisions, 1),
+                    max_logp_error=None, source='minibatch_pre_step_derived',
+                    post_pass_replay='skipped', excludes_final_step=True)
+
     def update_logical(self, trajectories, source_costs, *, logical_id, shuffle_seed,
                        heartbeat=None, diagnostic=False, minibatch=None, microbatch=None, passes=None):
         batch = minibatch or self.config['optimizer_minibatch']
@@ -155,15 +193,26 @@ class H3FrozenEngine(SingleModelEngine):
         passes = passes or self.config['ppo_epochs']
         if not self.training or not self.normalization_sha256 or not self.commit_ready:
             raise PPOContractError('Update needs a normalized, committed training state')
-        if not diagnostic and (len(trajectories), batch, passes) != (384, 64, 2):
-            raise PPOContractError('Formal PPO budget changed')
+        if not diagnostic:
+            expected_batch = 64
+            if self.config.get('execution_profile') in (
+                    'single_parent_env384_mb128_v1', 'single_parent_env384_mb128_fresh_v1',
+                    'single_parent_env384_mb192_v1', 'single_parent_env384_mb192_nopost_v1'):
+                from onpolicy.utils.stage3_h3_continuation import validate_recipe
+                validate_recipe(self.config)
+                expected_batch = self.config['optimizer_minibatch']
+            if (len(trajectories), batch, passes) != (384, expected_batch, 2):
+                raise PPOContractError('Formal PPO budget changed')
+            if expected_batch > 64 and physical != expected_batch:
+                raise PPOContractError('Registered optimizer and physical microbatch must match')
         if physical > batch or batch % physical:
             raise PPOContractError('Physical chunks must partition an optimizer minibatch')
         identity, behavior_version = model_digest(self.policy.ac), self.policy_updates
         if (not trajectories or len({t['visit_id'] for t in trajectories}) != len(trajectories)
                 or any(not t['completed'] or t.get('cycle_terminated') or not t['states']
                        or t['behavior_deterministic'] or t['forced_replay']
-                       or t['history'] != HISTORY or t['decoder'] != 'AR_sample' or t['tau'] != .03
+                       or t['history'] != HISTORY or t['decoder'] != 'AR_sample'
+                       or t['tau'] != self.config['train_tau']
                        or t['policy_updates'] != behavior_version or t['logical_id'] != logical_id
                        or t['behavior_model_sha256'] != identity for t in trajectories)):
             raise PPOContractError('Expected every complete visit from the same fresh behavior policy')
@@ -171,7 +220,7 @@ class H3FrozenEngine(SingleModelEngine):
                or source_costs[t['case_id']] <= 0 for t in trajectories):
             raise PPOContractError('Missing H3 source cost')
         orders = optimizer_orders(len(trajectories), batch, passes, shuffle_seed)
-        self.policy.ac.tau = .03
+        self.policy.ac.tau = self.config['train_tau']
         self.commit_ready = False
         applied, completed_passes, stopped, metrics, pass_metrics = 0, 0, None, [], []
         with self.cache.group():
@@ -204,14 +253,21 @@ class H3FrozenEngine(SingleModelEngine):
                         parameters, self.config['gradient_clip'], error_if_nonfinite=True))
                     row['critic_gradient_norm'] = float(torch.nn.utils.clip_grad_norm_(
                         self.policy.ac.team_critic.parameters(), self.config['gradient_clip'], error_if_nonfinite=True))
+                    observer = getattr(self, 'update_observer', None)
+                    if observer:
+                        observer.before_step(self.policy.actor_optimizer)
                     self.policy.actor_optimizer.step()
                     self.policy.critic_optimizer.step()
+                    if observer:
+                        row['parameter_updates'] = observer.after_step(self.policy.actor_optimizer)
                     self.policy_updates += 1
                     applied += 1
                     row.update(actor_step_applied=True, policy_updates=self.policy_updates)
                     metrics.append(row)
                     self.cache.last_actor = None
-                post = self.replay_metrics(trajectories, microbatch=physical, heartbeat=heartbeat)
+                post = (self.pass_metrics_from_minibatches(metrics, pass_index)
+                        if self.config.get('post_pass_replay') == POST_PASS_REPLAY_SKIP
+                        else self.replay_metrics(trajectories, microbatch=physical, heartbeat=heartbeat))
                 pass_metrics.append(post)
                 if max([post['kl'], *[v['kl'] for v in post['roles'].values()]]) > self.config['hard_kl']:
                     raise PPOContractError('Hard KL after pass; partial collection is not a commit')
@@ -238,7 +294,7 @@ class H3FrozenEngine(SingleModelEngine):
             raise PPOContractError('Only a complete logical collection can be checkpointed for resume')
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        p = dict(protocol=PROTOCOL, source_sha256=SOURCE_SHA, manifest_sha256=manifest_sha256,
+        p = dict(protocol=self.config['protocol'], source_sha256=SOURCE_SHA, manifest_sha256=manifest_sha256,
                  initialization_sha256=self.initialization_sha256,
                  recipe_sha256=digest_json(self.config), history=HISTORY, planning=PLANNING,
                  model=self.policy.ac.state_dict(), actor_optim=self.policy.actor_optimizer.state_dict(),
@@ -248,7 +304,8 @@ class H3FrozenEngine(SingleModelEngine):
                  diagnostic_only=diagnostic, complete_logical_rollout=self.commit_ready,
                  rng_torch=torch.get_rng_state(), rng_numpy=np.random.get_state(),
                  rng_python=random.getstate(),
-                 rng_cuda=torch.cuda.get_rng_state(self.device) if self.device.type == 'cuda' else None)
+                 rng_cuda=torch.cuda.get_rng_state(self.device) if self.device.type == 'cuda' else None,
+                 train_tau=self.config['train_tau'])
         temporary = path.with_name(path.name + f'.{os.getpid()}.tmp')
         try:
             with temporary.open('xb') as f:
@@ -260,13 +317,14 @@ class H3FrozenEngine(SingleModelEngine):
 
     def resume(self, path, *, manifest_sha256, allow_diagnostic=False):
         p = torch.load(path, map_location='cpu', weights_only=False)
-        if (p.get('protocol') != PROTOCOL or p.get('manifest_sha256') != manifest_sha256
+        if (p.get('protocol') != self.config['protocol'] or p.get('manifest_sha256') != manifest_sha256
                 or p.get('source_sha256') != SOURCE_SHA or p.get('history') != HISTORY
                 or p.get('planning') != PLANNING or p.get('recipe_sha256') != digest_json(self.config)
                 or p.get('initialization_sha256') != self.initialization_sha256
                 or not p.get('complete_logical_rollout')
                 or (p.get('diagnostic_only') and not allow_diagnostic)
-                or p.get('physical_microbatch') not in self.config['physical_microbatch_candidates']):
+                or p.get('physical_microbatch') not in self.config['physical_microbatch_candidates']
+                or p.get('train_tau', .03) != self.config['train_tau']):
             raise PPOContractError('Resume identity/complete-collection contract mismatch')
         self.policy.ac.load_state_dict(p['model'], strict=True)
         self.policy.actor_optimizer.load_state_dict(p['actor_optim'])
@@ -283,6 +341,6 @@ class H3FrozenEngine(SingleModelEngine):
             torch.cuda.set_rng_state(p['rng_cuda'], self.device)
         self.commit_ready = True
         self.cache.last_actor = None
-        self.policy.ac.tau = .03
+        self.policy.ac.tau = self.config['train_tau']
         self.assert_frozen()
         return p['next_batch']
