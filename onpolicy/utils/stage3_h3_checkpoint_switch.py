@@ -7,7 +7,8 @@ import time
 
 from onpolicy.utils.stage3_h3_continuation import (
     MB128_PROFILE, MB128_FRESH_PROFILE, MB192_PROFILE, BATCH_RESIZE_PROFILES,
-    MB192_NOPOST_PROFILE, PROTOCOL_CHANGE_PROFILES, recipe, planned_new_steps, FIXED_EPOCHS_POLICY,
+    MB192_NOPOST_PROFILE, PROTOCOL_CHANGE_PROFILES, EPOCH_BUDGETS, recipe, planned_new_steps,
+    FIXED_EPOCHS_POLICY,
 )
 from onpolicy.utils.stage3_h3_frozen import bind, checked
 from onpolicy.utils.stage3_research import atomic_json, digest_file, digest_json, read_json
@@ -27,10 +28,10 @@ def verify_request(request):
     width = 128 if target == MB128_PROFILE else 192
     if any(request.get(k,width) != width for k in ('requested_minibatch','requested_microbatch')):
         raise ValueError('Requested batch dimensions disagree with the registered target')
-    origin = {MB128_PROFILE:'single_parent_env384_v1', MB192_PROFILE:MB128_FRESH_PROFILE,
-              MB192_NOPOST_PROFILE:MB192_PROFILE}[target]
+    origin = {MB128_PROFILE:('single_parent_env384_v1',), MB192_PROFILE:(MB128_FRESH_PROFILE,),
+              MB192_NOPOST_PROFILE:(MB192_PROFILE, MB192_NOPOST_PROFILE)}[target]
     if (old['execution_mode'] != 'single'
-            or old['recipe']['execution_profile'] != origin
+            or old['recipe']['execution_profile'] not in origin
             or old['resources'] != request['resources']
             or old['resources']['gpu'] != 0 or old['resources']['cpus'] != '0-31,64-95'):
         raise ValueError('Switch origin/resources differ from the authorized single flow')
@@ -38,6 +39,9 @@ def verify_request(request):
         raise ValueError('192-wide profiles must preserve the fixed eight-epoch policy')
     if type(request['after_epoch']) is not int or not 1 <= request['after_epoch'] < 8:
         raise ValueError('Invalid checkpoint boundary')
+    epochs = request.get('requested_epochs', old['recipe']['epochs'])
+    if epochs not in EPOCH_BUDGETS or epochs < old['recipe']['epochs']:
+        raise ValueError('Requested epoch budget is not a registered extension of the origin')
     for key in ('tests','plan'):
         checked(request[key])
     for name, expected in request['source_files'].items():
@@ -93,10 +97,11 @@ def prepare_at_boundary(request):
     target = request.get('target_profile', MB128_PROFILE)
     boundary = (request['after_epoch'] if target in BATCH_RESIZE_PROFILES
                 else old['recipe'].get('optimizer_resize_after_epoch'))
+    epochs = request.get('requested_epochs', old['recipe']['epochs'])
     r = recipe(parent['recipe'], old['resources'], 'C03', execution='single',
                single_profile=target,
                optimizer_resize_after_epoch=boundary,
-               stopping_policy=old['recipe'].get('stopping_policy'))
+               stopping_policy=old['recipe'].get('stopping_policy'), epochs=epochs)
     m = copy.deepcopy(old)
     for key in ('resume_origin','reuse_suite'):
         m.pop(key, None)
@@ -105,13 +110,17 @@ def prepare_at_boundary(request):
              passed=check_tests(Path(request['tests']['path']))['passed']),
              workspace_commit=request['workspace_commit'],created_unix=time.time(),
              reuse_suite=request['origin'],switch_request=bind(root/'switch_request.json'))
-    m['budget'].update(screen_ppo_steps=planned_new_steps(r,2),max_new_ppo_steps=planned_new_steps(r,8),
+    m['budget'].update(screen_ppo_steps=planned_new_steps(r,2),
+                       max_new_ppo_steps=planned_new_steps(r,r['epochs']),
                        physical_microbatch=r['microbatch'])
     width=r['microbatch'];old_width=old['recipe']['microbatch']
     change = (f'Optimizer minibatch {old_width} to {width}; keep two passes and 384 visits per epoch'
               if target in BATCH_RESIZE_PROFILES else
               f'Remove the two post-pass full replays at {width}/{width}; keep the pre-update '
               'full replay and gate each pass on its applied minibatch pre-step records')
+    if epochs != old['recipe']['epochs']:
+        change += (f'; extend the local budget from {old["recipe"]["epochs"]} to {epochs} epochs '
+                   f'with evaluation epochs {r["evaluation_epochs"]}')
     m['material_passport'].update(authorization=f'User requested {width}/{width} after the next complete checkpoint',
         verification_status='CPU_TESTED_GPU_CAPACITY_PENDING',
         algorithm_change=change)

@@ -23,9 +23,11 @@ def verify_recipe_change(before, after):
             raise ValueError('Batch resize permits only its registered origin at a completed epoch')
     elif after['execution_profile'] in PROTOCOL_CHANGE_PROFILES:
         allowed = {'execution_profile','post_pass_replay','epochs','evaluation_epochs'}
-        if (before['execution_profile'] != MB192_PROFILE
-                or 'post_pass_replay' not in changes or changes - allowed):
+        if (before['execution_profile'] not in (MB192_PROFILE, *PROTOCOL_CHANGE_PROFILES)
+                or changes - allowed):
             raise ValueError('Post-pass replay removal permits only its registered origin and field')
+        if before['execution_profile'] == MB192_PROFILE and 'post_pass_replay' not in changes:
+            raise ValueError('Leaving the post-pass replays on requires the registered field change')
         if after['epochs'] not in EPOCH_BUDGETS or (
                 after['epochs'] != before['epochs'] and (before['epochs'], after['epochs']) != (8, 10)):
             raise ValueError('Epoch extension permits only the registered +2 budget')

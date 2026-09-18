@@ -166,3 +166,38 @@ def test_epoch_extension_beyond_plus_two_is_rejected_by_the_switch_contract():
     after['evaluation_epochs'] = [1, 2, 4, 6, 8, 12]
     with pytest.raises(ValueError):
         verify_recipe_change(origin(), after)
+
+
+def test_same_profile_epoch_extension_is_allowed():
+    before, after = extended(epochs=8), extended(epochs=10)
+    changes = {k for k in before.keys() | after.keys() if before.get(k) != after.get(k)}
+    assert changes == {'epochs', 'evaluation_epochs'}
+    verify_recipe_change(before, after)
+
+
+def test_plain_wide_batch_profile_cannot_extend_the_budget():
+    before, after = origin(), origin()
+    after['epochs'] = 10
+    after['evaluation_epochs'] = [1, 2, 4, 6, 8, 10]
+    with pytest.raises(ValueError):
+        verify_recipe_change(before, after)
+
+
+def test_switch_request_extends_from_the_same_profile(tmp_path):
+    allocation = resources(0, 'GPU-test', '0-31,64-95')
+    old = extended(epochs=8)
+    root = tmp_path/'origin'; root.mkdir()
+    atomic_json(root/'manifest.json', dict(root=str(root), execution_mode='single',
+                                          recipe=old, resources=allocation))
+    for name in ('tests.txt', 'plan.md'):
+        (root/name).write_text(name)
+    request = dict(origin=bind(root/'manifest.json'), target_profile=MB192_NOPOST_PROFILE,
+                   after_epoch=4, requested_minibatch=192, requested_microbatch=192,
+                   requested_epochs=10, resources=allocation, tests=bind(root/'tests.txt'),
+                   plan=bind(root/'plan.md'), source_root=str(root), source_files={})
+    request['request_sha256'] = request_identity(request)
+    assert verify_request(request)['recipe'] == old
+    request['requested_epochs'] = 12
+    request['request_sha256'] = request_identity(request)
+    with pytest.raises(ValueError, match='epoch budget'):
+        verify_request(request)
