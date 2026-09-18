@@ -221,6 +221,9 @@ class BSharedB0Engine:
                 active[~live[group]] = 0
                 roles = np.stack([infos[i]['agent_types'] for i in group]).reshape(len(group), agents)
                 graph = [obs[i] for i in group]
+                observer = getattr(self.policy.ac, 'stage3_decision_observer', None)
+                if observer is not None:
+                    observer.begin_batch([cases[i]['distribution'] for i in group])
                 if native:
                     from onpolicy.utils.stage2_resource_rl import forward
                     out, _ = forward(self.policy, graph, hidden[group], active, hist, roles,

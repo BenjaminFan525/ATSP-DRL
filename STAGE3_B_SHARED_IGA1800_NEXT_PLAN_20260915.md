@@ -219,3 +219,11 @@ paired bootstrap 固定 20000 次、seed=2026091505、按 profile 分层，在�
 每阶段输出独立的 `manifest.json`、输入/代码哈希、`gate_result.json`，训练阶段另有带实际更新时间与版本的 updates、不可变 checkpoints、行为回放和恢复收据；评测输出完整逐案例 CSV、配对统计及 exposure ledger。监控应显示当前阶段、已完成访问、已应用 Adam 步、剩余完整周期、GPU/CPU/RAM 峰值及阶段 ETA。故障不能通过仅修改 status 文件标记为恢复。
 
 本次已交付：本计划；[证据与预算 JSON](result/stage3_analysis/stage3_next_plan_20260915/evidence.json)；[Train240 精确名单](result/stage3_analysis/stage3_next_plan_20260915/train240_cases.csv)；[Fit24/Probe24 清单](result/stage3_analysis/stage3_next_plan_20260915/pilot_manifest.json)，其 SHA256 为 `6af5f82e52242ff0ff1d34d88cf514dcbecc1ce6363230efeb4b6b5726b6bef0`。
+
+> 2026-09-18 更新：本文引用的 Tune60 IGA 运行目录
+> `result/hkbz_train_logs/stage3_matched_iga_h3f4_tune60_20260831_r1`
+> 已按用户要求删除，删除清单与冻结摘要见
+> `result/stage3_analysis/iga_tune60_deletion_20260918/receipt.json`。
+> 之后的所有 RL/IGA 比较只使用 Validation120 参考
+> `result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1`，
+> 规则见 `STAGE3_IGA_FROZEN_20260918.md`。本文其余内容保持原样，作为当时的记录。

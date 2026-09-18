@@ -15,6 +15,10 @@ from onpolicy.utils.stage3_research import (
 
 PROTOCOL = 'stage3_b_shared_h3_frozen_iga_v1'
 COUNTS = {'iid': 192, 'ood_stress': 43, 'ood_scale': 5}
+# Registered alternative to the two post-pass full replays: the pass gate is
+# derived from the applied minibatch pre-step records instead of re-replaying
+# all trajectories. It never affects the gradient path or the collection.
+POST_PASS_REPLAY_SKIP = 'skip_minibatch_derived_v1'
 PLANNING = {
     'device_lookahead_dispatch': True,
     'device_lookahead_safety_margin': 60.0,
