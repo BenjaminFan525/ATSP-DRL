@@ -37,11 +37,11 @@ def verify_request(request):
         raise ValueError('Switch origin/resources differ from the authorized single flow')
     if target in (MB192_PROFILE, MB192_NOPOST_PROFILE) and old['recipe'].get('stopping_policy') != FIXED_EPOCHS_POLICY:
         raise ValueError('192-wide profiles must preserve the fixed eight-epoch policy')
-    if type(request['after_epoch']) is not int or not 1 <= request['after_epoch'] < 8:
-        raise ValueError('Invalid checkpoint boundary')
     epochs = request.get('requested_epochs', old['recipe']['epochs'])
     if epochs not in EPOCH_BUDGETS or epochs < old['recipe']['epochs']:
         raise ValueError('Requested epoch budget is not a registered extension of the origin')
+    if type(request['after_epoch']) is not int or not 1 <= request['after_epoch'] < epochs:
+        raise ValueError('Invalid checkpoint boundary')
     for key in ('tests','plan'):
         checked(request[key])
     for name, expected in request['source_files'].items():
@@ -118,6 +118,9 @@ def prepare_at_boundary(request):
               if target in BATCH_RESIZE_PROFILES else
               f'Remove the two post-pass full replays at {width}/{width}; keep the pre-update '
               'full replay and gate each pass on its applied minibatch pre-step records')
+    if old['recipe']['execution_profile'] == target:
+        change = (f'Source-only recovery continuation at {width}/{width}; the frozen execution '
+                  'profile and epoch budget are unchanged')
     if epochs != old['recipe']['epochs']:
         change += (f'; extend the local budget from {old["recipe"]["epochs"]} to {epochs} epochs '
                    f'with evaluation epochs {r["evaluation_epochs"]}')
