@@ -1,0 +1,33 @@
+{
+  "status": "ready_to_resume",
+  "seed": 1,
+  "source_checkpoint": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/migration/seed1/captured/checkpoint_BCEpoch1.pt",
+  "source_sha256": "2aac72961aeae0475d8ea7e7a6f3a34239ec36a426b5765a0eec58628b5c79b8",
+  "started_unix_time": 1789898903.7250853,
+  "changed_contract_fields": [
+    "eval_dataset_dir",
+    "max_eval_cases"
+  ],
+  "evaluation": "bc_epoch_1",
+  "finished_unix_time": 1789917311.8571699,
+  "target_checkpoint": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/migration/seed1/models/checkpoint_BCEpoch1.pt",
+  "target_sha256": "1544704c4a675b117c30d1bf9b2918434d89d4be5529fd53cf127b659a3c527e",
+  "model_optimizer_rng_bitwise_equal": true,
+  "production_resume_loader_passed": true,
+  "evaluation_cases": 120,
+  "epoch1_gate": {
+    "passed": true,
+    "reasons": [],
+    "pre_raw_makespan": 8974.741666666669,
+    "post_raw_makespan": 8475.111111111111,
+    "raw_delta_seconds": -499.6305555555573,
+    "pre_ood_stress_makespan": 10063.611111111111,
+    "post_ood_stress_makespan": 9390.462962962962,
+    "ood_stress_delta_seconds": -673.1481481481496,
+    "completion_rate": 1.0,
+    "cycle_count": 0,
+    "timeout_count": 0,
+    "max_raw_regression_seconds": 0,
+    "max_stress_regression_seconds": 30
+  }
+}

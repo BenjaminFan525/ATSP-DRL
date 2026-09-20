@@ -1,0 +1,15 @@
+{
+  "status": "applied",
+  "applied_unix_time": 1789920650.334761,
+  "authorization": "给validator更多的CPU、GPU预算，加速实验",
+  "evaluator_pid": 1359230,
+  "resource_manifest": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/resource_boost_20260921_0005/budget_manifest.json",
+  "cpu_live_status": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/resource_boost_20260921_0005/cpu_status.json",
+  "gpu_applied_status": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/resource_boost_20260921_0005/gpu_status.json",
+  "notes": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/resource_boost_20260921_0005/README.md",
+  "effective_cpu_set": "6-29,70-93",
+  "effective_gpu_allocator_fraction": 0.4,
+  "evaluation_workers": 12,
+  "gpu_index": 0,
+  "restart": false
+}

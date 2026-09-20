@@ -1,121 +1,48 @@
-# HKBZ Scheduling Environment
+# HKBZ 冻结技术路线
 
-## Stage2 冻结版本（2026-09-12）
+当前工作空间只维护这一条技术链：**Stage1 P5 → Stage2 冻结 B0 → 全共享 H3 R0 E8 → C03 续训 R9 E10**。
+Stage3 使用 H3/F4/soft、canonical Hungarian 解码；RL/IGA 比较只读取冻结的 Validation120 参考。
 
-本分支将 Stage2 冻结为 B0 + Hungarian、H2/F4，供下一阶段显式加载。
-使用与验证入口见 [STAGE2_FROZEN.md](STAGE2_FROZEN.md)。
-归档保留原始 B0/Stage1/R1 checkpoint 与历史结果，Stage2 新训练和自动实验入口禁用。
-本版本没有宣称已达到 IGA180/IGA1800 目标，也不会自动启动 Stage3。
+最终选中的是 R9 E10。技术路线锁定不等于研究目标全部通过：当前只有一个 Stage3 训练 seed，独立确认集未开启，IGA 尾部风险目标尚未全部达到。
 
-Stage3 保留服务器工作区的持续研究实现，包括全共享/全分离策略、执行缓存、
-全量训练与共享异步验证。当前实验的 C0 和冻结包 B0 是不同 checkpoint；合并
-不会自动切换已有实验的源码快照、数据或初始化源。边界见
-[Stage2/Stage3 合并说明](docs/STAGE2_STAGE3_INTEGRATION.md)。
+## 入口与证据
 
-下文是原主分支的通用说明。其“权重不纳入 Git”不适用于本分支经过审计的
-`artifacts/stage2_frozen/20260912/` 交接包；新研究仍需独立数据配置和实验授权。
+| 内容 | 入口 |
+| --- | --- |
+| 完整路线、最终 checkpoint、运行参数与限制 | [冻结路线说明](docs/FROZEN_ROUTE.md) |
+| 机器可读文件清单与 SHA256 | [冻结路线 manifest](artifacts/frozen_route/20260920/manifest.json) |
+| Stage1 三个 P5 来源 | [STAGE1_FINAL.md](STAGE1_FINAL.md) |
+| Stage2 B0 交接与冻结约束 | [STAGE2_FROZEN.md](STAGE2_FROZEN.md) |
+| 新增 Stage2 H3/F4 三种子 checkpoint 与 Validation120 记录 | [2026-09-21 保存包](artifacts/stage2_checkpoints/20260921_h3f4_validation120/README.md) |
+| Stage3 唯一 IGA 比较基线 | [IGA 冻结说明](STAGE3_IGA_FROZEN_20260918.md) |
+| 清理范围、保留原因与恢复位置 | [工作空间整理记录](docs/WORKSPACE_RETIREMENT.md) |
+| 数据准备 | [数据集说明](docs/DATASETS.md) |
 
-面向飞机地面保障协同调度的研究代码。当前主线使用异构图神经网络编码作业、机位和设备状态，以 GNN-MAPPO 学习联合的“作业—机位”决策，并提供 IGA、NSGA-II、优先派工规则和 Gurobi 基线。
+## 只读验证
 
-本分支由 HKBZ 快照 `cbaef8ed78f15d0516dee900e054b7fac2e671ab` 整理而来，仅保留 HKBZ 研究主线。数据集、模型权重和训练日志不纳入 Git，需单独生成或分发。
-
-## 代码结构
-
-```text
-onpolicy/
-├── algorithms/gnn_mappo/       # MAPPO policy and trainer
-├── algorithms/utils/           # heterogeneous GNN, GRU, actor and critic
-├── config/                     # model/environment defaults and one example case
-├── envs/HKBZ/
-│   ├── core/                   # domain entities
-│   ├── environment.py          # Gymnasium scheduling environment
-│   ├── data_generator.py       # reproducible synthetic case generator
-│   └── experiment/             # DRL and baseline evaluation, plotting
-├── runner/shared/hkbz_runner.py
-└── scripts/train/train_hkbz.py # training entry point
-```
-
-## 安装
-
-建议使用 Python 3.10 或 3.11，并根据本机 CUDA 版本先安装匹配的 PyTorch 与 PyTorch Geometric，再安装其余依赖：
+在仓库根目录执行：
 
 ```bash
-conda create -n hkbz python=3.11 -y
-conda activate hkbz
-
-# 按 PyTorch/PyG 官方说明安装与 CUDA 匹配的版本后：
-pip install -r requirements.txt
+python scripts/verify_frozen_route.py
+python scripts/export_stage2_frozen.py --verify-only
+python scripts/verify_stage2_checkpoints.py
+python -m pytest -q tests
 ```
 
-Gurobi 精确基线是可选项，需要有效的 Gurobi 安装与许可证：
+第一条核对最终路线的 checkpoint、manifest、评测参考及冻结源码哈希；第二条核对原 Stage2 交接包。
+第三条核对新增 Stage2 保存包的文件哈希、源码快照和原始选模记录，可在新 checkout 中执行。
+这些命令不启动训练或 IGA，不把归档结果重新解释为独立复现。
 
-```bash
-pip install -r requirements-optional.txt
-```
+## 保留的实现
 
-## 准备数据
+- `onpolicy/envs/HKBZ/`：调度环境、数据生成、必要的评测与回归。
+- `onpolicy/algorithms/`、`onpolicy/runner/shared/`、`onpolicy/utils/`：冻结路线实际依赖的策略、PPO、恢复和解码实现。
+- `onpolicy/scripts/train/train_hkbz.py`：共享模型构建和训练入口；Stage2 冻结门禁继续生效。
+- `onpolicy/scripts/train/run_stage3_h3_frozen.py`、`run_stage3_h3_continuation.py`：原注册协议实现及恢复依赖。
+- `artifacts/stage2_frozen/20260912/`：保持原始字节的可移植 B0/Stage1/R1 交接包。
+- `artifacts/stage2_checkpoints/20260921_h3f4_validation120/`：新增 Stage2 三种子的 Best、Last、E1/E2 原始文件及证据，不替换原 B0。
+- `result/`：最终结果、必要的来源链、冻结 IGA 和不可变源码快照；大文件仍不纳入 Git。
 
-每个算例目录包含 `job.json`、`fixed_resources.json`、`mobile_resources.json`、`sites.json` 和 `flights.json`。例如：
+历史启动协议中依赖已删除 Tune60 IGA 的新建实验流程不能直接重开；具体边界见冻结路线说明。旧计划中出现的其他实验分支不再是活动开发路线。
 
-```bash
-python -m onpolicy.envs.HKBZ.data_generator build \
-  --output onpolicy/envs/HKBZ/dataset/new_benchmark \
-  --train-cases 600 --validation-cases 120 --test-cases 60 --seed 42
-```
-
-随后检查 [环境配置](onpolicy/config/env.yaml) 中的数据集路径。相对路径统一以仓库根目录为基准。数据格式和划分建议见 [docs/DATASETS.md](docs/DATASETS.md)。
-
-## 训练
-
-本分支的 Stage2 已冻结；以下是旧版通用示例，不用于启动本轮 Stage2 或正式 Stage3。
-Stage3 显式初始化接口及其配置边界见 [交接说明](STAGE2_FROZEN.md)。
-
-下面的线程数必须分别整除训练集和测试集的算例数：
-
-```bash
-python onpolicy/scripts/train/train_hkbz.py \
-  --experiment_name hkbz-large \
-  --n_rollout_threads 20 \
-  --n_eval_rollout_threads 10 \
-  --num_episodes 200 \
-  --use_eval
-```
-
-默认在 `onpolicy/scripts/results/` 下写入 TensorBoard 日志和 checkpoint；该目录已被 Git 忽略。添加 `--use_wandb` 可改用 Weights & Biases。
-
-## 评估
-
-```bash
-# DRL greedy policy
-python onpolicy/envs/HKBZ/experiment/valid_model_greedy.py \
-  --checkpoint /path/to/checkpoint.pt \
-  --dataset-dir onpolicy/envs/HKBZ/dataset/test_large
-
-# Stochastic parallel rollouts
-python onpolicy/envs/HKBZ/experiment/valid_model_parallel.py \
-  --checkpoint /path/to/checkpoint.pt \
-  --dataset-dir onpolicy/envs/HKBZ/dataset/test_large \
-  --samples 50 --device cuda:0
-
-# Baselines
-python onpolicy/envs/HKBZ/experiment/valid_pdrs.py --dataset-dir DATASET
-python onpolicy/envs/HKBZ/experiment/valid_iga.py --dataset-dir DATASET --time-limit 180
-python onpolicy/envs/HKBZ/experiment/valid_nsga.py --dataset-dir DATASET
-```
-
-评估脚本、内置参考值与绘图产物的边界说明见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)。
-
-## 复现边界
-
-- 仓库不包含私有/大体积数据集、teacher 标签、checkpoint 和运行日志。
-- `experiment/results/` 与 `experiment/figures/` 是该提交已有的示例论文产物，不等同于对任意新数据集的基准保证。
-- 当前评估脚本中的 `KNOWN_OPTIMAL_CMAX` 只对应历史 `test_large` 的 20 个同名算例；更换数据集时不要直接解释其中的 Gap。
-- 随机性来自环境、策略采样和进化算法；正式报告应固定种子并进行多次独立运行。
-
-## 来源与引用
-
-仓库历史起源于 MASA-QMIX 研究代码。若使用其思想或历史实现，请引用：
-
-> Wang, X., Zhang, L., Lin, T., Zhao, C., Wang, K., & Chen, Z. (2022). Solving job scheduling problems in a resource preemption environment with multi-agent reinforcement learning. *Robotics and Computer-Integrated Manufacturing, 77*, 102324.
-
-当前仓库尚未声明开源许可证。公开发布前必须确认代码、数据、模型和图表的权利边界并选择许可证，详见 [发布检查清单](docs/RELEASE_CHECKLIST.md)。
+原始依赖安装仍使用 `requirements.txt`，开发检查使用 `requirements-dev.txt`。模型加载与 PyTorch 回归需要原有兼容的训练环境；纯文件哈希校验仅依赖 Python 标准库。
