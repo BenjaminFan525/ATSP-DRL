@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "started_unix_time": 1789880669.4627645,
+  "completed_jobs": 0,
+  "total_jobs": 15,
+  "jobs": {
+    "P5_s1": {
+      "status": "running",
+      "started_unix_time": 1789880684.4653223
+    }
+  },
+  "validator_pid": 1183883,
+  "updated_unix_time": 1789881314.5094967,
+  "current_job": "P5_s1",
+  "current_job_elapsed_seconds": 630.0441756248474,
+  "ended_unix_time": 1789881324.5744336,
+  "error": "Traceback (most recent call last):\n  File \"/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r1/code/onpolicy/scripts/train/run_stage1_validation120.py\", line 195, in run\n    audits[job[\"id\"]] = audit_result(job, manifest)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r1/code/onpolicy/scripts/train/run_stage1_validation120.py\", line 87, in audit_result\n    raise ValueError(f\"Overlap validation drift: {job['id']} has {len(differences)}/60 changed makespans; inspect audit before continuing\")\nValueError: Overlap validation drift: P5_s1 has 60/60 changed makespans; inspect audit before continuing\n"
+}

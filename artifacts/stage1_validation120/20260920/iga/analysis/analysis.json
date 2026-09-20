@@ -1,0 +1,1701 @@
+{
+  "created_at": "2026-09-20T12:35:42.926874+08:00",
+  "verification_status": "ANALYZED",
+  "artifact_verified_count": 240,
+  "search_rerun_for_analysis": false,
+  "completed_at": "2026-09-20T11:12:19.922668+08:00",
+  "elapsed_seconds": 1846.5727853775024,
+  "validation120": {
+    "iga180": {
+      "mean": 9324.183333333332,
+      "median": 9017.5,
+      "p95": 11816.749999999998,
+      "worst": 15217.0,
+      "worst10_mean": 12539.0,
+      "composite": 9324.183333333334,
+      "groups": {
+        "iid": 8839.883333333333,
+        "ood_stress": 10153.388888888889,
+        "ood_scale": 6704.333333333333
+      }
+    },
+    "iga1800": {
+      "mean": 9016.0,
+      "median": 8741.0,
+      "p95": 11639.4,
+      "worst": 14946.0,
+      "worst10_mean": 12091.166666666666,
+      "composite": 9016.0,
+      "groups": {
+        "iid": 8557.816666666668,
+        "ood_stress": 9807.851851851852,
+        "ood_scale": 6471.166666666667
+      }
+    }
+  },
+  "aligned60_historical": {
+    "iga180": {
+      "mean": 9383.416666666666,
+      "median": 9010.5,
+      "p95": 11605.849999999999,
+      "worst": 14572.0,
+      "worst10_mean": 12385.0,
+      "composite": 9368.475862068966,
+      "groups": {
+        "iid": 9647.275862068966,
+        "ood_stress": 9221.862068965518,
+        "ood_scale": 7900.0
+      }
+    },
+    "iga1800": {
+      "mean": 9038.5,
+      "median": 8553.5,
+      "p95": 11094.099999999999,
+      "worst": 14392.0,
+      "worst10_mean": 11942.333333333334,
+      "composite": 9024.159482758621,
+      "groups": {
+        "iid": 9277.793103448275,
+        "ood_stress": 8894.862068965518,
+        "ood_scale": 7651.5
+      }
+    }
+  },
+  "aligned60_actual": {
+    "iga180": {
+      "mean": 9383.416666666666,
+      "median": 9010.5,
+      "p95": 11605.849999999999,
+      "worst": 14572.0,
+      "worst10_mean": 12385.0,
+      "composite": 9383.416666666666,
+      "groups": {
+        "iid": 8836.233333333334,
+        "ood_stress": 10268.185185185184,
+        "ood_scale": 6892.333333333333
+      }
+    },
+    "iga1800": {
+      "mean": 9038.5,
+      "median": 8553.5,
+      "p95": 11094.099999999999,
+      "worst": 14392.0,
+      "worst10_mean": 11942.333333333334,
+      "composite": 9038.499999999998,
+      "groups": {
+        "iid": 8487.433333333332,
+        "ood_stress": 9908.592592592593,
+        "ood_scale": 6718.333333333333
+      }
+    }
+  },
+  "nested120": {
+    "a_wins": 111,
+    "a_losses": 0,
+    "ties": 9,
+    "mean_delta": -308.18333333333334,
+    "composite_delta": -308.1833333333343,
+    "paired_case_bootstrap95": [
+      -346.5420833333333,
+      -270.5829166666667
+    ],
+    "median_delta": -288.0
+  },
+  "nested60": {
+    "a_wins": 55,
+    "a_losses": 0,
+    "ties": 5,
+    "mean_delta": -344.9166666666667,
+    "composite_delta": -344.3163793103449,
+    "paired_case_bootstrap95": [
+      -405.78954741379306,
+      -285.5881681034485
+    ],
+    "median_delta": -303.0
+  },
+  "case_relative_reduction_mean_pct": 3.24724096149699,
+  "search": {
+    "iga180": {
+      "generation_counts": {
+        "0": 118,
+        "1": 2
+      },
+      "new_candidate_total": 1065,
+      "new_candidate_mean": 8.875,
+      "new_candidate_min": 6,
+      "new_candidate_max": 22,
+      "all_evaluated_candidates_completed": true,
+      "search_wall_min": 180.00084285601042,
+      "search_wall_max": 180.21572771301726,
+      "search_wall_mean": 180.04128096161537
+    },
+    "iga1800": {
+      "generation_counts": {
+        "3": 76,
+        "6": 4,
+        "5": 9,
+        "4": 22,
+        "8": 4,
+        "7": 5
+      },
+      "new_candidate_total": 9938,
+      "new_candidate_mean": 82.81666666666666,
+      "new_candidate_min": 59,
+      "new_candidate_max": 172,
+      "all_evaluated_candidates_completed": true,
+      "search_wall_min": 1620.000626028981,
+      "search_wall_max": 1620.3348298380151,
+      "search_wall_mean": 1620.0668130238323
+    }
+  },
+  "cumulative_candidate_mean": 91.69166666666666,
+  "last_generation_record_still_improved_cases": 25,
+  "learning": {
+    "P5": {
+      "seeds": [
+        {
+          "seed": 1,
+          "epoch": 8,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_8.json",
+          "historical": {
+            "mean": 9223.85,
+            "median": 8954.5,
+            "p95": 11339.199999999999,
+            "worst": 14751.0,
+            "worst10_mean": 12227.5,
+            "composite": 9214.231034482758,
+            "groups": {
+              "iid": 9398.206896551725,
+              "ood_stress": 9116.172413793103,
+              "ood_scale": 8257.0
+            }
+          },
+          "actual": {
+            "mean": 9223.85,
+            "median": 8954.5,
+            "p95": 11339.199999999999,
+            "worst": 14751.0,
+            "worst10_mean": 12227.5,
+            "composite": 9223.85,
+            "groups": {
+              "iid": 8578.3,
+              "ood_stress": 10178.851851851852,
+              "ood_scale": 7084.333333333333
+            }
+          }
+        },
+        {
+          "seed": 2,
+          "epoch": 7,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_7.json",
+          "historical": {
+            "mean": 9231.883333333333,
+            "median": 8929.5,
+            "p95": 11150.799999999997,
+            "worst": 14842.0,
+            "worst10_mean": 12145.333333333334,
+            "composite": 9223.376724137932,
+            "groups": {
+              "iid": 9416.551724137931,
+              "ood_stress": 9111.724137931034,
+              "ood_scale": 8296.5
+            }
+          },
+          "actual": {
+            "mean": 9231.883333333333,
+            "median": 8929.5,
+            "p95": 11150.799999999997,
+            "worst": 14842.0,
+            "worst10_mean": 12145.333333333334,
+            "composite": 9231.883333333335,
+            "groups": {
+              "iid": 8710.5,
+              "ood_stress": 10072.037037037036,
+              "ood_scale": 6884.333333333333
+            }
+          }
+        },
+        {
+          "seed": 3,
+          "epoch": 8,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_8.json",
+          "historical": {
+            "mean": 9134.616666666667,
+            "median": 9058.0,
+            "p95": 11645.4,
+            "worst": 15065.0,
+            "worst10_mean": 12232.666666666666,
+            "composite": 9116.529310344828,
+            "groups": {
+              "iid": 9452.068965517241,
+              "ood_stress": 8940.655172413793,
+              "ood_scale": 7344.0
+            }
+          },
+          "actual": {
+            "mean": 9134.616666666667,
+            "median": 9058.0,
+            "p95": 11645.4,
+            "worst": 15065.0,
+            "worst10_mean": 12232.666666666666,
+            "composite": 9134.616666666667,
+            "groups": {
+              "iid": 8600.2,
+              "ood_stress": 9992.555555555555,
+              "ood_scale": 6757.333333333333
+            }
+          }
+        }
+      ],
+      "historical_composite_mean": 9184.71235632184,
+      "historical_composite_sd": 59.225051530958225,
+      "actual_composite_mean": 9196.783333333335,
+      "raw_mean": 9196.783333333333,
+      "p95_mean_across_seeds": 11378.466666666665,
+      "worst10_mean_across_seeds": 12201.833333333334,
+      "actual_group_means": {
+        "iid": 8629.666666666666,
+        "ood_stress": 10081.148148148148,
+        "ood_scale": 6908.666666666667
+      },
+      "iga180_vs_seed_mean": {
+        "a_wins": 17,
+        "a_losses": 43,
+        "ties": 0,
+        "mean_delta": 186.6333333333334,
+        "composite_delta": 183.76350574712706,
+        "paired_case_bootstrap95": [
+          86.542320402299,
+          282.25767241379316
+        ],
+        "median_delta": 136.16666666666697
+      },
+      "iga1800_vs_seed_mean": {
+        "a_wins": 46,
+        "a_losses": 14,
+        "ties": 0,
+        "mean_delta": -158.28333333333325,
+        "composite_delta": -160.55287356321787,
+        "paired_case_bootstrap95": [
+          -219.71624999999986,
+          -100.76771551724121
+        ],
+        "median_delta": -150.16666666666697
+      },
+      "iga1800_vs_seed_mean_actual_labels": {
+        "a_wins": 46,
+        "a_losses": 14,
+        "ties": 0,
+        "mean_delta": -158.28333333333325,
+        "composite_delta": -158.28333333333467,
+        "paired_case_bootstrap95": [
+          -217.51124999999993,
+          -98.97180555555548
+        ],
+        "median_delta": -150.16666666666697
+      },
+      "iga1800_vs_each_seed": [
+        {
+          "a_wins": 40,
+          "a_losses": 20,
+          "ties": 0,
+          "mean_delta": -185.35,
+          "composite_delta": -190.07155172413695,
+          "paired_case_bootstrap95": [
+            -285.8533405172414,
+            -96.89875000000004
+          ],
+          "median_delta": -139.5
+        },
+        {
+          "a_wins": 43,
+          "a_losses": 17,
+          "ties": 0,
+          "mean_delta": -193.38333333333333,
+          "composite_delta": -199.2172413793105,
+          "paired_case_bootstrap95": [
+            -279.33818965517236,
+            -117.95288793103454
+          ],
+          "median_delta": -204.5
+        },
+        {
+          "a_wins": 33,
+          "a_losses": 27,
+          "ties": 0,
+          "mean_delta": -96.11666666666666,
+          "composite_delta": -92.36982758620616,
+          "paired_case_bootstrap95": [
+            -176.33814655172412,
+            -6.151271551724176
+          ],
+          "median_delta": -28.5
+        }
+      ]
+    },
+    "multi_ppo": {
+      "seeds": [
+        {
+          "seed": 1,
+          "epoch": 7,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_7.json",
+          "historical": {
+            "mean": 9551.566666666668,
+            "median": 9324.5,
+            "p95": 12385.8,
+            "worst": 13761.0,
+            "worst10_mean": 12708.166666666666,
+            "composite": 9539.870689655174,
+            "groups": {
+              "iid": 9826.896551724138,
+              "ood_stress": 9368.827586206897,
+              "ood_scale": 8209.0
+            }
+          },
+          "actual": {
+            "mean": 9551.566666666668,
+            "median": 9324.5,
+            "p95": 12385.8,
+            "worst": 13761.0,
+            "worst10_mean": 12708.166666666666,
+            "composite": 9551.566666666668,
+            "groups": {
+              "iid": 8999.7,
+              "ood_stress": 10455.333333333334,
+              "ood_scale": 6936.333333333333
+            }
+          }
+        },
+        {
+          "seed": 2,
+          "epoch": 1,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_1.json",
+          "historical": {
+            "mean": 9764.6,
+            "median": 9491.0,
+            "p95": 13067.949999999997,
+            "worst": 14856.0,
+            "worst10_mean": 13488.5,
+            "composite": 9766.54051724138,
+            "groups": {
+              "iid": 10138.758620689656,
+              "ood_stress": 9451.413793103447,
+              "ood_scale": 8880.5
+            }
+          },
+          "actual": {
+            "mean": 9764.6,
+            "median": 9491.0,
+            "p95": 13067.949999999997,
+            "worst": 14856.0,
+            "worst10_mean": 13488.5,
+            "composite": 9764.6,
+            "groups": {
+              "iid": 9149.233333333334,
+              "ood_stress": 10750.333333333334,
+              "ood_scale": 7046.666666666667
+            }
+          }
+        },
+        {
+          "seed": 3,
+          "epoch": 7,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_7.json",
+          "historical": {
+            "mean": 9842.716666666667,
+            "median": 9291.0,
+            "p95": 12994.749999999998,
+            "worst": 15827.0,
+            "worst10_mean": 13812.0,
+            "composite": 9836.668103448275,
+            "groups": {
+              "iid": 10034.758620689656,
+              "ood_stress": 9707.586206896553,
+              "ood_scale": 9017.5
+            }
+          },
+          "actual": {
+            "mean": 9842.716666666667,
+            "median": 9291.0,
+            "p95": 12994.749999999998,
+            "worst": 15827.0,
+            "worst10_mean": 13812.0,
+            "composite": 9842.716666666667,
+            "groups": {
+              "iid": 9242.166666666666,
+              "ood_stress": 10736.888888888889,
+              "ood_scale": 7800.666666666667
+            }
+          }
+        }
+      ],
+      "historical_composite_mean": 9714.359770114943,
+      "historical_composite_sd": 155.126719125279,
+      "actual_composite_mean": 9719.627777777778,
+      "raw_mean": 9719.627777777778,
+      "p95_mean_across_seeds": 12816.166666666664,
+      "worst10_mean_across_seeds": 13336.22222222222,
+      "actual_group_means": {
+        "iid": 9130.366666666667,
+        "ood_stress": 10647.518518518518,
+        "ood_scale": 7261.222222222223
+      },
+      "iga180_vs_seed_mean": {
+        "a_wins": 40,
+        "a_losses": 20,
+        "ties": 0,
+        "mean_delta": -336.2111111111111,
+        "composite_delta": -345.88390804597657,
+        "paired_case_bootstrap95": [
+          -551.3243247126438,
+          -155.2246264367817
+        ],
+        "median_delta": -155.33333333333303
+      },
+      "iga1800_vs_seed_mean": {
+        "a_wins": 54,
+        "a_losses": 6,
+        "ties": 0,
+        "mean_delta": -681.1277777777779,
+        "composite_delta": -690.2002873563215,
+        "paired_case_bootstrap95": [
+          -900.0122557471267,
+          -499.0963649425293
+        ],
+        "median_delta": -502.5
+      },
+      "iga1800_vs_seed_mean_actual_labels": {
+        "a_wins": 54,
+        "a_losses": 6,
+        "ties": 0,
+        "mean_delta": -681.1277777777779,
+        "composite_delta": -681.1277777777777,
+        "paired_case_bootstrap95": [
+          -884.7948611111111,
+          -497.29986111111106
+        ],
+        "median_delta": -502.5
+      },
+      "iga1800_vs_each_seed": [
+        {
+          "a_wins": 47,
+          "a_losses": 12,
+          "ties": 1,
+          "mean_delta": -513.0666666666667,
+          "composite_delta": -515.7112068965525,
+          "paired_case_bootstrap95": [
+            -697.6871551724138,
+            -343.3918103448277
+          ],
+          "median_delta": -448.0
+        },
+        {
+          "a_wins": 49,
+          "a_losses": 11,
+          "ties": 0,
+          "mean_delta": -726.1,
+          "composite_delta": -742.381034482758,
+          "paired_case_bootstrap95": [
+            -983.743620689655,
+            -519.3198706896552
+          ],
+          "median_delta": -487.0
+        },
+        {
+          "a_wins": 50,
+          "a_losses": 10,
+          "ties": 0,
+          "mean_delta": -804.2166666666667,
+          "composite_delta": -812.508620689654,
+          "paired_case_bootstrap95": [
+            -1082.054870689655,
+            -572.9080603448277
+          ],
+          "median_delta": -505.5
+        }
+      ]
+    },
+    "fjsp_drl": {
+      "seeds": [
+        {
+          "seed": 1,
+          "epoch": 6,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_6.json",
+          "historical": {
+            "mean": 9865.2,
+            "median": 9570.0,
+            "p95": 12914.849999999993,
+            "worst": 16370.0,
+            "worst10_mean": 13960.0,
+            "composite": 9839.193965517241,
+            "groups": {
+              "iid": 10040.241379310344,
+              "ood_stress": 9816.551724137931,
+              "ood_scale": 8032.5
+            }
+          },
+          "actual": {
+            "mean": 9865.2,
+            "median": 9570.0,
+            "p95": 12914.849999999993,
+            "worst": 16370.0,
+            "worst10_mean": 13960.0,
+            "composite": 9865.2,
+            "groups": {
+              "iid": 9110.966666666667,
+              "ood_stress": 10935.703703703704,
+              "ood_scale": 7773.0
+            }
+          }
+        },
+        {
+          "seed": 2,
+          "epoch": 8,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_8.json",
+          "historical": {
+            "mean": 9569.383333333333,
+            "median": 9436.0,
+            "p95": 12064.249999999995,
+            "worst": 14492.0,
+            "worst10_mean": 13026.0,
+            "composite": 9554.375862068966,
+            "groups": {
+              "iid": 9730.241379310344,
+              "ood_stress": 9492.344827586207,
+              "ood_scale": 8354.0
+            }
+          },
+          "actual": {
+            "mean": 9569.383333333333,
+            "median": 9436.0,
+            "p95": 12064.249999999995,
+            "worst": 14492.0,
+            "worst10_mean": 13026.0,
+            "composite": 9569.383333333335,
+            "groups": {
+              "iid": 8966.333333333334,
+              "ood_stress": 10470.037037037036,
+              "ood_scale": 7494.0
+            }
+          }
+        },
+        {
+          "seed": 3,
+          "epoch": 4,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_4.json",
+          "historical": {
+            "mean": 9901.85,
+            "median": 9265.0,
+            "p95": 13776.049999999997,
+            "worst": 15574.0,
+            "worst10_mean": 14070.166666666666,
+            "composite": 9901.647413793104,
+            "groups": {
+              "iid": 10118.310344827587,
+              "ood_stress": 9725.48275862069,
+              "ood_scale": 9320.5
+            }
+          },
+          "actual": {
+            "mean": 9901.85,
+            "median": 9265.0,
+            "p95": 13776.049999999997,
+            "worst": 15574.0,
+            "worst10_mean": 14070.166666666666,
+            "composite": 9901.849999999999,
+            "groups": {
+              "iid": 9137.8,
+              "ood_stress": 10994.25925925926,
+              "ood_scale": 7710.666666666667
+            }
+          }
+        }
+      ],
+      "historical_composite_mean": 9765.072413793105,
+      "historical_composite_sd": 185.12127371460605,
+      "actual_composite_mean": 9778.811111111112,
+      "raw_mean": 9778.81111111111,
+      "p95_mean_across_seeds": 12918.38333333333,
+      "worst10_mean_across_seeds": 13685.388888888889,
+      "actual_group_means": {
+        "iid": 9071.7,
+        "ood_stress": 10800.0,
+        "ood_scale": 7659.222222222223
+      },
+      "iga180_vs_seed_mean": {
+        "a_wins": 46,
+        "a_losses": 14,
+        "ties": 0,
+        "mean_delta": -395.3944444444445,
+        "composite_delta": -396.5965517241366,
+        "paired_case_bootstrap95": [
+          -564.9973994252872,
+          -237.29497126436783
+        ],
+        "median_delta": -304.66666666666697
+      },
+      "iga1800_vs_seed_mean": {
+        "a_wins": 55,
+        "a_losses": 5,
+        "ties": 0,
+        "mean_delta": -740.3111111111112,
+        "composite_delta": -740.9129310344815,
+        "paired_case_bootstrap95": [
+          -920.2172557471265,
+          -575.4024784482759
+        ],
+        "median_delta": -574.0
+      },
+      "iga1800_vs_seed_mean_actual_labels": {
+        "a_wins": 55,
+        "a_losses": 5,
+        "ties": 0,
+        "mean_delta": -740.3111111111112,
+        "composite_delta": -740.311111111112,
+        "paired_case_bootstrap95": [
+          -915.033888888889,
+          -580.0718055555562
+        ],
+        "median_delta": -574.0
+      },
+      "iga1800_vs_each_seed": [
+        {
+          "a_wins": 54,
+          "a_losses": 6,
+          "ties": 0,
+          "mean_delta": -826.7,
+          "composite_delta": -815.0344827586196,
+          "paired_case_bootstrap95": [
+            -1030.339698275862,
+            -617.6738793103449
+          ],
+          "median_delta": -655.0
+        },
+        {
+          "a_wins": 49,
+          "a_losses": 11,
+          "ties": 0,
+          "mean_delta": -530.8833333333333,
+          "composite_delta": -530.2163793103446,
+          "paired_case_bootstrap95": [
+            -676.2506896551724,
+            -391.4588146551725
+          ],
+          "median_delta": -438.5
+        },
+        {
+          "a_wins": 53,
+          "a_losses": 7,
+          "ties": 0,
+          "mean_delta": -863.35,
+          "composite_delta": -877.4879310344822,
+          "paired_case_bootstrap95": [
+            -1135.6002155172414,
+            -638.2065086206899
+          ],
+          "median_delta": -549.5
+        }
+      ]
+    },
+    "daniel": {
+      "seeds": [
+        {
+          "seed": 1,
+          "epoch": 5,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_5.json",
+          "historical": {
+            "mean": 9727.516666666666,
+            "median": 9101.5,
+            "p95": 13738.599999999999,
+            "worst": 16531.0,
+            "worst10_mean": 14246.166666666666,
+            "composite": 9713.594827586207,
+            "groups": {
+              "iid": 10052.758620689656,
+              "ood_stress": 9512.034482758621,
+              "ood_scale": 8136.0
+            }
+          },
+          "actual": {
+            "mean": 9727.516666666666,
+            "median": 9101.5,
+            "p95": 13738.599999999999,
+            "worst": 16531.0,
+            "worst10_mean": 14246.166666666666,
+            "composite": 9727.516666666666,
+            "groups": {
+              "iid": 8865.566666666668,
+              "ood_stress": 10925.0,
+              "ood_scale": 7569.666666666667
+            }
+          }
+        },
+        {
+          "seed": 2,
+          "epoch": 8,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_8.json",
+          "historical": {
+            "mean": 9812.316666666668,
+            "median": 9295.0,
+            "p95": 13410.999999999998,
+            "worst": 16282.0,
+            "worst10_mean": 13935.833333333334,
+            "composite": 9787.678448275861,
+            "groups": {
+              "iid": 10026.51724137931,
+              "ood_stress": 9726.655172413793,
+              "ood_scale": 7948.5
+            }
+          },
+          "actual": {
+            "mean": 9812.316666666668,
+            "median": 9295.0,
+            "p95": 13410.999999999998,
+            "worst": 16282.0,
+            "worst10_mean": 13935.833333333334,
+            "composite": 9812.316666666668,
+            "groups": {
+              "iid": 8868.1,
+              "ood_stress": 11133.703703703704,
+              "ood_scale": 7362.0
+            }
+          }
+        },
+        {
+          "seed": 3,
+          "epoch": 7,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_7.json",
+          "historical": {
+            "mean": 9847.3,
+            "median": 9280.5,
+            "p95": 13466.25,
+            "worst": 14311.0,
+            "worst10_mean": 13485.0,
+            "composite": 9837.324137931035,
+            "groups": {
+              "iid": 10112.551724137931,
+              "ood_stress": 9666.551724137931,
+              "ood_scale": 8622.0
+            }
+          },
+          "actual": {
+            "mean": 9847.3,
+            "median": 9280.5,
+            "p95": 13466.25,
+            "worst": 14311.0,
+            "worst10_mean": 13485.0,
+            "composite": 9847.300000000001,
+            "groups": {
+              "iid": 9044.466666666667,
+              "ood_stress": 11000.814814814816,
+              "ood_scale": 7494.0
+            }
+          }
+        }
+      ],
+      "historical_composite_mean": 9779.532471264369,
+      "historical_composite_sd": 62.26558652823841,
+      "actual_composite_mean": 9795.711111111113,
+      "raw_mean": 9795.711111111112,
+      "p95_mean_across_seeds": 13538.616666666667,
+      "worst10_mean_across_seeds": 13889.0,
+      "actual_group_means": {
+        "iid": 8926.044444444446,
+        "ood_stress": 11019.839506172839,
+        "ood_scale": 7475.222222222223
+      },
+      "iga180_vs_seed_mean": {
+        "a_wins": 45,
+        "a_losses": 15,
+        "ties": 0,
+        "mean_delta": -412.29444444444454,
+        "composite_delta": -411.0566091954024,
+        "paired_case_bootstrap95": [
+          -591.1846982758622,
+          -247.09465517241412
+        ],
+        "median_delta": -259.0
+      },
+      "iga1800_vs_seed_mean": {
+        "a_wins": 57,
+        "a_losses": 3,
+        "ties": 0,
+        "mean_delta": -757.2111111111112,
+        "composite_delta": -755.3729885057473,
+        "paired_case_bootstrap95": [
+          -933.6786063218393,
+          -593.7436206896552
+        ],
+        "median_delta": -512.0
+      },
+      "iga1800_vs_seed_mean_actual_labels": {
+        "a_wins": 57,
+        "a_losses": 3,
+        "ties": 0,
+        "mean_delta": -757.2111111111112,
+        "composite_delta": -757.2111111111135,
+        "paired_case_bootstrap95": [
+          -912.4736111111114,
+          -609.3038888888891
+        ],
+        "median_delta": -512.0
+      },
+      "iga1800_vs_each_seed": [
+        {
+          "a_wins": 46,
+          "a_losses": 14,
+          "ties": 0,
+          "mean_delta": -689.0166666666667,
+          "composite_delta": -689.4353448275851,
+          "paired_case_bootstrap95": [
+            -946.2981465517241,
+            -460.9099784482761
+          ],
+          "median_delta": -315.0
+        },
+        {
+          "a_wins": 50,
+          "a_losses": 10,
+          "ties": 0,
+          "mean_delta": -773.8166666666667,
+          "composite_delta": -763.5189655172398,
+          "paired_case_bootstrap95": [
+            -982.8619396551725,
+            -563.3548706896556
+          ],
+          "median_delta": -516.5
+        },
+        {
+          "a_wins": 57,
+          "a_losses": 3,
+          "ties": 0,
+          "mean_delta": -808.8,
+          "composite_delta": -813.1646551724134,
+          "paired_case_bootstrap95": [
+            -1006.1341379310345,
+            -630.189978448276
+          ],
+          "median_delta": -536.5
+        }
+      ]
+    },
+    "l2d": {
+      "seeds": [
+        {
+          "seed": 1,
+          "epoch": 1,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_1.json",
+          "historical": {
+            "mean": 10711.066666666668,
+            "median": 10357.5,
+            "p95": 14483.85,
+            "worst": 15825.0,
+            "worst10_mean": 14878.0,
+            "composite": 10687.778448275862,
+            "groups": {
+              "iid": 11180.137931034482,
+              "ood_stress": 10411.965517241379,
+              "ood_scale": 8246.5
+            }
+          },
+          "actual": {
+            "mean": 10711.066666666668,
+            "median": 10357.5,
+            "p95": 14483.85,
+            "worst": 15825.0,
+            "worst10_mean": 14878.0,
+            "composite": 10711.066666666668,
+            "groups": {
+              "iid": 9891.233333333334,
+              "ood_stress": 11945.62962962963,
+              "ood_scale": 7798.333333333333
+            }
+          }
+        },
+        {
+          "seed": 2,
+          "epoch": 4,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_4.json",
+          "historical": {
+            "mean": 10920.3,
+            "median": 10263.0,
+            "p95": 14932.199999999999,
+            "worst": 17081.0,
+            "worst10_mean": 15182.5,
+            "composite": 10896.364655172414,
+            "groups": {
+              "iid": 11273.724137931034,
+              "ood_stress": 10718.172413793103,
+              "ood_scale": 8726.5
+            }
+          },
+          "actual": {
+            "mean": 10920.3,
+            "median": 10263.0,
+            "p95": 14932.199999999999,
+            "worst": 17081.0,
+            "worst10_mean": 15182.5,
+            "composite": 10920.3,
+            "groups": {
+              "iid": 10174.133333333333,
+              "ood_stress": 12106.555555555555,
+              "ood_scale": 7705.666666666667
+            }
+          }
+        },
+        {
+          "seed": 3,
+          "epoch": 5,
+          "source": "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_5.json",
+          "historical": {
+            "mean": 10762.2,
+            "median": 10172.5,
+            "p95": 13818.15,
+            "worst": 16292.0,
+            "worst10_mean": 14418.333333333334,
+            "composite": 10746.768103448276,
+            "groups": {
+              "iid": 11173.758620689656,
+              "ood_stress": 10481.586206896553,
+              "ood_scale": 8863.5
+            }
+          },
+          "actual": {
+            "mean": 10762.2,
+            "median": 10172.5,
+            "p95": 13818.15,
+            "worst": 16292.0,
+            "worst10_mean": 14418.333333333334,
+            "composite": 10762.2,
+            "groups": {
+              "iid": 10149.433333333332,
+              "ood_stress": 11758.111111111111,
+              "ood_scale": 7926.666666666667
+            }
+          }
+        }
+      ],
+      "historical_composite_mean": 10776.97040229885,
+      "historical_composite_sd": 107.52295368323654,
+      "actual_composite_mean": 10797.855555555556,
+      "raw_mean": 10797.855555555556,
+      "p95_mean_across_seeds": 14411.4,
+      "worst10_mean_across_seeds": 14826.27777777778,
+      "actual_group_means": {
+        "iid": 10071.6,
+        "ood_stress": 11936.765432098764,
+        "ood_scale": 7810.222222222223
+      },
+      "iga180_vs_seed_mean": {
+        "a_wins": 59,
+        "a_losses": 1,
+        "ties": 0,
+        "mean_delta": -1414.438888888889,
+        "composite_delta": -1408.4945402298836,
+        "paired_case_bootstrap95": [
+          -1652.405625,
+          -1176.8033836206898
+        ],
+        "median_delta": -1138.166666666667
+      },
+      "iga1800_vs_seed_mean": {
+        "a_wins": 59,
+        "a_losses": 1,
+        "ties": 0,
+        "mean_delta": -1759.3555555555556,
+        "composite_delta": -1752.8109195402285,
+        "paired_case_bootstrap95": [
+          -1994.201379310345,
+          -1524.1027298850577
+        ],
+        "median_delta": -1495.5
+      },
+      "iga1800_vs_seed_mean_actual_labels": {
+        "a_wins": 59,
+        "a_losses": 1,
+        "ties": 0,
+        "mean_delta": -1759.3555555555556,
+        "composite_delta": -1759.3555555555558,
+        "paired_case_bootstrap95": [
+          -1995.9616666666666,
+          -1540.0043055555557
+        ],
+        "median_delta": -1495.5
+      },
+      "iga1800_vs_each_seed": [
+        {
+          "a_wins": 59,
+          "a_losses": 1,
+          "ties": 0,
+          "mean_delta": -1672.5666666666666,
+          "composite_delta": -1663.6189655172402,
+          "paired_case_bootstrap95": [
+            -1955.4904310344828,
+            -1393.2903879310345
+          ],
+          "median_delta": -1289.5
+        },
+        {
+          "a_wins": 60,
+          "a_losses": 0,
+          "ties": 0,
+          "mean_delta": -1881.8,
+          "composite_delta": -1872.2051724137928,
+          "paired_case_bootstrap95": [
+            -2139.495603448276,
+            -1620.1806896551725
+          ],
+          "median_delta": -1661.5
+        },
+        {
+          "a_wins": 59,
+          "a_losses": 1,
+          "ties": 0,
+          "mean_delta": -1723.7,
+          "composite_delta": -1722.6086206896543,
+          "paired_case_bootstrap95": [
+            -1972.425646551724,
+            -1480.8756896551724
+          ],
+          "median_delta": -1626.5
+        }
+      ]
+    }
+  },
+  "label_mismatch_count": 32,
+  "label_counts_historical": {
+    "iid": 29,
+    "ood_stress": 29,
+    "ood_scale": 2
+  },
+  "label_counts_actual": {
+    "ood_stress": 27,
+    "iid": 30,
+    "ood_scale": 3
+  },
+  "bootstrap_note": "20000 paired case bootstrap samples, stratified by stated labels; learning seed means are fixed, not an ensemble. Conditional on selected validation-Best checkpoints and one IGA search seed; not seed-robust or independent-test inference. Pointwise intervals, exploratory, no p-values or multiple-comparison claims.",
+  "source_sha256": {
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/manifest.json": "056c65682658d507c72e1d6b0683629385691a60e217028213e48ae931f7c778",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/pipeline_state.json": "12e74640a1539fabc49c4a3c9043ddcc83a4a8cd9ca1f79235a3c07dab6ba3cc",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/report_status.json": "c8f516b9aa2cb42dd2fd23bc06a6c6bac6c23848cceb4d1d95a858303e5396ae",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/aligned_validation60.json": "ff1a9f9f63fea5e3104fb3fdea8f22a116267507e71b7906f275f911ed1e5821",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/summary.json": "77797928d45fb151eaefec4a2ca8ef65fc790c151e9330d7bd0c101e0189d86e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0001.json": "4db194289f6aaef7f7b35616ab9525b284f6652bb0d903c1fdff2f6877e082d6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0002.json": "24d258fb9ba1fbb5490c0279236b00329f56bc8be95784c35ef72fce444801d9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0003.json": "cb8542bd8450d80505aafd9adb8a3149c9e1777a515f959b7969c4d8c6e44a45",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0004.json": "f998021b12f3e18990b1540bd34cc5e8df63ba8629ea2a4f664c3f30935a504f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0005.json": "15f1d58d17558a31d0f6602a946bd6f9863df4e82b1702c0f34980b5e03098b3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0006.json": "9c394bccc7487e0ea24b3d527442183080499a560da0a7b448c2be5d67a5d69e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0007.json": "d251c80060dd0794fa70d786a512f6b9d770e57ad8f1544929176c7904ccc3fd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0008.json": "2e286440de2edea5af3435e935ca21ce43f204691fc15d4c456070e0f6851aad",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0009.json": "fa0d061a582553033b468d7cf1bfb44c4285ce149fc879cf964a164f3446980d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0010.json": "8056cb15a7bb2744a493b9a8b53273b9cf9567b6e37ce97b0ef496a83827f18c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0011.json": "2251939b65e066d4dc0b30d13fcf54bf44ab301ea99a578b47260a6b9914c6a6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0012.json": "37439cd1466f840ecd5f613e48e53afa8dee180e570392198dc6d59e6742062b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0013.json": "4b2c92eac91cc7338c936db72f8b5d1acf9a9bdf333f4da281634f738dc624e5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0014.json": "e7077db6df8889ccb5b673d849f2055cef1855694b5de819262d81b157f32777",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0015.json": "6541b6021eb27defc6a165693d12c1ddd2d2c5817583afa571f5ff10a9d5624d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0016.json": "b0fdd4dfb8567611e32fab0d7c1f697ba47829033c0dd01a2774fb9a6d8cdd0f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0017.json": "2875b187a36d076d31a742e1e06e3a271cde64f8c31af30749b71064b04dbf0e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0018.json": "142e9abf6d3417f2635b2c2692268065713cc8daf6a91af488e25de5a173dd2e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0019.json": "a5905324eb77eee8780ec5932a587c0bc0f733fa52a300799265fe4139b26e9f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0020.json": "5a6c3361e5f400484ac7f4e58f1a2180cf45176026c58af67d06dfe3e1953cf0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0021.json": "5e9738377d61c512d7fd23362320770eae0b321bce508ce2c49db16425dc5218",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0022.json": "7206cf62788b781f72b6f32a50419f36ffd840c4c6c3a3ec1880a0c015492f43",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0023.json": "444826716c7d6555e2c888ae6d0b117d5d3c259e4724a234e3d3d8c8b602c89a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0024.json": "f7370fc1d0e350c03b94d455b733bdac4f105ea4980acad790f4daf50c01e0f6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0025.json": "3f251cd310fa00a37d697b7f461c8b62bb977260e23ee5daffbde64057b74601",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0026.json": "7ff62fedff4d5e8b7f2f9e2e187e28e21db3bee833a9645a073916dc46a36c53",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0027.json": "85b11aae58b5d9ed9a63c3e24d7af77a0bda55f6b7a0977b788d0825c6729129",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0028.json": "0a894fa9d5c471f4ac6ce27560987f736e3c2cdd1364eb8d613b485577c80913",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0029.json": "859d68929a1734276cfc35efd680e2a5a1e82916cb5f88e526682eb15320dc3e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0030.json": "e8a6c1d3e39044a3a12e1d4d897245923a203d13687b6dd3dcf657adbd493416",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0031.json": "0a6611f4beb5028b3a0ed61767edbc11e8576d8f7ae08b2f0e4721434092120b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0032.json": "5d3497d9d0031b15caf57749213890609a25dd194a39ac34b1cb0cb01e877445",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0033.json": "0e0e5c7fbf4860168d9a316285f40f918fa4c1f4f0e65cc8afcd6f3358c13450",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0034.json": "0c3a0ccd6e88c99420d5ca2273bf715e16c2dd9b4bfcf68c810b14e5c4e1dbd3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0035.json": "985a222de37cbbb62c2de82af6df18bfa009cd07201de31a6202374220a45f54",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0036.json": "5c88e45ca07157d7382db9bb28b20b76fc5792612fdd409bebfab392616eb44f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0037.json": "b0178ab6a4147118a313f0b134fe31bf43f03726686bcce6836aa0e5b1ea08f5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0038.json": "f2550976fbc25f2b7d3d1bd19a0f931dbc21c56060f741b9ad7a9eb40e2a51c7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0039.json": "8fd097c65b19ceece226d26c7e16aa17f7b88671cc8ee9352c09346e17c7054a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0040.json": "f6672f3279b8374687b9d560ade2371d34762308cbd8a98aed3aec7723fa5071",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0041.json": "5f758200be84b5a50c3dafa5075911356a08dd74f5746e48940006a758179c8f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0042.json": "4741371a4b85908f5094ecb1c53c2b4ca4e8a7a8b9d41f8f416094b74d579d6d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0043.json": "b38b08105d287df3409bb790914316e8e9e2a236c45ea96f98ed16a26c90810a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0044.json": "8573bf945217b5a1e9c8694d9ac52b388c59c387d62034dd04c6ee05ad885766",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0045.json": "22c6941ab1a2b1a1a7e944e552b572a45333307b7ffdfa036ba6cfb99f479b2e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0046.json": "139862a78bb7b52709a6ec86ecb7b1ea132d9ad5539be99f7095e2b9b69c5bab",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0047.json": "e3a9a129ef950e1d537bac9c224b57f5c45d343f11398022f32a2f1845c3ad60",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0048.json": "cb9a041516df805a2ba22eaa87061753da610e1b381613eeef6cf54c3c98d068",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0049.json": "5de1acbbb80eac86ba53e4b9fde702f69d96e43e2e457a91d3cf03144a49d836",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0050.json": "b3f0e347c98026e3f96c495f02608cd89242bc03b492ed14629976927d9ba183",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0051.json": "c367374167abccc241cb16ccf0ce99a2b1926c05c12cbb5daa1628baa0d5524a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0052.json": "2cc2ecebeebfc1fb1a6deb92a5ec8cd6dc8992892aaf32dc11b7e0120244fc62",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0053.json": "5f398467116c06cc3d881b7d26f792c36d1afcbb65632d3ed55a985bd07b669f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0054.json": "9ddb2ef304b4d8ee9338227fa0c3b30d45f2bfbab8c6fa1c336e6b40aab64def",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0055.json": "8e969732feca0c7528f64fb8d1a18bf265212de6cc85dae6de0acb77fcdda9c9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0056.json": "885375235ba07b01e4600b6cc32f1b4e01af65dd1a8df29b76bc738c1a352504",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0057.json": "58681360d2d94603021cbd1c6d5c1539d008092a90c8334d34577cdc033306f0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0058.json": "d9d4c645f5558ad33094e70d1aa432f8afebf7cf977d461b6383828d4179c8d2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0059.json": "59f6beaafb4503341c1bf55c79e212c30a622410301351749c957ffafad4d8ed",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0060.json": "50eb46939d8ffdf4426e057d26b1f9696482c4aceb8b775c4a87920b87df48a1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0061.json": "12f9fa489b186230c6699187060fa385155d59f73ca9432ccd7516d69af53135",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0062.json": "95236b62c6cec7ac1af38d9ef31440cd28cc5594796617c0d99bbd06fc13c042",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0063.json": "52643726487620c00b45bf39779a482736150b892346fd7114fe3d1afabc5565",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0064.json": "4e542fdb08bfc9e7c6bdc8d585c6175bea7cb40364fbd06e113d69137faed07b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0065.json": "7aa092dbb664c69998c647e209a1b8a9998f52958cfa033e7fd8fd7685f3be0c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0066.json": "38196c2cde02f4e3fb56b3373387bc0208cc1cc4bc406d7c84d5e2b6f9615064",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0067.json": "4bbbb141303822b7106c9ee8d05e49137c3f04d4879e02f8af6de79c0fecacf1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0068.json": "c733bdfaa7ab95dc5c3e0085de0a68fa4bc2aa9cd6c587af3e72c6784ee6e1bf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0069.json": "efb2ee088a3ea7a393dc2a785cb25239f8a67e4a6a160efb784d101255c16a3d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0070.json": "6b1359a311638cd0e7a6ee6a93e7a499dec609db6196dc586a1bf4db9f432108",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0071.json": "332f0279489c37f434c3980805264dd85a4f740abb2d01894fc212e60cdac6d3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0072.json": "19aa0a2a5ed1a0f81359e16581e12cc08ff16a2f3005822f83f13261c1d53850",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0073.json": "b88158a5efd529c9a128735b8bc02a0af4f5990bdd45ba14fddf8e19635fd9ad",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0074.json": "269f73adb4f880a9540a2f7e1bc54e61325b8cada50da3c06cf56aa5e8151cef",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0075.json": "ab41f305299a80363143f37260b72f9be48cf418186227d215efd61056054497",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0076.json": "3bed729da665bfa9c26da957e23216b0885fe489916df7cca96f86c2618e6a94",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0077.json": "6f21277c0ea64bf5dd757204d4ad6feced230c9a62769a04b8f9d61986ae07b2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0078.json": "e0fa5a182eefcf0102076a4172b40f67e71a3fb0ddbbc78a99e390f213b4995e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0079.json": "f5b6c5da91fa04f30292e138fe63fffc9eafade1ca134efc008f4d8d729f42d6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0080.json": "fde7b789d5d456b81b035eb810752b2e649268c589bdec980b1b6c374168626c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0081.json": "2f3633d12796118147ee4083c27791463da31ae3abfc069f48824791f78118eb",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0082.json": "b527285c14902c16e8bd885bf4f57c701fa30b111eb67f254eda451f5278189b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0083.json": "fb7c50ad2dcfb3d243a78e0052188fb2656dca54348029bb69f34c71daa2df4e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0084.json": "427c4b8513cd99a8e6ac39788b1c48168b1c750768d3873cbdcd44a2e3a6a01f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0085.json": "f8d1d71b1bfab059fc06103500a4fd86eef76033bb8a9267c17fdfb62f01af95",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0086.json": "b17792cc102312f31021d0ab30d6d905dedc7c04b98f9dff4e56878cbe924690",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0087.json": "d2faf03c02945d6fe80d20e9bf643ee3098c17eb04e8fe2447d145f785e0cedd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0088.json": "cf98c176c9bfa4126fc186906bfea3a09203eafaea6076d4fe23517b644a5284",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0089.json": "f28e4b34aead7c183648de67f3f9e7b92155f21e6804583a23a6e188a2732af3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0090.json": "c4628ccfef52ce1f043d5c415d03251f3cf8269d6fdc2daff2ec957222fbdfb2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0091.json": "e23111c3a24381205a4e09f1eb3be105058f724d7dd7ad9e1de800deebdb733f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0092.json": "db7a2c6805c0cc66002cce4f560dffe383edd8db7993c16c331f20375ecd2872",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0093.json": "d76bc7e7a3216c085fd5a32c38061fded080e999deceeba83b5ec5446133fcb1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0094.json": "a9d63ee70ff56a9d183627438b94f40ee326346ae9e8d2f6b4ffa32685f0b83b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0095.json": "b05c5f505a6d46c99d31637ca623ea133daf249efc37b997968a0dbf0b22b596",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0096.json": "30f9289ba46fa8cbbe5b6d4737c00b1439c4e8effbe158e7a6517ecab3f1b107",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0097.json": "6b98dccc801ce01ae5a068d2234e5e1cce5f7a1ab33b5fc1ab6bf3b72f1010be",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0098.json": "f0040d0e4ad3d646fc5d2d3d48c7f679c3f5fe3ed61e7c212f8915fbeb626dba",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0099.json": "9fd2b98a82e923dd65af5f7cfd860ecfc829168be85c88972622e907261da00b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0100.json": "2bf7b26582a4e71ebee21b7eecc7167d1e28e441a6d09c89f67b3fdf6b961f64",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0101.json": "52add625b182b1883969ac22956c9b0a095a07af70ebb29f4aa9084cd5dd7e0d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0102.json": "d5f36665bd9e620b07d1ce5d23b274f40bd8cfb30b3f01c888c44f93ceada255",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0103.json": "09d5be8e24610ac9df401341225a96651430bf36acd7a0b0315e843df9b763ce",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0104.json": "7fb916d18000861aee50b26c5eea12fa997b3431b94958b6b096cf9f14b8a151",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0105.json": "590ccbe01744384850013bf77794e0ee1916373cc6efa0103782c016739d8e84",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0106.json": "263872ae31608c5c756a944d9e0a77cac154200741b08b6a2f948551ff8c6ac0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0107.json": "9450a54a1e83ff909b834e90ac914ece0ffc1ae9fb67bc45979055e79cf9d426",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0108.json": "b2a996657e7702a65bcb1246f006cde9c6e69adbe989c1bef1bd34b47f5c8a99",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0109.json": "4ab248d8649145ade28a4b8462f779fab3617c255d23d135ac830f8b736a7953",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0110.json": "eec91f986c8f43a89ff3eca192f57969aa2d5665d929fa371aab39c53acb0edf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0111.json": "43b4b0d6fe8ca114f78029c62be6b56e5a6ac248e6ade37fd262a0b777938ec6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0112.json": "3abf263096df89bc73c720eae818edda3dc7abe78fbb9aa232badabfcd3c121e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0113.json": "9456181147031cc3b62a7616a01df25fe6b824853966647ad712128a7eb64532",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0114.json": "2e49484aeee17d317df7f16c57e8921dd948ad73ff0a72859fd43b96abd3c0d0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0115.json": "7798c428ae3dd7a2dffd62f169180e7f5780859cc908d46e5a94eb8301569b87",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0116.json": "be3d470a089fb804a9441e78da856a1004e225d1839a17744edcbd1f70736277",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0117.json": "945d3039e9f268ae166325efebc89b635cd5ed015381b08f9e3c48cffae1018e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0118.json": "5d2e7dcd7cb981a47489c5042b0384ce422db45eee4a1b77ed72d36970bfccbb",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0119.json": "58e689e7ae09ab2e77be08c343b7fb8745680e46f4de26672fa7bf62a58cb3c3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/cases/case_0120.json": "4222d2f32cfabc086d0d725f9112082c86614b4a7e34df67b8ca155aa31c97f4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0001.json": "e70115cba5ecac9e7042ad0758e78a3e46af107b9dba6796c21815cf508ea85a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0002.json": "563a30a79f0527d6220065763d8bd7faf7961a8f985cf7edf44e1b8b6e88d94b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0003.json": "775231f5e391d322a67f2b08ee1d7067e1135ee0011d840f3abbcab166aaeaac",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0004.json": "379540804ebcac97d39710f4b3567a6f7d3b00fe8983d6667f3f6919c2757036",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0005.json": "bad46919668bc49444239d81b18d6c5b9d052a53eb42f8ee0e907dd036fed53e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0006.json": "3344633a77d7e828f464221c0f21d9abd27c87f1946790cc9a3af8cc1d777da2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0007.json": "6d1bf9054ea1770ae85990e69a16a225c9afedd9aa0bd3a77139310baf44295a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0008.json": "1d4a0ae8003c7082bd01d43fa5643e65a73671e207e24c51a3e45bf81b20191c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0009.json": "1ea70f8a8822f99e6063325ae6a936cb3027d19cd10fbcabf294a90ce72c01a9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0010.json": "17e52b32a91ecb016b4163275bedbf46f8999043b5fb5fc79e64143f6f496bca",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0011.json": "9690afb2be8ccfacad93d5be8b533cd1e0bc0c19037e7cd88058eb60f4247048",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0012.json": "d2c2270363aee3af238f1db7cb214931a3232852acb33986a6315a7d8b7eb2c7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0013.json": "ed006323a4bad02f5229768b69380e8cb1d8e29622691f93eb5334f02b6db8de",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0014.json": "9b9ca1a47af19f480c22969ce34751bc58a94dcf9400ac2a6b1fe73c6bba9a7b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0015.json": "fb0a6ea97e83d77e76d810929fa3c57a0c11f4881bb83c516289814739f7405a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0016.json": "6077628871da3ee007714b6d2580e38404ed1473e12da43d3bc45f6c74862883",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0017.json": "39a4dcbe1b89a9e70d315a35859bc083ea09258b094efc655217462eb29bcda3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0018.json": "ea9d77e25e4fc9d3f5432b5775ecf550c666c2b807b2b333acec28caa8cdc685",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0019.json": "d2dfe135ba8cc1290cb4663d68b46791d1a1899d680eee01cb7a2097f08f2bd4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0020.json": "c2229a24fbd8956b3a7cc87eaa590dd70c2b0dbc2680d2d71fe17a8fd88e8480",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0021.json": "9cd408a600aa44219a28ec46192849f1bd294ebf95f0a55af76597b93fe94a36",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0022.json": "f5001cd23330a400c6a198b73f1e2bacdaf51d86b717ea41f8396e85f3b48948",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0023.json": "ac3ccddc8e5333c9dd38d3c7b71eab9c638a5b5bf256f1d8e0031ec68949f29c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0024.json": "81f49a68a4e1843ff732566114687b1d0e477c8d044117e92bcb16e25d637af0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0025.json": "969de142e9e482075586f255018bc6e19178559a0b97021e38018c544baf2e92",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0026.json": "b111abcae069ac4d6edcf93ac3128fab705a6d60842a88fed3c12a0989c7df85",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0027.json": "64bd985577f2716a55b4c8689cafcce3087144eda05eedba1c8b0b8e3bb27be8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0028.json": "53ab6ad1b35ec0a68026814dfd7840af6bc3758f340e57cf35cccad448bf219a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0029.json": "19454eabfd1ccb645bd0d6e0cefd4f07d0c18a155802c28d03e8677e49d644a8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0030.json": "62fbae8902e9c7c6dcc2df0c4268f5cb0bbd422d06b6c4c036c8046d946ff27a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0031.json": "ef510a38e4120431f56982e2a108a5b36ee468ccd78a44eb7af1a59330b54b50",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0032.json": "9399758426025685d7a17e7c96b6b68db12e30c3e70ad6bcc0ec342266b48c2c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0033.json": "3094bb18d69fd944a832cfeab541393ad8ce3cdb2fb169a3169c33b2754a3c59",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0034.json": "2a407e528130c548ce0df0e063533a591deacb1ce6afe7be5d2be1b2423f482e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0035.json": "5413f91c2614e25717fd0688debb627bf4e966a8f40ff1f58e308a2821a9ebdf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0036.json": "7105226cb0decb1f3d62a00a66fd2c74001dc83157c646e2e2fdc13bd972b376",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0037.json": "18c19e996dcfab2f5abc93c0e2f771b3eb98ce817922c8104443af0ab831dc5d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0038.json": "29dfa8ed87cc745ae00e271b523d94dd17b1a66f431ea35258c4c6671f31598a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0039.json": "74d71b2d404087ae9874ca9da649d52682beb256985637ec1797fb0087fa9d7a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0040.json": "41ac35d1ff0a8ed2c17bc91a8a68cd713d041802c24b8934bc5e37cb95d9e1d6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0041.json": "7d7fc55104d6b2ab6e4cceb1b13d49108e2640e66c4455bc4e30c9930e591d74",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0042.json": "6029229abae606caa193338c986cc980451f752a344a354d5a1eba16d5a26c15",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0043.json": "e772166b40590e6ef6bde09c76ead9a2a44cc31e4463c00c3fe5c70dc1060040",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0044.json": "92b6f7768fb6db427064be4e3dfa7f697b613e3cf691f72595587cb2e8e63c06",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0045.json": "f23fcac8b775aa4f4da5dfde7a0a94d19cc2eb7814f27e69f08207d5e19a068b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0046.json": "764856d1f6ba20a4b84d40b3d6249689f55f4d30f269aa487667920ce4353478",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0047.json": "33b18f0db937409145efa5d015804e17828bc5917daada0f9d8a6a414107943d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0048.json": "e389d4466eafe8ac63dbdf5194baf0024be1bd30075a60d63b628db6996281e7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0049.json": "fdcf9c38fe87b9daa7a75f6dfed20a28d38e7d27acfdd5ca79a9544ec5537332",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0050.json": "a5eb126e13942c8cccf6411cd235640d3431abd154c61f9acf871348381f6e83",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0051.json": "cf262d2c42533bbf91c7ae03a3a4aa032f45af97e910d685f705076f27d2475b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0052.json": "6b03942905d2a2b13e4e80263c72dcaa88f4c42e25f2a20d2d7ab2ec2a70f227",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0053.json": "ed6f0c5a98172f7f39edb995066504dfce60486f94b2ccc9860c38a70bcf2904",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0054.json": "606e0fd5eca3b25b57f75b0d04224028b7b16e290cfeed6fa1faed1424487105",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0055.json": "d656e9a25df462c594ac37ea113c4a872d529f49e3e0970e7337d17805058c0e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0056.json": "3f49e2df613347ad1c15e76a1bd85ba718ec8ea4f7c3575a515e7cfa1b066175",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0057.json": "c6207d4ea19c8ad352259de0e9795f2a55db41268be0569638743303dfb7e8a0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0058.json": "07288921d23c46baa25aa9ed5db8287a9843b79a041ccbf9cc41e4fcdc8699e3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0059.json": "aa04c1f0adf37a46ce9eadb99e4fe932630badbbe45dcbe02612a10c4c1d0a31",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0060.json": "8074bc50bc36239eebff5724ffc0af72d032c415c517b663c4f5e541a7988d50",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0061.json": "36f97e43ef0a16727423721a5b957e1170d94c83e8a1c23242093fd10faf5ab2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0062.json": "014d19ce0c455ec3d60e42acb1ca4a81a5d20dcdbf48ebcd6cdbfab5ce9b6745",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0063.json": "54d6fdf79701e502d2d6676a3bfb52e4bc388fa1c086b3c7298ac94320d8ba18",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0064.json": "aa35f38e1e74902c8a6dee4ee3cccd0f28647efaf537790849c515250b68b6f2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0065.json": "87d801181caa9a675a465f3bcc7abb673942fc82ecb36034b4e2b921afc72f18",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0066.json": "b4ff76d46f38946090da515cac2b8c995c4353b51f489aab5f45f4921e624213",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0067.json": "5d517cc6586f2667c1de309964ee041ace320fc437dc0bae0abe2021b04e20cd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0068.json": "be7412e54f72e6870d40dd4da98b163ebff3ed33bdbdcfef5f146c2c2e550f8d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0069.json": "d52454cf9ad2630a14d573e9100effca0dfabb4f2637610ddffbea9d600811d9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0070.json": "7cb523ecbc547aba1f6213eb8ac6e5ed120bddbfec653b5aec81cb383f7557b9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0071.json": "7839db5548d5bdfed96c9376f391d1e9370466bacb45ff078605a774f041291f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0072.json": "5e6134409f51db2501addc3a04345e8e15c91bb4deab46264d5cfdb6f868bdce",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0073.json": "53c912d15c651e673498645dd4e7ff438c2af0ce97c9b4a3047fe18ce11f04c7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0074.json": "e7e309ed736ad725e182da7c8a1c393fa9900eb56826663b4884129dd1b47ca1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0075.json": "cec307df7d32f0a5004093aca24f434b866c3ad9275f4fbb0f3a5aa1beb3cab3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0076.json": "21f06d02191ef57cf4dee72276b04cbf4f9a7ffa83ddf53776dfbef5eae3042e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0077.json": "5d9ab82228bda63d3fb0c5f58c2ef2bdc7ec8c92093c84cfa780001cdc66f47f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0078.json": "63750d4cd9251a490aa5aee87c97536034b751d61748542ad4055dd8e8452f77",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0079.json": "8bbcc5bd4e5314d9663e8eb9627f863e34d6beef41950cb9328af7b4e21b821e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0080.json": "853179bf402133a6c9885c6cae7d0a0380e71e82e3ac1a32f9d22dc154cd788a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0081.json": "0c713834af0b628bc117f10f6e053b63a927705b1057f682cb4d306aefabfb56",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0082.json": "ef93d1336d48f7126e2a939d96284d756794d764ff9c51bf7405008db76cc6ce",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0083.json": "911fc88699d6f8889e53d7abb89170b8d25b475b0a91eb6f6f3acbc8352b0e4b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0084.json": "5f25389c91bb65d46d691fa78a0104d5c43f1cb003b9f0907e997f944132d182",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0085.json": "c60ecbc28cf27104bd3edf68a5486f5410958ebe45f473d9b958680669165688",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0086.json": "2780c3f571c1b415cf114d83db7fbe826c5a3e3be737df00113f23c41b310c93",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0087.json": "f13b5b1ac6022cca2e74f2e4cce3dc9ff3547cdf7b34886dc5a43e4b4008d652",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0088.json": "62015a4bb72581c0789a3c317001df5f608c8014eb07705d1f0ec22156544cbc",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0089.json": "db78ccdfc8aa387d833e30610d18c70da7e861ab2ba6b4c68dfd6a7653a834cb",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0090.json": "a75fba994d88a642db6b910a01dac4a829a9bf4c8ab4475269cbeeec6c1fc8ea",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0091.json": "3617791690608803a83b4a316b08c43fde84b08994f06dfb5ff0d82ebe147fa2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0092.json": "2b0b03da17be61e47e39e7bab36bd4f40ecf4986944fd71aff7ebad78be185e5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0093.json": "312d1eef842142e3ed3acaf993239f810466c599f0bdb39b8fe24a68d77a1f12",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0094.json": "f0becf1cb78d1e0440a0c9257ef1062310f07241c7b797f4d00d8135508ca6d5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0095.json": "73cb8c6ac0994d263de321590cc7fe3950922bd8bfcb72e3585412aadc2e9aa9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0096.json": "e074c18e5997260214690e026d885a075872315c941a65111dd8e5bae3e54148",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0097.json": "fb09d33349547f031dad661e55081955275997bb89b9e25af421ad2e31ebc87a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0098.json": "6a470fc97d459227524d94602962702f41678c7699bb20865c145bd609cea0c4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0099.json": "0208bd26cba5f0a89a0e3a44568423f4b3d5a2b7a3f17d48a0b2e4a1f68de932",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0100.json": "29d1eea16fa5ca92db5367bf42c503782cf03b3be39486ebcd606864c8278a38",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0101.json": "9704dce18af863cea0f9a9894f87185b653a4b4b024a75895d3f6bf907e0dc5d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0102.json": "4d7bf2a92c5707326fb8bf1d03f94372c9575da394eefb0b3e3bb41c1d41d663",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0103.json": "410f7bf3ff58459b97a1fbe210c58bbf63ca770a63cb8391323a4ff6d08f73da",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0104.json": "431b89bf19a296641dfaa75a24807343802aa80773854c3c424b098505b8f057",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0105.json": "60b029967c7fcc6cb26d0dc58064975c915fd4889dcc192c7f55021033363920",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0106.json": "36fef14d99e8e5aa59e323de126dc65f8d60f79a8ac6bcf60cc51d72adb92dcc",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0107.json": "1f62bea8a5524688701f239f6644b5c041e5ca485d9c6b819b5ddb7d79bc152c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0108.json": "6e93f16240d9b681b583f5520a35a9f5bf378015d59a3da41c86e8606a327087",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0109.json": "2c127ed1494e9802927c24f13b1029618646a9a76321fe9e2fa17190e8b29af1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0110.json": "88543cd63e93f3f1a4d2a933141f2e6a1cf063d1bc562e99048cab1317c4ff96",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0111.json": "5a4c3ced03ed43f82ef4df0942ed973d442d75d4525bd7eedff104527e7dd875",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0112.json": "1b9f8793cce48ea6f1d158e5a6577dcdd4e71bea3431b7b3c959c40771af7b7b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0113.json": "ed20e8c70eff45389cfab4a432bb8abb7ad3cb51f2230fec070f5499fcaa2ed4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0114.json": "27edc39123dc147ba4ef2c7534e7a05eb853eef1929305ae717261393f7d4ea1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0115.json": "634007c71701e0e3a567e54db152c2f68c1f12c6f2894fd955a11d7dcfeef19f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0116.json": "6a1057c98fa2b73635b1af2b8daa1707d816944502a726482a90f9c8004032ae",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0117.json": "54dd4bbcd20be2d5af58ffc5b4c5dc342642080e149066df4b9b5d2d87d7b999",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0118.json": "18cb1b0e0bbd4e69f3b14e636813ba59d5f224b9165088bc74601d3e48c27f62",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0119.json": "9ce366442cb0faace28d5786293a612b0e9708dd248c94cfa1aec7dde4b867f9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/teachers/case_0120.json": "20c104745a103a65f26d41f6b34859cf054132706bf221d3ee76669f34004330",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/summary.json": "723da7fb02bd65f6bdea5471470e1f52af6d3d4a672d79d4d893b3ae9bf9d894",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0001.json": "4d97f392a9bec8099978c66a14b83223f21f8f9a8f3fa68dbeba32e9cfba751c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0002.json": "4d8d301276d14b93c7468abe3b6d1a80df908f8e860dfb5723a4e8cd80bfaf78",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0003.json": "2ccd39a9c947fc9e300fb5878a8fcb31c237a9257b8c963fd80971535a3a0ecd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0004.json": "507499710331119ed8349c466249f527e031c35c0464d27500ecffc7b228ea62",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0005.json": "9493230ac167af61060cde9158f2178e917bb6246330db38b9f0cb09cd63dec9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0006.json": "02bd8db6c340bf627c99586a3a39ac26eaf373a382c6af0bc61f3a1acd4e8b34",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0007.json": "59c4c0f933fc5de4cdea00a492a07e9bf90473af859a9b7521988d020889887c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0008.json": "5e2b18cd665aae4a90aa46fa01ae580dfc7cb95a16331cdab09bf4baf4d74bc7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0009.json": "c53787941ef161079100ee9a763711f291a7f73dc3047436a411f84aa1ad3edf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0010.json": "d1f7bf7dde48dbf87715fabee82363893e32e155fc7f590f59ea1dcba77e3a52",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0011.json": "d1d5bcfe151a771ce4a3cfda1c2b59fdae47e8964f397d99226acd7122674e0e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0012.json": "adcb699f401ac35dca84a4d5154ceeecf63c947161acd7028152057594485b43",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0013.json": "d03d31593812da4a1f101de2d33d51002fe137e2bd92a5ca1ce4a6196e418cea",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0014.json": "b4fda197d80a64a1f9274f08f8d271b7c058f4eeb85a34c4f81de497ca078178",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0015.json": "dcb7d2bfb7785e020159e417c8ec4083bd02aab7f308fb840c39ef70763bc7a8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0016.json": "835bbccdbb6397a2aa8af2ec1e8328db556f372b992deca2f0234671a941c67a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0017.json": "43666e4dddc22fee237c13a16ce8edc648bd45e4fd94dd6f9d94fbd588e4c1f6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0018.json": "dd81dfecafec2f138918fdb4cbee4b52096420cf4a1dfbcaa30d8b507fe9ab87",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0019.json": "30fe9b24f2b777fcfd05c108c4f2b8ce5d2d41ef7ee46ad3330329cddc7c71c1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0020.json": "49a43b5d245c53daeef0dcc2a27e2d156b0e868bfb4eb19507ff79d258b26d01",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0021.json": "eb4e31d99fb94b65c64ee9795bed8dd3c0369edd8970edef91c12ba288f258cb",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0022.json": "554fbe62f3821312e76a3ab57692a5a34a48258c31e2275ed7bdc32987b28c3b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0023.json": "d42160829385d06d6001e7f110e1be3ba92eee6ba3053cb2b082a248c76c5f2a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0024.json": "1ea6d6cd1c04afc397ab44ddfbc8364521511139efd8b9c381a2cf0ea532bc4d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0025.json": "ab944acbae6ce20e518ac72f43274901bc69184591b4f440ff3e9c45b622cd62",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0026.json": "e609c18982e6181d6de9b90b0867a50b396f4999716feb1bfdf2ddaf2ef1007a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0027.json": "e624896388268494152fe3e45f57ca29945d1a6ccd40a6d848bc0a8d6807bb7d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0028.json": "9dbd34ef6018426a10814087e264bfdddd769c05089f22a2977f17e794ce6adf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0029.json": "edaeafa213f04b15029cc42a4553fdf2c54506c466e6d96aa05597452e4aebb0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0030.json": "e2ba28ec5fa3316587c073ce1b6bc9aa29519add91d360091f30e8f1a036928d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0031.json": "bb7aa693f1d37420a1dca316d5c4b660dfd33bf8def226fe9f865e82b5fc44a5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0032.json": "fdbb984addd19dc85a6f19ba4f1ba4a737c1ed3a08cc115792395f924092e487",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0033.json": "6a0a9bcf01cc1024294a35dbe7e430f0318cc478bc5402bd6d9e989cd02699e5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0034.json": "5a7e57b9a9d9e11eec8688fec46562786d294747cf033cdae06de425fc2e8f39",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0035.json": "a5a74251cb9bf01786ec94d1fd027bee364c318913ac43e9d97ab2a9426a0c2c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0036.json": "dbb564667a727fd7328ba2dbd8412611ab83fb63b1ceb82ca55e9a37e2af1ca3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0037.json": "bd65f95433cb982fbd904b1941943f5e4e1f5ac1761d6515cfd12521fdd91d46",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0038.json": "6c956d5aff6b8724ea2d67bba4a10809f21c82c586b78a96d9bc5d3b53f35f0b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0039.json": "52e1ca35dabaa45749a2e671993fc4a91cf63937f731ec5635261a3b561cb743",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0040.json": "230421ae6618c34eee177813d88e5ebcde71f83aacff352ecddc5f5b8bc0931a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0041.json": "12491c874ac0f50565e23d9f66015ec7542e6da192d884c989703c71eea6a2ae",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0042.json": "9f434bcf4ca1e5944b3f7fe7b1ef6ef3cd7a4e66e356de5e0d06ba307d16cce6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0043.json": "946190ac08bbb6bf96b01a524567b557afc096a75e6503c45c57ce5a179c64ba",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0044.json": "a470848b9e302b40c8aa82c3aed1afb7cf29291ec39b3042be657a800534835f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0045.json": "5b060c5af718830f82db59d9b6774633402dc9c81b3b9706cb8f890b14251fa8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0046.json": "79e3a95188f6c3e2678cb5e5c0e06690c69675580205febf888e58f017844d5b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0047.json": "de5d5e1a180652bbb37a44f87a37d64bbe3670f07d8d034d4a013179b83e5dbe",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0048.json": "5437a16de63685dc6150c53e292d955cde85ce9d03f5cd6dbcb4875d6849329f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0049.json": "41e97b75d842002c85631b71c06707626cbb5e1234b74456726c125f9c6c5872",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0050.json": "190b2ebe7dcc3f54c05feebed818f633042361a9ac57cb71a5bc9e3ab2f2bb10",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0051.json": "2c9aca23ce6e9926043375c1c8451df5654b0e9f5e259d7065856e9b72ad4f81",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0052.json": "e794f3817cf3c5d3a52e47f9d0538fbab8107101a56964d2b59b192ade702086",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0053.json": "92bfec4bbb7728a44eb0c8936de696901f679fbe481d62e50632dbfb507fe58d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0054.json": "71c8c6459790af4aaa58a34176f9f8f582bccfd5263719bc4bb50fab42071960",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0055.json": "28b863c29c5fc5cd814b56e051defd4ac208c4e38d06850adc9b5261b4ce1793",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0056.json": "52f31ec514c16f77aed65e9936b6bbb261d98cf2f4931ff87362117b5c011f99",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0057.json": "af7368b2a9234fdaeb485a48ab3268f11a2f12354b15ff0284f2b21833a4a578",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0058.json": "d437562b1c620ee62f69f22074e39d04e7b657c4d1479231430402f864358f7e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0059.json": "59882795d786bbafdc916d27a7579d5b38e036867b9c52f072177185b2f5ea2d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0060.json": "bbbeccf63496f0b98b62baba45a5be6dae4ea419a805d4412e7cf56e4487ed19",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0061.json": "6465f51c3391e82c848c8f83bb05c69fb931aa755d61ff6423e12d9f3ca5844b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0062.json": "f94b903c5cdadfec924d9eb77da9b85cb06e02a12258d0d9385e0e2c729f94c6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0063.json": "a52ac2928b5171cf3d578ca4a5ab08ea69026b0780435f843f4d184f353a82c4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0064.json": "1cb0166559fd3ca2edda1aa5cb1593826b851c209729538fe2ed6d17abd75ed3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0065.json": "aa77ca30da18a12bf40b686fa5bd25eb6954687ef207a2289b6a4259f18e66d7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0066.json": "247cebe183e22b78ecae3c7e0d1129d8bb629ec093fd3e852d1ee5751f52c328",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0067.json": "50fed468822d17081a80e3f1d5f13e869e717282694eff5f14674943890b1f86",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0068.json": "5841c49433f23cb02f12aebce07805a96436625e97b0c189d96797489d49ab88",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0069.json": "e9758b2302da72923408fb3093bf54aecac181d5976d26e6796c8ac1068c20e0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0070.json": "95e5b996a6cf94773af1ca73aa587246020d2d036c985d0ba6e165a7cdcb1a79",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0071.json": "fc31ea04d5131099139d688af7eaf548306927f47036fdeada2291ff42653b15",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0072.json": "8ea77e9cd57e0de9987bc6ace820e6da9eaf36bc4022bafddbc01647481e6b9f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0073.json": "974b5952eee2b735f94613a7b8c727bc99ce8a8bb60715434ae96f42b75e2131",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0074.json": "4a7c550edfced2a614b71ec82261699c79fa357df05133aec53edca23bb878b2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0075.json": "dd20eea3d9a45a56c9cc4f9451f50e6f5016a454520627793f11f6564bd29d4b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0076.json": "3146c0d65f3273c949f3cea37241256c7053535fb6f326d1c350b1f49297a66e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0077.json": "984ef228fd8044176155e8f890d8ec74cbb2b431f8d5c12d94e291191a733de6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0078.json": "c60b84e99fa73e963af756eedde8478f4c98f8521033c9e5e3acd608387ba66a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0079.json": "435ebceb00588ee16c75f15036af18f4668ba2686a1fc0d3aeded7e57606a26a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0080.json": "c3c85dcd3110d3d1ebc283ab2ce03bae7f7a6cf0efb0d2a3e704ae84179221a2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0081.json": "47720f13e093d088b43abd8af453cacfeb0edb4779a69b40a2f6ba2901be61cd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0082.json": "8d33ed2097adf233fe28039d7354d76e4384f86054b036c186ac6726d23eda5f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0083.json": "a769ffe3f34c7543ecc37ac6dc5055d79461e84aa4e6f268c3a885436429d8a4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0084.json": "fe21d2f712150d27417645c6791b61119e20c7bac8d428d4b9f768122d20d411",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0085.json": "b53ec6a0ff3fa565289209d36d3eea7edc184465b2aae101c00ffa8576282b07",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0086.json": "fb5fce41adab370dccc17721c033f3da15113ffafa8021f87d37fd8de5d7eff9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0087.json": "94364036571d6c2d7bf180a3bfc8af51cc3dee9eb0cbecabca1fdefa75f8a1c5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0088.json": "79ec43c9684cfd797244be73000e1c154f8e59220e3fd609ee50e0415aff8d19",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0089.json": "ad5fff111ff5e7708861490a178a1a8564433d313d0a0abeb126e84af4ccb719",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0090.json": "c3e6c089e9833e1806082b7fb572157db7a76ee7f45dfebbe83b22b4b0df6943",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0091.json": "1a3e36f823385ece989b9a7124864ada823ed40b480331c0ea1c849b1241b308",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0092.json": "27424eafc2ff60a8037630d0d7a7242e60a264402cfc273a79f9cce6ae15a2d3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0093.json": "1330ec8dae27fad360f2a3cd66f6c50ea53f40b995e3beb2a581cd9c2de650fd",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0094.json": "6208fd957d39ad7dec707d1609539013ce775941e5b3014829f114423fadbcba",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0095.json": "655bc776565024d4ca05f2de0ed611235ed4c5af1551bdc1e4dee344b963321f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0096.json": "dbed4136d8728c7b4fa4523a7634416f93c0cb213f6f7777563774d424ad8841",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0097.json": "e6819b75bb2f2b722f598473c20a37e1b9fc9f2597b8c5fe01944d97abbb663b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0098.json": "dc6eb2c143bf55c62aaeb218b45f3eaa53d7b3ce3db6c807788cf92310e0ceb4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0099.json": "b20729c1d7f648adab29c6870c06314a3707be47f0e79cfbc973607029b412c9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0100.json": "084ad9476a4bf7ebc44e702b5e53dbeaf206f3c2122d7994a07e59440ab61169",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0101.json": "9948a505237a88ee39b4b2d8f6e5560eb55fa574d894be492f44601b38eadedc",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0102.json": "f6cbda72e7db76cea6d407621a2f1b7caa55b960590f36781a3e0e69434126fe",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0103.json": "d92fd8ccf26cbe367138edf4c52014aa9a20edb7c6f4b1b089412400e7a649cb",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0104.json": "68ab7d83b9cb042f516fcc1b1d5eff5158cfcb43c9933f31b5a19705b77c22aa",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0105.json": "0d6da757425838378c5d70c79fe3a80aec91e406a5b9facb68bb7eb6585a389c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0106.json": "2758c6334979e98dbef3cb5269a1aa9b39767d1a5dbdf5603734388e14758ea6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0107.json": "ceeb555b2685ff832c593a8c4f27dfe5023f9027981b51e680e880f591f0af78",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0108.json": "5b74de24f184569d3016d0e0d7375a5047cd2b8218b55534d9f4c5201c9b51f9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0109.json": "00cb31632e0971ab2bfbb26c8d65e01077e5f2b99daffe3b54ccc2593fbd3d12",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0110.json": "e3880347aae9e53cbf8b3375157344610a33da54250e895dc527abf29a48e20b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0111.json": "79a54926b89722a8eb82271716e065020d846b09159d8bd3043ceb7c98052acf",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0112.json": "9612bb0578ceb9f6a4a4ac52d0f9a2b6702d3a64c1cb115783e677c65fac451d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0113.json": "b05b6944531bfc0d893d8cef251443a41478f1bf0a018a39d996648c6898a616",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0114.json": "216b275fa48e998c820f52608cf568dfc8f805da719b16d38960be5c6466f7f6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0115.json": "96d830432ef4f89024e43ce8bf8dd9510a11b91886a1eb9c2499c59390628a57",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0116.json": "a1c9c2304d2d6872c81468e186343485db8bfce103c8095f75c87edb9d987825",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0117.json": "2c1b6b82e72a7ac171d3306350c1abb3ef57ad877fc710b1e4438966ed4fe7a1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0118.json": "b8d146c63aaa5696476f6d54083f572c6793fdb6e7e3e0b9df81d18572c359b3",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0119.json": "10adcc70c93e3b509f39e1e2308dd04a0ff79de35bf3176ef7f951f867dc946a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/cases/case_0120.json": "e83f6a7d1ae2e101541daa92612fd2c42062d4096b5a9853e8e78435260df986",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0001.json": "824c0b26b6be95cca219528806ee0cc3a15a7666b4aad265503f5bfef24b8144",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0002.json": "7ed6279c1fbea20692f7c32c2fbfb5dc52bd0cb51fbf186f7597c4bebb3a5d6f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0003.json": "c0a7503f7bf139f1e3721cf1079f05ce4f7f3eca664d27f7b24658865a159050",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0004.json": "d972de848964dcb74b3f823618b598f11a73ec1e3494bb237049f737303187f5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0005.json": "8bce8860268f5cba41ae70f32c34d9fc49e62869c70e6b522ee7c5778cd30018",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0006.json": "d77f35ec2ecc40bc4f210bd6975a0b92cf2d8b037db51293b27a3aad1728ec5a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0007.json": "062f02bae114e4b72a75de20196be5a34fa0c571f34c3dd45a350d1b2f85de27",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0008.json": "96ed0278a68cd3268a7719a9388a8f3647e625a6998bccbad910524fb3e93da4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0009.json": "79e3f26c8f02fcd207e2933e3ddc4918e09f5465e264eec93da8f2d3cf19a25e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0010.json": "14b994c0efaeb51100f0f26bbd70c5509d615253713570ea50b7c9b68836ad7c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0011.json": "86107646520d2378f7da4cb38831ccc1c4bdd4b8a92cc523dcf345ba17d77b14",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0012.json": "486412a9ee6deb9bdf69764451979b13b102d5fc4fac966b609bc46ca6a4ca66",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0013.json": "bdf584c0042ec55e251c4d8267d5cc77f3b07f6973e6bd6cf25edaa289614d11",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0014.json": "c903eb7926c6d48510500f787fb8c9b3bd4efc64b433334a1c2d67cd19b50c00",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0015.json": "7e570d7059f4c9048c1e8dfe0ddd593dd0c80dae3e25ed25a68c333bc26b22c2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0016.json": "00e1846588398ede618786d57c0650a8dcbbf7a9b0820e71e0a16c955dbfe3f0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0017.json": "7f7d835308c9c757123a45b05db54720a38ab167b2dc6550f1d5eb0c204514e4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0018.json": "c99b4ea079aeca80a3b759d7237387bb608619d4c9fd789c9a302aed78620707",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0019.json": "66166dd60a6d8e40fdfe0847673b3a3b6cb4154d9f2a42763857d86d2c69fd29",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0020.json": "4ab8c60ea923361f6fb4254680f71cc650f24aad25e4087db5bc1917998c5c7d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0021.json": "8cf20ef4d673a7abd65d2ca622b5f83a10f73d9ad3ecf3ea4a7bdc428def2de2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0022.json": "3085d09124c7c971b5eddb3e6b655df6cd7b204abd22733095ac9cb96014de7b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0023.json": "a8a4077ef1e1c441c5206684db8efbdd26349904747808a3433038ef63a91fc7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0024.json": "28f763d8aab9b29c716ae5c8eb0faa38c5a2d089462ffea57613ed0fb11e2c19",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0025.json": "a476e5b5dfbc06054dba4a25451b52bbfd4fa985d9e43d348897ef30253d9b08",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0026.json": "bb36d0e2fdda254229c9ffb559b5178716e8f4abcc797ec8cec0cedeb69a135a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0027.json": "58d33fcc4d3c7d21dfc121bc1f9400b40a22fe02b7d666204925952486d1ce14",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0028.json": "b2d0e0ec794ebabf0f0fb49006b224eddd2afa4a610f1c79ef53e2381133fc1e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0029.json": "200fb19bbcdceb5e8baf5de9d2c5c7f1f654be195a22fb091b971a17b0568a41",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0030.json": "26b7653df2f8f4fe9acadc81a8689c82cf8a814b20ba2c15be0d94ee7635e868",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0031.json": "6881d4cc517342e0acab79bd9e6589462704feebbb606267b25d059230c7c713",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0032.json": "96d90725dca2a8d5c9974e1f42f52c1ca191c2d648ae6246065d4c7c5a969bfe",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0033.json": "68092281cfb39d6439b146588119355b0ec0b9ce8a87b1730863149f22106098",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0034.json": "f822d5a0dbf67a565b9a223c3b29a37d5fc0b71c4aedfecf85f49deb189ceace",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0035.json": "d0986c0d6b28f04fcf01fc4b83dfe82a663d48f628ad19e11201bda460f62dc9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0036.json": "6cc356b1a62c1a1b4cb366df113120cb22ad07dd8b990178f98e5c5e450ce12c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0037.json": "3c3142f232fa8df1aa3b692bd4d6e8916edbd80bc00bfdd744438767e68903c8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0038.json": "b7f57cb717e050c97885e47b9d19cf37eb567606cc7aee9dddd5504ee4b2415e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0039.json": "d063797d123b996b4a22351a95914772c3b8dc2817875453326b0b4d71e9c687",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0040.json": "aebe86e954bbf18d3b3d0a4206cbc98f849145e3804eb8974763d78ac8cee9a5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0041.json": "38f1ab8f42baa94c238b15997719bb09838a85a91af32f0f4420431a6570df12",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0042.json": "9d966008987948a2719c66dee24343f715289d874c983325e5bdb74b41d4e694",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0043.json": "b297da1944924ce69164d36d0966843134fc3aa542fe94f544e787a6c0f60c0b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0044.json": "cd7fa898d2fc172bdad465fec06158f43d194daa42cf9b98bf7465a266edf3f4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0045.json": "368d361bf23ee42e9ade226a1dd04bc60ccfaf60c76be15ea43519bdb513761e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0046.json": "d3920707cbe2db8e7b11c59b63e15aa58f9d82470a0b3b96bd20ba227732d307",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0047.json": "9fbb431137ac480e5d91ac1fa6adcefc6d14214546b793baf736c3ebfda7ded9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0048.json": "46030667bc90ca7f0b29ebbf500913d42a26ea4d16bb7e5c2a7aa19d9d3ec9d1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0049.json": "cad478a41e60c4617d732f3eb4fe4d8e205228996cd169cd2acc3f8766b8e4a2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0050.json": "8f1b86f7c303b6f0b90b14191bdb411f3c61c7a49413e667dea9aa6e680ee03d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0051.json": "476c290cb02f9cfd3e548250bc8f752488af90f3a5b01c043aa99a8bc3339092",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0052.json": "cb423fcf5311a066971fc5043acae41ac8e547e9972eee9c13f7f3f0bf8b3cac",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0053.json": "ceb881223733e806d1169de66f1108d519f26f05038b98c583fbfa818e950a66",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0054.json": "8ec757e11ca1aae0a7ce9be72f1150b4b5fd193c91258161ddc849324546afd5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0055.json": "3c5803b693cf55eef241f3a38b0e5290004aeb51d406770c9674296997c7cdb2",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0056.json": "edf350677471aa98e5c4cbbccff78da11cd980944a12caf7b781cfb51cef1391",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0057.json": "5de2f8a8648dcdfa7e4d4c12dc4d65b03de5cb01646c67edb02044fa0af37780",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0058.json": "1d1ee9966a6636ea5050ae89362e6fb8153547fad4dd5ae610cf1fb61906c18a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0059.json": "300214f5e8d20730dadf9209c5e8e34ff5c81c685d9eb62321d8676a5c686d39",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0060.json": "548aee4a58c34e25f7336181897a7ed7f8d1d80ca2962796fb86628eff004157",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0061.json": "d2ce666dcc3c622ec972ce97ca605fe00bec66a1f2dac1a3bb6d3efd68572ad4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0062.json": "88ccbafbd5c5e18861d722def7cf5290f884263a6f48905c4e1b313bda46902c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0063.json": "8bf772f9c6fb1785137ca3d3beb57b7a9b1a2631cee439eb9530112cca7ecc08",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0064.json": "70df8a2e13b62527d88dd0c8b4f22fa343b0ac0cdd03d17ef3f2c075191781c0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0065.json": "70d41a7b1150e179a6824ac9860004a89592069a4547199027feacb02ca6e2e6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0066.json": "878266ac21877a99c56ed84f6d1e5bbce71a276c26467debc8cdb9b2a20f51e8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0067.json": "fa9405519911812697c0aee6366235e99bc7edc6f45a0e04c0c1ed164c755f1b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0068.json": "a9bfc6403085036aadaa3de5b6c30e4f736ee778dd120ad0c8328a3ffe2e37be",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0069.json": "fcc7087679f83cbd4f9b5979ffa35f8fa7b5367746a48ace0985a4c80944e64e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0070.json": "f1b19f17099ffceb84b42912ae5fe86e44c9ec1abc49bf544da97213a8ff8b8c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0071.json": "e86e97cab50cc433689493b6a2e67c1207f6a2d8bc99d094a94f45f11bd8b09d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0072.json": "a5c3b4e31d178012a94f166e834fdafd7d74cc4513730761a4eb8017f9388d2d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0073.json": "37c8baff5674149c97bfb3bbe76f610c3877b21ba7c0cc6d81dc8a05e0c47050",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0074.json": "ac8a5903e1115cd360d9eabe91bace698d2d41b1c8cb5c667158e7a82ddb5750",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0075.json": "b2f3bb0552cf2e139a67fff048b27d7ac1543405ea8a706b76feda9ac4c119b9",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0076.json": "e29f5ea5862ae42a0ecb3ecdcedf947459298c688cd94af3b8198a761c81b739",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0077.json": "f066eec4dc95a6682bca37bf83873e83865f8e15046c630fe64c62edf3dad829",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0078.json": "36ba87104be80d2bd191da65048039ceb754a3f2cba143b8532ce05335f2cb4c",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0079.json": "c525623a7115bfb6b9a7ef4ce249e1ffb0a106d8ef281395523c348648728757",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0080.json": "cd94b7b509577b6f90b1aa5e0d5b3bf9849b4104c02a3091c47f95559aa2f55d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0081.json": "794d69599acae15ab12c003a7f84ae5916f35d1624c1e13421afb34bca3f6a6a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0082.json": "0587b4eebf773b72e2c5a97d4ac83705beccc2c455539e03ae13d6566feac184",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0083.json": "5222ec9f5086596f97faf3c714b847ebf15b9d8917de7410cafa4e9a5aeb47d8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0084.json": "b09e52f715b8c19ef4f77c2a70282aa5d87e5e053057de62b1ced423a44d998b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0085.json": "5a5f7d5e4933a9149f383144ce73393242350f054906a0d3e7ca547ba35d05a4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0086.json": "cb4982a5643b477c5ad6b776228b292a800f4ddbc75526b5d9aa4d4e27e4649a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0087.json": "5638b76fda26b7d88ac71ea6388002fe18b45281ea390d30fbd1c0c0cdb91a20",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0088.json": "227bacbecbb3e38e256d8d353a11ba360827161b91a5a5fd63fa772c53021aea",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0089.json": "be6edd16ebf0ccf4de5b65dff6c66a73bbdf5757690d22e61edb9676629e71b0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0090.json": "ba14d4aeb065466a165f5e46ddbf2a01b1a031fa52a5798232661165d47b94a5",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0091.json": "06e3ee7d4a2165f8c4f0b77c128c8b3fba1e8f786fb4fa14ccaf19b6383c2f3f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0092.json": "be0b1e935013f7ad38fcb63504343f5fa4fea93de72a72edbad497b8ce24e316",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0093.json": "6ed4098d0f055a2131106914fb2c77e5f80d814f2323120beac43e79acd3fa71",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0094.json": "b7c0252e130800430c5f7e569cc0a5971071d6eecdea20fa5731aa1d17e275a4",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0095.json": "ffc22565cd737fa6dc7cbe6a4336c2ef9924f0b0790fec8b5883bef34de0e360",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0096.json": "5b01234d789ab81929aac3357824df2013d0da6b0380cb8381d5aa09bae9161f",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0097.json": "76d3b391b46854458704c94ae6c39b695b8ffbd8cd202879ce9021b81d29b0d1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0098.json": "c9ffa4a8d782de637fa08a1457239ff89cd326ffd459a328272b67b285707be6",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0099.json": "78780a56fd76d8ae60f6a25c66e5acd2477ba78e20ee1339301a20dd4522264b",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0100.json": "6f3a7ff3dd7df631f4df93d4aee9a960702b26a9c74a90cd0ed980311ce9c81d",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0101.json": "745d613c094d5b3201939d2bc15d63308a8b217576006b575eb9b69ddc2b5b78",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0102.json": "b3d372140f75504c6f66788354f9803cfa7df3d6df3a59801c7233615ac7dbf1",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0103.json": "9c46c1b08a76886eb3815ebe529d2231619a061a3bb2a917087f88fa7ecb5001",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0104.json": "d8257ab5f3a4fb92fb3df78b81868e3b84290535ddf169a83934aa42793937aa",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0105.json": "5dedc3deae54dd98b6c0344ed1fca94600e1e8ae46a17d7e943e6c795d212b91",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0106.json": "f9e1df02db42d88cca7d0b752dcac21e394228e4e925a6c1b94debf8bef31650",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0107.json": "113697c2b2ccabc45b01dd6c86d260843e6435bf4da9d46473c349576e6255f8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0108.json": "f489c5dffbddab9caaef6fb13dff13c239af9476c365223f0d5d9393fc117070",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0109.json": "1190aa9b2bce6746dd2b07fd29622a887f8085d30954959df6555cd3d08cabc0",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0110.json": "e54103b7e578c3ab673db122361f655042466481e0d8ec5c7e090e93a341781a",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0111.json": "b086d3cf3e1bd204e8c51f2f825cf1613694dd95916b9fa7e7cfb42f05a23c54",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0112.json": "ce12173f6a6a31f5455f405e5baa4ce24271a9246cacf2b5dc8b677b10726396",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0113.json": "c90aa59b025971e22dd80d4c703f8cc506ab417c97abf747953a80f07e4e82dc",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0114.json": "87ba7b49f6bf0057e47a8904c2505d27f59fbc915879ce3dbdac8a9393d0947e",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0115.json": "9a8cd0ae262ea83fefa0549062679c99dc8ad5d33f9e088309f01405bfef2849",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0116.json": "4de80a6c02791443b0a55ae8d2ec6aae3c68c81495c6c02212b0b12e0229ca69",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0117.json": "2636bb8959011131e4526de56c21722a20449a0b7db37c71bc116c5d9527b7aa",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0118.json": "ce750e37018ffdaebf9d85195eec5349d78ddb8d5ab488dde7a272c5dfd7f4f7",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0119.json": "26d97e72c506cec2182fb16d722829ba9ae55aad6b10977f6446fad1ec1ab2b8",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0120.json": "279c9584274c6caca4e65c11e24a1fb803396470d9a14eff96b9233272800da3",
+    "/tmp/hkbz_baseline_analysis_20260920.json": "b3858c45b71977c6472cde78fc21796f4e6f654a50bb03b0302b93bcc2905331",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/pre_ppo.json": "adb6eae1e548a99c5891ef4b8a1037e0e816d1bc29a2c5e4ee55303c638c2261",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_1.json": "87838ac7b70f88831a5b6af6c6d16aead2696bd1313d0ed255e2f388bc80f1b5",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_2.json": "0a019c8481679f5dc4ab8d280bca7c1807dd98e82eef2c6a8bfe8a18123e00a7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_3.json": "2a9fa056718674b60b81919a18b3de9d4f9283c0a7ed0c0c1142b21f23b6a3b9",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_4.json": "622c88dc54989006d43190517c460327a16a46ca21b09571bf95f5f60075fddd",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_5.json": "988288baff3080e432a9894c133a443db48c7f50ad6231220ad04620f24417ff",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_6.json": "6a3df41cef7d38590c68ee227935eec5304811f39abf6c60f6be443a6cc757ce",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_7.json": "8734e6d7ecc9faf75498d8df21e5ff82d5af0fe835a0899d27ec80f5a3aac8bd",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_multi_ppo_seed1/run1/evaluations/epoch_8.json": "49799a99900bb84514352d11e9f3a816dbb809450ef42863a5dc9130e929c2e5",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/pre_ppo.json": "082353bbe7fba7779e57dbf11dd717e1cda8f07e342cd6f553e4c9c8025d616e",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_1.json": "2b76bb1df92bf8dc3ddc29cf019885e57d4b46e650abf2e863801297a11a8d66",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_2.json": "c1a2e8a4851a9761b507742d904df6a91b91c70fa9cf3c5390d09efecd69d0de",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_3.json": "638b66fdf90f1e7c345ccb90be465ff3c91d66fcd1ffa82445aedd618bcd32a0",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_4.json": "69896692bb8c28a1dcc3370829159e2276a0d2817be30d683af7443e6aa1950d",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_5.json": "d644a454fce0346f606b63c00c17f338648c37c489131197c68d37fbb0d0d083",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_6.json": "7c21b346b30fdbc8509405ec39d75f83223eb435cbfb69057f8722e93f7c0ab9",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_7.json": "a62de0289561be331567170409571577520cb950a6453d8b13a1f3771a8b068f",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed2/run2/evaluations/epoch_8.json": "9e3c48634ed396d5fbc64737de686f91b40a9c7ebb9ebe0fbf2aea92508262ff",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/pre_ppo.json": "af6aca6ad9262047321e271f876ddfbb9ddd75906f127c0b1265bce52137cd83",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_1.json": "e32dc9229a2ae8719cdaadbfacefecdc82fa380fda53c4a1d402b83186bcf7d0",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_2.json": "2fdb4edc7e5f60b701e49ada1fc2c415e4b7c4a97018ef74393cdf11f12ac8ee",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_3.json": "16a4adcbf0abc3c18aaa16bef7c557a1a7918532b70eb6c24f7c3c89d046aacd",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_4.json": "474eac73cf650cc01271d6fe1dd63364411b2b562cbd3abad9734ada898b6f5e",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_5.json": "6910383c0eddddfc44d71558ab6d2376a592afb0d0e241f6047fe1ec16a0f5f7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_6.json": "64690dd9f25ac7e5423cca804ffe62e51591ce54786956f07dd5119aa0cc87b1",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_7.json": "e18c05f2fb87e1f4aea3f197be747890f471bb17691708b037523d2bf4863068",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_multi_ppo_seed3/run2/evaluations/epoch_8.json": "01e94f886a2ca8abde13663d366eb379df315a37739134f29122426237d7533f",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/pre_ppo.json": "0a1494979cf43ae5fcdf1af276477d7bbad7e83ae23f889c65dc395e99bc3593",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_1.json": "22ab586b877e4531c7f869039acd6277fafa9fd241c53439e537bc67f3f8ee12",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_2.json": "139444eafa06847ae8501a575ea8d60a039f48c156df02df5f3213784b535133",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_3.json": "bcbf9e4fcb64c7b8c3b13228f36901fc691f01175ce5fa72dea7d3f9e6ab5b6c",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_4.json": "93009dfd7c77265d8384b09b9dff5eda389fec25d2fef07ed362b55dac798e07",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_5.json": "2ed588cc439d8d010c237caabd8a256700a288dc6311b71022318e220397b6b5",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_6.json": "f2ad7f48b72c4d17b4272eea0669a556b537a292d405ff47c978bc131902a7fe",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_7.json": "15f5799f57726ee3f546df2fce8fb3fa07f746e6538693f39bba431afeb395f5",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_daniel_seed1/run1/evaluations/epoch_8.json": "058cfc7d2678fbe9c87cac8b88af38350454eeaf45f925ab69e91b78db7d27b2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/pre_ppo.json": "18c7927fae8154bd37139485e6aa4e59142d8a5d7634fef6a75b99c21b8c818b",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_1.json": "14dd18dba172181d2d6eb35402bae179968820ba4b936057642def372178a2da",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_2.json": "d240dcec31645fea9451f4d0de7100dd93f41b3dc46d9074324af839cdd51b51",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_3.json": "59017d122f5c4fd65785f11af8460498cce985e0bc9a9a7db67dcbe8837cc78a",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_4.json": "c70d32f88bd6c47c569e71c13da361ee1a4d8ddb100ce59a15c4b9da7daa1007",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_5.json": "d9f5f756be9e22659b6a0c567acdd6345d232e9b8ada63fa18dfb76fdecb66e2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_6.json": "e57ab558656cc52160b1a8fb34d428a68eb95d1875149e3376a54e5eb0ab716b",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_7.json": "935ab064c8dda1fee5a0472b0be5a5193bd30381be62de93e7ca71d4335754f7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed2/run2/evaluations/epoch_8.json": "57e49bc4c021cace226256e68237def497fc3cafcd55b5cd2fe5a0971c1f6517",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/pre_ppo.json": "83407c7509853edba4caacd272809398d2ce437d6cdabd406af5e782feda3deb",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_1.json": "8ca067e8ae9c6e4ccf11ee31bf95515054e3d274bf8d616abdd62cd4c89ea4fe",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_2.json": "678774760f9224f68b0e30d4147073fecbafecef5bbadd68a4d3a4605c5ba377",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_3.json": "108d4d73c99a3dc310e9029d220cf9dfcb7f84ee90198edc83914cf01cbbea90",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_4.json": "2ad7f5dae2944cd6d79f8b453489c490b0952d4e7161e0e1874ca5683c92cadb",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_5.json": "c9239d02a937954ca4466beecf8124c4beedec8cc4a21b1637a8500010db08d7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_6.json": "108ff5629a766f5adba2b2fdf0f742ed59cfb41b215522ebd96d923cb428443f",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_7.json": "91de5559bf1ca92671c3b000aa33053edbf03c993a24a96ae29b72e2304adaa7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_daniel_seed3/run2/evaluations/epoch_8.json": "5531852c074a7839b4608dffbc430c8d2b1b2a47b78fd0894f453702280d83b1",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/pre_ppo.json": "587e14ef3cae2d8bd84e0efd1aeb18f8f2fe376b9d3923b0cafb3fc198954fda",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_1.json": "d6c5cae14ecf59ec5ee848a938bf4538cc57d3cbaef1cd2ea84f6f579040c07b",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_2.json": "cfa2bbbbf10bb04bb1c604b8fc09d4b279a8664e26357d629cb66b0f78b46d50",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_3.json": "b4adb156c6c53bc8a0d10df2e76008c5ea78748027435712b541db982a3aa92c",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_4.json": "b9eb1e2717760b23403b1c8958d12f7096b1d56f4a3c8cac6658d523cebf8c9d",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_5.json": "268cb356a8aef8a18b2ed320ee38102a57da3a7802fd51f566b9f412a8ac8321",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_6.json": "c228f128d730fd807e3032dd19702420e3a81743a83b156512c057a58415e7a6",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_7.json": "49731fbad9c0c88feacf87a5e06b5736712cbbb6e175c1805a9d049ae340faa1",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_fjsp_drl_seed1/run1/evaluations/epoch_8.json": "5f4628da665f897dba6e5a23b9a54b2d6eb41ec16b517ad269e9481683608b75",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/pre_ppo.json": "bb4a372549db0fc740b547020d1933b2695da14616541f7c52802d22d5d11e57",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_1.json": "1185819a2940db408931e37c2bf5395963f08cc2e5e7bf89004af95d8000607e",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_2.json": "abee270143262568bcca8c2ec5aa470f629112d07754644620de3d5b8e9cf7b2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_3.json": "f48567ab9c68155e07d11da803d1f4a62f73f5dabddd78e07a5f0c3630b6edb1",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_4.json": "73764a52bc8e8da84b4e0dd55b558b26ba3594c20e3517a655c244f60da8b564",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_5.json": "415bbfc5c4b1895f21842c2ec7e604b3b05373ce4693ffea32f14273a7a328fe",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_6.json": "5a4d6f15b814b581cdf0790c3f79c41f926985e70e2a9ab80494f5947a3557b4",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_7.json": "3c722c5418cdc3f3718554c8c7bcb6c078e0b86adf6e8660d60f635f85c8ed42",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed2/run2/evaluations/epoch_8.json": "ac169aa6aa30a1540348653b285c8402941624b363fffe0855f90e7de2db3eee",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/pre_ppo.json": "ee857da26ea2dd7c851cbd256895734ec5e48d83a922853ab9b8452a3a36ac8a",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_1.json": "f943a90b0ac17ac742c596bb03be91bae64ff032ef2f0bf63b8d337eb370bba9",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_2.json": "deca815266166a04d6ea34b3609da9ac91406ecf137d10ab7fc63be0bc8909b1",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_3.json": "3a33518b8a620db1f4cd2a01b43db7d682d51ca71d971e4e7fdc83e4056b5df9",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_4.json": "18c5a76bfbd935d3d43075c89f756a51a4887dbb94342be51e8467a522c49ae0",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_5.json": "a753fe133ff49f6ffa51e175965e5b25a12b8781f3c00d65e7bf4d28f719a09a",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_6.json": "7a0a076b89ba16cf6b15ab5f09245c37ff631aa6ee2ada076ddfcd5ce6c42566",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_7.json": "cd7f48ebbfa5464ead4545670c371564dd593b08a1d5517163ef30629ebbabd5",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_fjsp_drl_seed3/run2/evaluations/epoch_8.json": "14be36105bc3efa449f1de107501d7db2e26ecb91971af7d87e3015fc23829f7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/pre_ppo.json": "6d988ce3d987d1147bf118bb4c7890e5f98bff43e48e595801794567513d57a0",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_1.json": "5c83a8323121a9612dd1096533b0d2ff65a8aa307041604e80c22732eb1b4a95",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_2.json": "bee38eca6c77c21213cf0b121a9527baf06065c06ea3572cdc21598ebf4e220f",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_3.json": "a8921b82b16e542ab0ffcea2c26f9c775312583cb1323c929f75fd802e434191",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_4.json": "ce2e2dc0bca4e8b6a4aee8749f9943f2a34305e1e5cdd0eb63c36ce7283351dd",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_5.json": "c83d3aed1faf0780ffa62cd729c1563ff0183ddcf24e63917abd32d4edbf6c80",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_6.json": "4b3ea931f5838389e1ea8be3521186def58f968cf4b506b3b67d8295d869af75",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_7.json": "2dc70abb4eab1eafb803e751aa39dc31a824499d5ed24b0b23840a030ee135a7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_4gpu_20260905_r4_formal_l2d_seed1/run1/evaluations/epoch_8.json": "3fc7d8e858e3c927766200c48089d0ed7b2175cbe79b0781174fba170733e6e2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/pre_ppo.json": "0f6b50716e39513d17d1cb9081d15740edfb76cecde4d3a3a7b6c5a42209ea1e",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_1.json": "752b5d3775b050d1db36ee8df25b7bd9867c571954120dda9983ddefc42d32df",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_2.json": "c1ec1f8778f25d2f79138758c1f0d469685f099642765959e291bdbb76ef6a51",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_3.json": "6126f8cd317f708ea410921a65bdeac977b897b839d615172ac5eafb343bbbbd",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_4.json": "458819ec20355a2c0d3cc8c4ace9b37fac3d255fe39a8cf29349f946ffda4f74",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_5.json": "f6dd80f436cfb326a3bca8a526c43ead6445d2cedc7f5017b148e61f1dcab7ae",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_6.json": "e3a13921c022135ecb00587cf1a0d8183c4f0238e1704ee34793e331f8282123",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_7.json": "8b89ddb6b766ef2fe9297b8c00e2b4aca589a62650663b5477c6da510d3be75b",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed2/run2/evaluations/epoch_8.json": "de4686e3eeacada4b4fb3fed4c4ae5853c6d52415b0f110aea747af5299cbacc",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/pre_ppo.json": "1afb2b99231820e087468c489c0f8e5f4d1f93bc06c55695eb31941eb2556e96",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_1.json": "18ca51f3192c85ffb363973db31be8006c5eaffbf14ea94748807bf8a9b972c2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_2.json": "721766012fc7bbe42b872d1477ab8b11bd35cc6976d2c771c2749d6b0f94cc30",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_3.json": "f86fdc4c2faf6a4537e9c0c577e5ec56d8a4e5f421045dd9192670c06a8f4084",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_4.json": "0de299a90ed351d416ac6e670c803df457d74976ce751cfdb9849d7bb2a46960",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_5.json": "a91e2ef2913d73e7faff45c65a56ee55824790eb145b862f3d67edce33710936",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_6.json": "8e1949ecb2ea8423a4e9903ae72f54512d29e1c9f3ce0b1bd1b27a893230f12e",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_7.json": "757f65de4cada2d458773b8ef6a7177f4a905b58839a383d7994790af6cd7c65",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_p5_aligned_seed_ext_20260919_r1_formal_l2d_seed3/run2/evaluations/epoch_8.json": "c1a3c4e5463e630641385b810219a1c369ae02c65df82cf9f3f4e1647803fd8a",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/pre_ppo.json": "c056a4a75608f20d8f8a7aa9df2da6a36a608408344ef64962d821530e7c7231",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_1.json": "7f2c45443f5905cb5c366b7cf29966f2769e6da75b975aac3b1824b525007fbe",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_2.json": "a9f01c1d8e157dda201e91d63c3147565b72945e2d5ab4a5c5b569fcdf766ce4",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_3.json": "a60848a3323215cac2883d920aa8e5a38e53f590a96b431677d641fbdd4ed270",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_4.json": "8b3a0a2c3f35f4f043dbc41a2871e7cc0411cf618aca8ccceed3da703d49c453",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_5.json": "e5e8c1b67c1f1398c1a3535f17d1163fb91c760c4bfb836a97f4e3f369738798",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_6.json": "1ecaaa34b95f9c378e3fef8faa7fdfc3d2e1555b2720a264c1898ad5aec7062f",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_7.json": "6f9ced2bdd415bdb132ecf15d4cbb125211692918cce2617020f728051e49ac8",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/evaluations/epoch_8.json": "ff1a9f9f63fea5e3104fb3fdea8f22a116267507e71b7906f275f911ed1e5821",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/pre_ppo.json": "20566f6036c11fea043f91b9aa9dfa574395abfe5f2aeeb10c578ed16ff644c4",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_1.json": "4628df313d0c9116eac06587772159b1c768a84d49eb1c9fdc2d98e8264d053a",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_2.json": "3bb089dcf2bb6ed72d36add16fabfb935e77b1266bcb1afcee06b559252cff45",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_3.json": "e887ecb183219591e239ec25ab5971c37db8ae5ff532dd9ad621bd7758b106c3",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_4.json": "33762c92f9abb8c03cc31ecb16b15684fdb237014f555e092945b037d41f11ea",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_5.json": "6922d2aaef5225bc20db637c23efc83b98347bbba69b56e8e4e9ddcbfedb6930",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_6.json": "1ee2e2c7666eccda6eb5d9b150fae9194ca4a22ac919dd51906c399ac63e0e06",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_7.json": "76a7f11a7cee2e4404e593d6db0cfe3bd4539be1fd09a769acbda5e8b009babe",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/evaluations/epoch_8.json": "e352eb1426603dfcc0fd099f5062876f64019f2b36e8da46b92ea6fb2fb6703c",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/pre_ppo.json": "0103e3ba1b6826f52bd7cf78aa2c4039c167bb19196322375d982a1aa66f01e9",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_1.json": "372434321886ab3309cf2d6f90f138679807fef6830130ff72f5eae23951abe7",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_2.json": "e7b18ed182e8c58e3e972e129959c01a72d5dc673f1fcb18fe945c0821e21e9d",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_3.json": "56c6298c3e0c12d258917f24c14e5f7330863d800adf23cd733a62ea346867d2",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_4.json": "30626cef35131a6dde1f299b05d34b5adb768456bae9707e4b00060538fb51df",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_5.json": "6e3c3f9108605daf263d922df1b0188f08cf2ae4a1087b1d5db04567a14a7815",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_6.json": "22a387d5cb0c3209f5a7ecfd48abc9b720accdf1694c1874cb583a9143e2d00b",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_7.json": "cedcf8c49a276233351dda7e1abdc2178092c4f04fcc4499a8fac9d6a0d1b8cf",
+    "/data/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/evaluations/epoch_8.json": "d41e5675452d67f7159f27d5af5941b98534067542f166969181b2a6f0e058f9"
+  }
+}

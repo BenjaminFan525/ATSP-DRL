@@ -1,0 +1,49 @@
+{
+  "command": [
+    "/data/fanyx/conda/envs/maia-hkbz-cu124-20260903/bin/python",
+    "-u",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/code/onpolicy/envs/HKBZ/experiment/run_stage1_nested_iga.py",
+    "--dataset-dir",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation",
+    "--output-dir",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full",
+    "--aligned-evaluation",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/aligned_validation60.json",
+    "--workers",
+    "120",
+    "--population",
+    "20",
+    "--max-generations",
+    "100000",
+    "--max-steps",
+    "4000",
+    "--seed",
+    "20260824",
+    "--budget180",
+    "180",
+    "--budget1800",
+    "1800",
+    "--stage3-reference",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1/full"
+  ],
+  "environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1",
+    "CUDA_VISIBLE_DEVICES": "",
+    "MPLCONFIGDIR": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/mplconfig",
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONPATH": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/code"
+  },
+  "cpu_set": "0-127",
+  "systemd_unit": "hkbz-stage1-iga-validation120-20260920-r1",
+  "validation_tests": {
+    "unit_tests": 3,
+    "unit_tests_passed": 3,
+    "smoke_cases": 2,
+    "smoke_nested_regressions": 0
+  },
+  "snapshot_manifest_sha256": "69592f66ba477fb4d3345f980ea1af26e52a031e3d70a4a6851be8881b987d48"
+}

@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/data/fanyx/conda/envs/maia-hkbz-cu124-20260903/bin/python",
+    "-u",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r3/code/onpolicy/scripts/train/run_stage1_validation120.py",
+    "--manifest",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r3/manifest.json"
+  ],
+  "environment": {
+    "PYTHONPATH": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r3/code",
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONHASHSEED": "0",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+    "MPLCONFIGDIR": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r3/mplconfig"
+  },
+  "validator_count": 1,
+  "workers": 12,
+  "unit": "hkbz-stage1-validation120-best-20260920-r3",
+  "case_order_sha256": "94d746c8262d4bf5173edebb29fdb848827fd4a968ea5bf89515784c0ef2ba59"
+}

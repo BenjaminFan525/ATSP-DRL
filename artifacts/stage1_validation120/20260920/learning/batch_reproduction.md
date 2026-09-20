@@ -1,0 +1,9 @@
+# 原始评测分组的复现证据
+
+四个学习基线的12个checkpoint原评测均为12个worker、每个worker 5例；r2改成60个worker和120例后，Multi-PPO seed3的case_0076从13446变为13777。
+
+同一checkpoint、当前物理环境与数据、tau=0.3下，单案例重测为13777；恢复原12-worker及原case-worker-round分组后，前两轮24例全部与历史值精确一致，其中case_0076恢复13446。控制结果见provenance/original_batch12_control.json。该证据确认结果对评测分组敏感，尚未将底层机制进一步区分为浮点计算顺序或其他批次相关行为。
+
+r3统一恢复四基线的原12-worker分组：每个worker先运行原5例，再接新增5例。固定模型与原Best选点，不回填或修改任何案例makespan。完整原60例逐例复现仍是正式验收条件。
+
+P5沿用r2已验证的三种子120例结果，不重跑。r2的Multi-PPO seed1/2保留用于核对，四基线正式比较统一采用r3原批次布局。

@@ -1,0 +1,2787 @@
+{
+  "schema_version": 1,
+  "dataset_dir": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation",
+  "case_count": 120,
+  "cases": [
+    {
+      "case": "case_0001",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0001",
+      "case_sha256": "3cb31c6bb00873f7e5af74427d31e7449761635afd9220c82eabd88e318e8b6e",
+      "files_sha256": {
+        "job.json": "6fada188d2d1c44d1a93c950deb66c2323244800533cb48725529e1c60a2ef05",
+        "fixed_resources.json": "9a96e6e40411a7bf811b8877f0c97fb134034d83490dad3a9402fbcca49717a5",
+        "mobile_resources.json": "8c8093cd3ea0bfc041dc7b5da1996b30cd0237910ca4bb6e110ae4292a9f3bd6",
+        "sites.json": "aedf3e2e1866c664e66d85eebfa77b2d0e245582cb1bb7f038b962aeee48dd6f",
+        "flights.json": "794331cb3f32e604a2d0234f2bd4ba74e81df689694ffcd6d32da92cb0351bb5"
+      },
+      "raw_files_sha256": {
+        "job.json": "a34a64573f89e6d665e5887734c580500d1e1c75d51002393aca9f31a93f53dd",
+        "fixed_resources.json": "32afbe376fa3614c5768f6e50e9af3f2297cbd7af9faefa0a998e1a60303ee01",
+        "mobile_resources.json": "2863ec60a1b4a1a997ed11591bd45ee06286b64138c6c03047b8af1a9a14c63a",
+        "sites.json": "6b900d8929f6c79e084c8efe5208922e6b7ffc329e4ad01bbd02b8e40ab82828",
+        "flights.json": "c88021d71f9e23c7ea623e9a8b449e17f0138e6e9168baeef0f1e92627933d11"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0002",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0002",
+      "case_sha256": "9a76d695d55529c7e2f53f3303e13259df40cfc10a007deee0a9303fb38d5295",
+      "files_sha256": {
+        "job.json": "bc2e440e7322343fc0e710aae02176f85965ed09c0aa98f88ca35776094a7eec",
+        "fixed_resources.json": "9c8ee6382c9bad5a06b3fcf9800d5bd4159f6e34fcaac4d1ea8c70fb838cabc1",
+        "mobile_resources.json": "236ac3289ac0d7111e58e8b953decf10d999abb63d8e38f7d282dd35f8cf3b7a",
+        "sites.json": "4d808e8d8d725b405cda08b94cdee3d0f0a186d78149ea5d57c49190e2d4634e",
+        "flights.json": "861dddf666e1b85c0fe617af008524f87d63b2f0a436201f24230538872614e3"
+      },
+      "raw_files_sha256": {
+        "job.json": "cfb8adbdbb33e712f682c967171bed1bc1adb4296c54441c461cbbf0f0f057ff",
+        "fixed_resources.json": "84bf4775fb5ee74841d60ff2280ed1a6ef638d10c1d3b1e204aa53c501b585ba",
+        "mobile_resources.json": "75c974b083e3f5f49f282e4c486cd335fd9a319377d15c2801b2f8c4283d66b4",
+        "sites.json": "5ffd7a7c433eb40f133cb87a361bfc271828b1bf3481cbc68b3ce0c7e266b108",
+        "flights.json": "9efc02c8949de97b55080d51031736396534832d1bc78fab88bdc2da0c3d1def"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0003",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0003",
+      "case_sha256": "22bc8a026fda723eb705212ff68f9e7c9f40403d6f60a0e669eb29d7763d41df",
+      "files_sha256": {
+        "job.json": "ea553d022f53d343955db91ed9b15a6c38279779fd917519b52a6f2068ea85c0",
+        "fixed_resources.json": "6f52b62fc43d92ed141b41b9edffc69dcfbe84b31be27cf7f0fa8f0cee6477a5",
+        "mobile_resources.json": "6d4a324f95ce5deb4a3428774b2eeaafa074884cf11a79b05efbe2a846ecd7ab",
+        "sites.json": "769cfd997b1613992cd5c0c0a73dab5710f3afc6ea2320c6608c596baa2aff6e",
+        "flights.json": "f76e3a6abcc531148aeb4375ac7b353b07c21463e5bf011dcbc23444a3fe925f"
+      },
+      "raw_files_sha256": {
+        "job.json": "f050b4a5d74bda4ea9e1cdf88b071ac78f453aedd996432c23002c284b6fa09c",
+        "fixed_resources.json": "12d0e418fdef395394e2576f60fcbc077652f6baaf55979715124adaacfe2634",
+        "mobile_resources.json": "b5bfcf2ab4d0b3ed17ae2f8cac09183f4be306c55de48fbb4b8902273fa91540",
+        "sites.json": "140ad75715c1132cb92270c1f3c1d031f4187b522d9b07abb2e27666f03de1dc",
+        "flights.json": "f237ecc59c9cb2a810e96c599f45b6b094b7badb25c879bf1fbb90257536e6f1"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0004",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0004",
+      "case_sha256": "1e79bf77c42d7bc36bbcd548c8772dce7da439255553d60b74e76d6a382d7f5b",
+      "files_sha256": {
+        "job.json": "beedc7a9d8b255f4f7f7a6ece9ef993dd2f3c55a028f4ba3dad79b762dfdd1bb",
+        "fixed_resources.json": "43dc02b22cc207fe5a76fcb4e123a7d2c558d4cf470e6193bf296ef393e89007",
+        "mobile_resources.json": "2aa2275812709413aa18bae16e4190b31b6088a7194f53f355427e750d44c818",
+        "sites.json": "cfea68312a4e3457b8cbdba87b0f602b7a0d692c0caab9cc30c3b2d0383c5568",
+        "flights.json": "1397da62ab40cc5e440d00e3c6a06b1b7a6ccfb85c2b1346866b4d92ec278f37"
+      },
+      "raw_files_sha256": {
+        "job.json": "f63e668a8c4191b7d6ca73c94b351c6cf592d1e6edc8ca4bc196577de04b5ad9",
+        "fixed_resources.json": "cc9424cacb973c87bcb43acc3506b60ae200b0919abdc227dd865be489937869",
+        "mobile_resources.json": "f5084757edc8b004fe1b8290b6216a2e95777a4a14ea40c320fde62b98581d81",
+        "sites.json": "257369034a9d62ae0eee8c352595da9572663413b80569b622ebd47156d0f251",
+        "flights.json": "067179903998b444b57cc3768b44e1de49128b22d074283e9465d20e214d5ba0"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0005",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0005",
+      "case_sha256": "10b7a1b6e8daf34e6b0a7b242e2b26a74c560580a6e85f40324b210c7642ac9b",
+      "files_sha256": {
+        "job.json": "316d6e32cf91ba96dfeef2729e72e1a12dbae34d6f456d61b0216cb026b46138",
+        "fixed_resources.json": "6d1c231606f210a5c70bb84156fb51888e4346e435c351cb59325f4c0f7e7c8f",
+        "mobile_resources.json": "74706271a2a98289951db6cb1ab4e434704052b97af33106c21916bc6406b61d",
+        "sites.json": "f0689e5f6fde6715555fe675382a37be7b53761b36c3a35aa0136655dba80738",
+        "flights.json": "b9d35b706a3fb202f9ef1429b878b3f4d0f71b949f6f6f086438f406edbedd61"
+      },
+      "raw_files_sha256": {
+        "job.json": "d26b64b3417d1003edb01fd66a320e23ef0559c1dfadce8c56a207f6a530fccb",
+        "fixed_resources.json": "a8bfe029b30d96856a84c9c35e575f77f1eddb0d9ffed950d9d855f1fe07e982",
+        "mobile_resources.json": "3bc5badba94923908af85968a51e575b03f36ccfa4853e03c08c9d96e11e73bb",
+        "sites.json": "9bd3227ecf4909a4534ea45a758880367a778f515741ae7c6cb7475967d893e7",
+        "flights.json": "e09ceafa467fced7dbcc7d7d194c35adfccaeda8dd9b1b07a5d1f0b76205e106"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0006",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0006",
+      "case_sha256": "f48d93238a8b4cf713c46c04f0db8fdc1d407f176b09c555ea6df9c98ba96b61",
+      "files_sha256": {
+        "job.json": "645e301c8a3406e1bfc9e214239147bf7fa7e7d5d0011afa4ca777ad77c7d93d",
+        "fixed_resources.json": "0b877aa7ede696ca9a55c6d3170341ae3a1944ca489bc1ece4ec80dbc7c125b5",
+        "mobile_resources.json": "f5bf8beca2584c3a3a4d6ec1a2ca7cc257fdead18dcb3c32d7508ec85d35fe71",
+        "sites.json": "916f29640772314d7278ab1dfca4afe3723deea9eced308dcc1393561d982f96",
+        "flights.json": "84fd7680a97eb653908dbea6ee1998b597e72cdd9413bdf0b489b788854f76c6"
+      },
+      "raw_files_sha256": {
+        "job.json": "5c36c0043317554491ef519b3dda5401981bf6ea45e73a356b26e0fb7213a7c4",
+        "fixed_resources.json": "569cb603bd0375c7b0d921c5fd0c9f83e8ee4095dfe4247a4afb0da4282f7fad",
+        "mobile_resources.json": "aa4e817b3f7ea05b5544ba9ccf3ecb928730af992d4d9fa311a828d5f795f653",
+        "sites.json": "e542f7c378613aa9da32c8fa6cc0f8c3db6cc25bfd8a62a80bb2bdef658643a2",
+        "flights.json": "9d194d8b7b1d56628b234307a0bbf99f1beffe7c73278ee891e33c0ee25905c2"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0007",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0007",
+      "case_sha256": "bfccc68310d1c3b8e7cac5cd5c28e6b171b80a68b4062327d4ec500bae97c57f",
+      "files_sha256": {
+        "job.json": "fc21c8a9c17bfb81a1044317f7d6879715ac785fc24075b46cc83f6ddf82aec5",
+        "fixed_resources.json": "5961bfc406c70d28c3e457ba8a9b7df2238d381d80a7f82290069eb58c5307a2",
+        "mobile_resources.json": "725d979975374d68025582ee6fbf28695a1294e2ea117fc784418c3aa7de93c6",
+        "sites.json": "bb8e43be0c4807ca5980f5d889b51221fe8de666b7ffc4cf83aa9c0ed2dd4aa5",
+        "flights.json": "f81842bddf13cac68704ab1538c6fc70bf19f44d27aca5cd2a7211fddaf6edc9"
+      },
+      "raw_files_sha256": {
+        "job.json": "db6d02edd687afe886e3f79d025ad382f6725ff2e120654fc95a308a75008286",
+        "fixed_resources.json": "34170579673928e8e7ab07354e82d3e131e36e53696df29bfab1ae484350f04e",
+        "mobile_resources.json": "08db9a5bd5bebe929001b6c83c2e948faaf4ef2742b64e7849348a74f3841eff",
+        "sites.json": "5c7d2d7095c74b89d3b1dbd25bcfbd3eaf9f04e09d4e87584511672f44831741",
+        "flights.json": "718c15ba2c0ed43222e786a0632aa3d118ac5a22be0b6e1408bd7d29c64b9b00"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0008",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0008",
+      "case_sha256": "c3025486879a8135a71f3c0fd1a486a2c7fa301f46c933074e3611eb0dc66c4c",
+      "files_sha256": {
+        "job.json": "580be58d4c9215ba36b796c00e1d5acddc6ca7617ad04c22b97149c9d28ec14b",
+        "fixed_resources.json": "963f8b43466888e4ece05d178b5124a0166e7330feef99d4966c2ba5d286670c",
+        "mobile_resources.json": "dc65702893c3c122258d95b8813ffca170420587a71f628dae07c0a6fd28352e",
+        "sites.json": "483844e0eace2b030acebe5954033c2e4c881bfe6c58cf34aaee0c86d213e35e",
+        "flights.json": "bc9109c5e4c3916438f601bfe0994b397902fe222ae804111541c4d743a56eeb"
+      },
+      "raw_files_sha256": {
+        "job.json": "c89869328613856e1aa7115e2ef0d966f8b148392b1fe3b59027f960405a3bc9",
+        "fixed_resources.json": "a0c69159589437853a169e1c6314e6479da745efa5f1f35be3e0cf5e5c4f01a2",
+        "mobile_resources.json": "6f730eefaf7bcf31212d1ad5428a502a9bc47b7ea4f1444cca6dfc93799b13ee",
+        "sites.json": "18fac419db074baa75cc7c36d4b8909639666fe60a323b90b67de8fade1b6ff9",
+        "flights.json": "091c0d1f916938497c88d6cda1adfff70e8922f462a4ac3cc72dbe4bcd824c0b"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0009",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0009",
+      "case_sha256": "29101389765c0afee2e2ef63cc0129b46188ca33966c8c506a5a238c48806301",
+      "files_sha256": {
+        "job.json": "2e2f77f158729c0e00c142214aa986f5c5f314cf641bc8f0805726f8c7b562b9",
+        "fixed_resources.json": "711441ea55011fa4bd189120cd4b70f8c0433a02abe37cfa6c9c0f43db176990",
+        "mobile_resources.json": "b8c3d1ddf2ae551a67ae2b82ac833b7393df77116fc177daeb0ca2fcf6f57091",
+        "sites.json": "1049944ce496994eb0082fe7d55cf740c8f77f7cfbaebfdaf99309992d76e98a",
+        "flights.json": "ba2524bd33f7aaaffe47a270eccc13f6a9679b4615dc0e839434948284b1eab6"
+      },
+      "raw_files_sha256": {
+        "job.json": "bb11a8cf39c2f93d5bcb479102d2e3a9c0081be0633ede80e74b4506cab9545f",
+        "fixed_resources.json": "ca4994264915a3ff685e2fac87908c21f6b263d8d83634c0f70d0da4674e8e06",
+        "mobile_resources.json": "94529b3d309c65775e51d70c20a33997f0b0170dbc1c474fbf9a8712d58213e3",
+        "sites.json": "67856a39355cdaeffd8fc17b5bec873fc4b11e2ac3639a240ada7777e60a97f3",
+        "flights.json": "181d47c859891346f2141f77ff70c782efecbaa5f90d8fdd3b014579e2811328"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0010",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0010",
+      "case_sha256": "c0fb6ba3cd2a740fe3c0a28b3d94fb4cd4efdf4e0e288ea6aa714a1d30df38fa",
+      "files_sha256": {
+        "job.json": "1c2a6ffd10584ed0dd06749144120df9b3c07c2d4c6767051ce34040b4ecad1d",
+        "fixed_resources.json": "7ca480b2c3700ba07a87b14e960fbb53f78eefcbc0093c61e7e33e7da6e69900",
+        "mobile_resources.json": "ed77752b33ce88c4127b60d4eafb72e3fca08adc5ac0e2b5073e460bf823ae89",
+        "sites.json": "b66f2ffb6ad1baf616a39966efdd6c9e7c1249d819ddf3df174a3be479c8cc34",
+        "flights.json": "0604fb03de8cf6fc752e4158c4f8d7b710d8c6d41a56a7fad39652ace4e56f4f"
+      },
+      "raw_files_sha256": {
+        "job.json": "bbbb0fd26665f9d50d1698defea69e41562ebb5d5840581546bf556ef04a0866",
+        "fixed_resources.json": "75237b2a1bb9a3c0e04066b4dd48b307a789974db67ee55b33f2814a9b8a1f8f",
+        "mobile_resources.json": "598266fba1a9de8e1b8e559799820ce45af50781b2c759321be5f31091d36476",
+        "sites.json": "6446d6e24fa574591e05c9753a2157e65d4254d8614f17ad79f381a2b674c736",
+        "flights.json": "1da7f187cdc2a2534716ad4060f5d06d2c37f4110f54286fa231134aa3dae8f7"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0011",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0011",
+      "case_sha256": "c477c4dfc72b0a1cbcf6464d58f83e49ffbb4acf357cc8043c6c57ddee9ca06d",
+      "files_sha256": {
+        "job.json": "c43cc77fc087723793958ef3b79f72df4e8c514814f44456dcb3637dcdc2cd10",
+        "fixed_resources.json": "08e5a4f2338e695b5b893dd42a52a1749c5f078dc5ebadd42d902c8adc08aa63",
+        "mobile_resources.json": "2b0ce5367eb7ab3d71836b840481545d41e336e30ac52fe8bf8d9c77e06ae571",
+        "sites.json": "e990b403de9c834c672c6692a6a7a6f5ed9d6397b65d4834f61a1a47604054af",
+        "flights.json": "8150f303286b530353cbeda2ae9c8abd659bb41b49ca010f0895f3b65e2c8097"
+      },
+      "raw_files_sha256": {
+        "job.json": "c6928d656142a5b552d6f1b735fb503c7bb6c417785e3675912ead905fe00d39",
+        "fixed_resources.json": "fe6402f020b23465070f4366023a868893a1779451f2298a88c964fa72d47882",
+        "mobile_resources.json": "49e7cdd946ffcea37bb1a109c0ab0be3003e0452b00f6ce85d4998645b601349",
+        "sites.json": "7551fadd3202c203713d9164e5e9760d1f0be927daa0ed249c033cf72ce02673",
+        "flights.json": "04a829d36b47242a6a71ccb520d0bc1375cdc4ddd9f4f83ed5cbcfd1124139e5"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0012",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0012",
+      "case_sha256": "ca1e5d28e8730447326ad498d786c3938c14ebdc45ebd8984065fa2047a9d9fc",
+      "files_sha256": {
+        "job.json": "180705b1d5d9186a50a088c87ebbe769b8e3cec1fe85a249f9cd3c2b3132d628",
+        "fixed_resources.json": "29bab5af628919e03cdc6253014cc805120fd703605bfb235e277261f82a9ce3",
+        "mobile_resources.json": "9a58ed162408c38fb71fa5d1fd6f0672d91a4df9448726310d1ecadcfa6dece1",
+        "sites.json": "d475eac18034846ba89e6eeeefb69224073af851c49f739270da6570c18daa90",
+        "flights.json": "413a78e99ee07361e8617d3f32ec4e753584f8485ff32b903c1d32566c3ddefe"
+      },
+      "raw_files_sha256": {
+        "job.json": "339cfd924e6a4bd77d79674d2948f27c105c492a5cb17cc967775ec95d9a130d",
+        "fixed_resources.json": "47f893a2fec09c7efe1c92047d0aa107b586865ec0cc80a0deccd2bd2ddcbef0",
+        "mobile_resources.json": "5640aa00c2b120ce72c155f97795ea246e53cbc2b8e300a21b7d8c0ea83187fa",
+        "sites.json": "d77f3481d2ad2d943e37cd8e507af827d8fdcf6e2075bbbb576dd902fe9c3140",
+        "flights.json": "beb780fe473d50b0f76f7ef32469ed6e83fd896c418f3e99fb9a8fa71172de99"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0013",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0013",
+      "case_sha256": "bc0e5e2a4677596b9dd9eb266cfb37935c349779398b7559fa1e891aff74594f",
+      "files_sha256": {
+        "job.json": "15c529c67e9276e9c666110e5d266530356fcedb240790447f34fc97385a83ea",
+        "fixed_resources.json": "599d772e15d44ba23d87363dbcfdaf586bf5b181158c3f70f1873b0d0866a238",
+        "mobile_resources.json": "f7393505253c30e2afe5f31dd0559ffec514e56d31cb3e6dfef7801fcbd78b24",
+        "sites.json": "4a93248f65d2f88cc25e60623f3bb4139c16994fe6b323ddcb9483d7a22b9f04",
+        "flights.json": "79beea99ab58592ea7089e61290d2990434ff25b5b84f42d33faf8c410358f18"
+      },
+      "raw_files_sha256": {
+        "job.json": "5d6e174669e74f46101a8d395525fec32032c01de359b7571624b0472804dd7d",
+        "fixed_resources.json": "676cd0a9541505a93a0d3af35c4a52d838c5a8b23c7615be9730837e0736f206",
+        "mobile_resources.json": "3426e050c133f31f06b9ce327ae755d2e436435b4f6a03e75d38b5c35bebfc19",
+        "sites.json": "c70bafddc3fd6132bf251c0269305e6075bbaecf45662a0cd8dc29b56888cfe8",
+        "flights.json": "4d27dd991fd399a8d1a80ac2a00762f8097efab25aadd7c481af876fb8efaed0"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0014",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0014",
+      "case_sha256": "35d22d8cfe9206e084506328cf6bbe6470db698ba8bfaba78b6c1a49aaaad581",
+      "files_sha256": {
+        "job.json": "9f8754392b052c404dd89ec6cd64874522cdac6901df45ab83b0c985db65cfb9",
+        "fixed_resources.json": "4eac551aba1500d086035c4a5905a463fe3b2878f1d32e9703d1370e90d9b9be",
+        "mobile_resources.json": "b46c1d834ff61f97a844c0404076fa9ff57ba3932f8d363192da8f0e6829b6bb",
+        "sites.json": "795cbf4103284f820ece0c42ac465bd7566e236eb45d6a5418c767ebf7150347",
+        "flights.json": "ceb123142713e801193d0765e2eddf1b6a43b7ff6abf24eb94e87429d70b9fe1"
+      },
+      "raw_files_sha256": {
+        "job.json": "53275d6092dd4a4ea935052f4e08f189b99d625cd8da5b282fe2480146541b95",
+        "fixed_resources.json": "0dd3d28caa299b309b737cee8804a32709b54ea9f4f870b8df1ed10f268d6752",
+        "mobile_resources.json": "848bdc7833e9fba820e197cd47a37a36f0df3570fdf8e8f1e363d5d9fe41f836",
+        "sites.json": "32fbe4a8da44b1d73249544d15a5bec235e076aba2ea8aeb5ff57bcc0727c369",
+        "flights.json": "b8afe9c8939bb5b14cc82eb649df7ad6ca5846322dddbe2b0b82bd5cbf783feb"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0015",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0015",
+      "case_sha256": "07a18d8a49375ae4741704ea2488bae9a5415064078b78dd6a33a7d4f21aeca4",
+      "files_sha256": {
+        "job.json": "208766fcacba6543f28a88bcaf8b4aae7d6c90f3de9918d0614ff94dfac2373f",
+        "fixed_resources.json": "5a1001971b6674d937921de79724484b0409426225f67188ff00e6f1fa1640d3",
+        "mobile_resources.json": "ccb92a65243a4c8078b75da7300c8d10c6f5c675b8b105e806f137f1d083a5c7",
+        "sites.json": "7bdf2f2b6c4c547a9355350e8ff891cc682091ca37e08a37ae68b468d0901505",
+        "flights.json": "021e30f237fccf69b016a574ccea88e208635f81d5366337cc0e7644b34470e4"
+      },
+      "raw_files_sha256": {
+        "job.json": "b59e0d302a0031f9fbd000b5fcac97453cb6aa5b64286aee29dae442b51feb01",
+        "fixed_resources.json": "b98e67eec83644a11cb958e22fd7466c660d4be9e1ab366c703c480f2c58b4a5",
+        "mobile_resources.json": "562a18882ac0da1024213ba3eef1c29e84b04a369c9c1148a5773a80020cca0e",
+        "sites.json": "99cb2407c09880ead56095ccfa6be51928d3111c03293b7b210f881d08566457",
+        "flights.json": "8768f9417376351e892295db6dd91f643ae71e3dd1e2691a1d8d23263816d357"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0016",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0016",
+      "case_sha256": "022fe8adc8994af52cf3669f7dddd8f276200a70aafefe5e46cf7341bc4b39da",
+      "files_sha256": {
+        "job.json": "b82db27e7ce3699315d5be14441d84b04dcf60bfed5a13354e24ee147664ee7f",
+        "fixed_resources.json": "f24da358ca538d1f96ec4b2ee9dafcd19921047313326d3c171c790ff4aeb719",
+        "mobile_resources.json": "b547aadcb8832c57d2cbd0bc3dfbec047d4367f42672d749639d90dc62a6fd4e",
+        "sites.json": "88a6b141c06e7500729a052502f8166487c49d975dfa2e9ced48daba73b67957",
+        "flights.json": "46415d42872dbf71af4a65686108805476c66567546337f813991ab1c564035e"
+      },
+      "raw_files_sha256": {
+        "job.json": "393c953556aba4f9f42019f7c95a6019d5fcd56cb41f15d9ee03739461e60c71",
+        "fixed_resources.json": "81751a3b96f9242466b5c3d178787a433b323281f0343523c2d9d59fc0c848f3",
+        "mobile_resources.json": "bc9a12b88904a353640c43d0442f251efcc4dadbdb002e0d9e8f4a7e6b65b678",
+        "sites.json": "f66dff066a2100f52e494914010df0ad738956b23a2b986070e81d18fbbaf2c9",
+        "flights.json": "c0131223b263e42484f377691afdf2a3de9f31b49afb3a7a92cd109d64f547cc"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0017",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0017",
+      "case_sha256": "3cd8b47bb62bee33f9d3decf47d9a3213673862bf20a3f8af2dcc3d11403f4ff",
+      "files_sha256": {
+        "job.json": "c6ccdee76d399e16fdbe258d1b1ebdcbadb4f566c1608f8596b33482847034da",
+        "fixed_resources.json": "066796f0e46f0de9e1b7ce9b028fc38e3d6b0b0d3e9cb136014b344e97d5d8ac",
+        "mobile_resources.json": "936d5642cfa31483eaa9c09efe7cdcadbebde0d45dfc21930c2f51ddb4a482d8",
+        "sites.json": "58342e64e98d95960d06c094db90edd51ee826bead734d8a7e6d963285d3eefa",
+        "flights.json": "b4e61aaa015efc71012e7bd2c914e481b124dc164733610940f7e6e51241b577"
+      },
+      "raw_files_sha256": {
+        "job.json": "c3ed1ec785ab3b61b8f9c4a9e5eb42a9bcdf5ac1ae87c9a5789b995eb592f14e",
+        "fixed_resources.json": "4af5b89e996837781249a1583b5ec2db53d1d165c2a00fc8b45a3caa7e01b3df",
+        "mobile_resources.json": "488364c8cb7fb5f6307448ef562038953431f93b0756d4910b195dd426fd1dcb",
+        "sites.json": "0ec2d42427a04236db93f1a1fe0924fd3a0d0905a48f433992698ae60746f092",
+        "flights.json": "e4e304475179a515940f48320af96a43e8bda57561b2581c468fa0217492a4c8"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0018",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0018",
+      "case_sha256": "cdb0dcfccf2ffb533121f8160eda2856230f698cbc4fe3aa6c0dd8342b9b07a9",
+      "files_sha256": {
+        "job.json": "270b9b6784f11f2998a565f235f49627acdc7154b3db85a17b397ff5de74dc9f",
+        "fixed_resources.json": "8dd9abdfc03fa337b67003e150b45825a3b1e7512cdbcda6452dc9fc93421c4c",
+        "mobile_resources.json": "be986d3129e53235bb8acc134d6e7970892da54ac9ecfc9642839d7c948558f7",
+        "sites.json": "ad91b9a14794982a6f9cf362b345ac119429a9575ed99a2a4bf96b69e228286c",
+        "flights.json": "9318f5ebd0e404b69bbf8fdc24fc5964dd4c808c33c1531de00f868bfbd8f82c"
+      },
+      "raw_files_sha256": {
+        "job.json": "2991812b6fc2ca6f6e0d2221ec300ac3ff3e3202095b3410d62edeedcc6363be",
+        "fixed_resources.json": "9a447f2900730f0c3e22f74923b0187fedc2a87ad2ccd527125f5d783a91b6ef",
+        "mobile_resources.json": "57a258103aae146f37af5adc1eb934c6e6b93fe3461fbe12f1dc41a0b34797b4",
+        "sites.json": "f1155aa953fc71bfd574a071aaa5ba1a5c1ce14c3cc8c432ed2efe12cd4afa94",
+        "flights.json": "3d540184317b889e6ff88cdf9ab0037892cb2e3292fc460da47d73e79ddee0b6"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0019",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0019",
+      "case_sha256": "a52990b1ebc97915bc6913cf5a08b7da27c502a880df3b4fd7d98f0216a660b6",
+      "files_sha256": {
+        "job.json": "ae2c3ef0f5e540fec0159fbc6b187d3cac011349ed644692e6e15e8ec2c1654e",
+        "fixed_resources.json": "47ab8708c69f89644268300d3ab868aaeda2bd330592dc118ffa2fbaf95ccf98",
+        "mobile_resources.json": "b4cdc554627350d10cdd1bf98d228ab8bf874ae7b85a1c0f75a9e63c9a9ac26e",
+        "sites.json": "0416b1bee69608beb86c6d7ea45f7c317f286ff1c9096e6d7a084da352809e07",
+        "flights.json": "10b717be09895cd36d388f31fca8267205ded5baf3175921b731076d0812df68"
+      },
+      "raw_files_sha256": {
+        "job.json": "fbc11ebc8f958d7d79be86390531a697e23b100e9d90a54bc9a946ec41d358ae",
+        "fixed_resources.json": "8b6f511cdaffd8eb0d2ab68ca0584ac4ad9e1a49396606eacbd93b0b039257d5",
+        "mobile_resources.json": "db24fd07cc704c0e8dd79e7192e34433d731e5a26aa9f7d1ea8ac019084d5e06",
+        "sites.json": "7508b238850f2f83e55bb233d7dd70e6c8306952001059bd36d652d92612e0f4",
+        "flights.json": "fdb7e1f41cdb5fd9acb4551915130da5caf337f97dcbef43692831d0b0cf1b52"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0020",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0020",
+      "case_sha256": "55d6a99fc8f6f8b047e9be5915f29b908cabc07b8ec0121199285d3171ca7181",
+      "files_sha256": {
+        "job.json": "540e35bc9d1fe310af2e8348e770467a399f501b6c5c32960828af983b61ada8",
+        "fixed_resources.json": "d841a32e2b676c720bf80d5dcffa29eab52295a13371030886d718c198d75f03",
+        "mobile_resources.json": "891a96aa0a9fcb13c61faed75f03eac27f981352331fd7c789ca6971406e6dfa",
+        "sites.json": "cb343e5b61b50c9710238342ffd134a7c02aa2d62d93557a240067f532afe2de",
+        "flights.json": "237c01ebf76c3a2a415fef5250c93a6c7c2e68bb05e6225e062217b93effce47"
+      },
+      "raw_files_sha256": {
+        "job.json": "e178ebd2fc3ad316f233d047590c7c3270b6b2a5d4892fdf7c668a1366ca060f",
+        "fixed_resources.json": "70f0e3b86b4a118e334f2aecb7f08c7b10e1020f7a786f1ccd9aeeaee75fdf55",
+        "mobile_resources.json": "dcf595b3df26173fa1f9a621c0b99c9f1c6b5ed659b5257184857569fe76fa67",
+        "sites.json": "b4455416e9f964e168564e8411738711514bc125be5fd3867182403504ceb03c",
+        "flights.json": "55205a9e3f3ed8a462acc5ec1a929d12937890e1a90abbfa573d38d5cafa0fda"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0021",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0021",
+      "case_sha256": "e8e97e7a18225e5911e8762e5190619ee373bf7db6861a218ed3154bf7b3ec64",
+      "files_sha256": {
+        "job.json": "019dd52e2ae64851498b1579c13eb4de21082e035579885f86eacefbadc4e784",
+        "fixed_resources.json": "f4940ce3b807614dc8c5dcdb0c1768aa2b57f239a48d82108a27019f5d432ca9",
+        "mobile_resources.json": "a88a809264a4680354f7e0622cd22b8c0505d87a949548c48db3cf67e4df2409",
+        "sites.json": "0b976157c7c6b3d8624c99c88b697f6fac28a7f8103117bfb56f4007b94d5b3e",
+        "flights.json": "1846f33986c4ac086ef4b671f21781ab9fbf1177bee2071aa6989e773e2b7812"
+      },
+      "raw_files_sha256": {
+        "job.json": "2cd8b707e1a663ea0e0205475fc5ab82a80f57aef000650c60077c8c6d28b510",
+        "fixed_resources.json": "c4de93c6254c609ad597353fcfb8cb281d46e388563de0771fa3de2a5b378b4a",
+        "mobile_resources.json": "db01cf55308ab41947e8da2388f8d3b0de49373355fccb2600de8391ad172026",
+        "sites.json": "e5451f3b88e0e8347b123ef846e1355054633293721f7fbbc377fc2ed349f890",
+        "flights.json": "2988b34b81366cb9cfe830d8813d47f0b898be6a83d217c31bee723f699a4f39"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0022",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0022",
+      "case_sha256": "283b5b29d4b72270021f01eb69824f1e06c9b1d6c771f6ac60409b9a0d89da2f",
+      "files_sha256": {
+        "job.json": "800e32da0dc179e3d0a22742309b380f2c65773e035d3ceaf0c233d7f8f099dc",
+        "fixed_resources.json": "17c1305a28600fc0104419f30b55b9b362272a33a7aaa07725daf763d644881b",
+        "mobile_resources.json": "2e65da8f56de2d1037cb7839e59b93ab599c11ee1c298f1761b39e072bf29f11",
+        "sites.json": "787ef5b2ec3c949487aa84436a402fe1c3048424846098ff5374acb70cb3cf2d",
+        "flights.json": "15fd2394f67aa4a9889e17a0b6ac48ff874b5824bd1aa7b5ecd4f7b76b546af9"
+      },
+      "raw_files_sha256": {
+        "job.json": "4225e79c45d34d51228f42eb31f5493a410414a8b826e64b7b90b918f9bd1459",
+        "fixed_resources.json": "e39c63367af4b8af01fe735fe63b173abff63be0c7733dc9cc37267a5849e2fb",
+        "mobile_resources.json": "d66287de61cef70ad12f39c31593ded1b2c4b74a4e95ab778e1c9c067aa95318",
+        "sites.json": "54b21f360c4983f38289a76626fe63c90bb515d36ab928d2714ecc0515f25b03",
+        "flights.json": "b80b410fba1d47535c90e1d7b64c90c3017b1bd0436477ed71287ad00d286bfd"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0023",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0023",
+      "case_sha256": "232406388a0e8f25f9bcf48869b948ec58c6f5c39254cc99da8aff4c56c58e00",
+      "files_sha256": {
+        "job.json": "1c9f149a31cdc8e613b217b25155dd40b3c69ed1d31ce35ed8fbc57433426e7c",
+        "fixed_resources.json": "60b39ea9beb258198ea186e995f38154171f11c95375fbf2ce028d62be8bdd40",
+        "mobile_resources.json": "b6eed42847e7102807d5b64ac50d30625f9d1c68115e644a8d3770c9933e950d",
+        "sites.json": "8f94d6bfb6e72558521e74bc9daeb126507ae9dd26dca99bbdfd9b192be19d12",
+        "flights.json": "4c2041db1492c98e32ed4a3cc35b115049e934afe61cf7cc938938af26ece4f0"
+      },
+      "raw_files_sha256": {
+        "job.json": "79be1377cef183adf2e2a7dd816946c01d84dd0635b989d02acf49d1d4583e06",
+        "fixed_resources.json": "f810528df50d3cdf727b3503a45318b4f06ccaaeaab6468e8e560fae16532675",
+        "mobile_resources.json": "b1b0dd07148c0748263e2fa5ec0bf23daa0bcaa97b58b8ac6b998ac9d1f19236",
+        "sites.json": "7880aecbd6196bb69839550f302908057c30b145ecfc81883869630ea57283ba",
+        "flights.json": "1486cfb20ae31d36f6f6da062863ddb7f8e7dd1a968de9a8808eb126b24fab9f"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0024",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0024",
+      "case_sha256": "275bfc22c21939a4472add178b8d7ebda09d07b89340e72fa5419db140c8bd89",
+      "files_sha256": {
+        "job.json": "16c442b92fde06304328f4a5791cd07d8154d386026b320badee0b3c91bc4481",
+        "fixed_resources.json": "b0444263b0c59c324d508e3ea2e085ca7bf8e154fde6c58f70e574c08b8b88fc",
+        "mobile_resources.json": "c45ee3ae9d1b5983c5c98daf36ac87402a4ebf93cf79736049f7753a0bf2473e",
+        "sites.json": "6adc0d004b75f8f90abb8871cd9dd98e9d1a44e25f4ffb3677e947519164364c",
+        "flights.json": "086eae52bab3efe8724a295e2fc29c587542c75fb4605d3c498f29ba2b52ba14"
+      },
+      "raw_files_sha256": {
+        "job.json": "8d3733fa60bfca4e4a755e35421720acd4c6c2ea932795512a46543f3b58cc88",
+        "fixed_resources.json": "2a307a8a85efffe9df3550055762f7ecf16fb1f491d486187b8de8d3998d7486",
+        "mobile_resources.json": "96da481f90aac64f0f5118718c870414c9c4f5f1a8d93b54a961c218e7379fba",
+        "sites.json": "f53eab76ddf6858fc363f1de41dd0682e4b1f5d7cb40291101edecb55ae6183a",
+        "flights.json": "409eafe8a5a0f9f9e2948113be83a67b8df987873985761764d5a2ef01cd4eb7"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0025",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0025",
+      "case_sha256": "8c14f2ac19cc142f41a344a0a73a2d6625623f49992b5c78b1459455bf12634c",
+      "files_sha256": {
+        "job.json": "1cb009dae6f27f8ba3237406ed4298bef231638d89de5f72b729cb56fb062fe1",
+        "fixed_resources.json": "58dd24e0a0f8dc1a4b86f6bf3812926f5d78a037460b9703dd2a92f142c731a1",
+        "mobile_resources.json": "83f6470aa15663ce6a85def7063c0c5244a78a3a7dc3fbcfc06c1b3edfb86a33",
+        "sites.json": "6a6105a0daa48cefaafedf0384fa43f36a793c87b7851d975ed418de2e4ec396",
+        "flights.json": "73765fbc04c21c75554a2c6578dd7855e44766d1cde3de16a6470a3f0f6151a9"
+      },
+      "raw_files_sha256": {
+        "job.json": "6116be70acc916b4ed4c61aeded8262bdfd304eb8afc8b32ab5926cfe1a05950",
+        "fixed_resources.json": "435638779cf7b4694827cb4a48961a1c0366467b851aaa961e938cebb01a6b59",
+        "mobile_resources.json": "4fcaa2468aac967d8ba00b4f62bbf64c682ef71a892e28295d1849faae1678b7",
+        "sites.json": "558f8b3a320dc474f1628ca03308ee1c56efb9b997a42af9fbc1d7847f3fcccd",
+        "flights.json": "7be89cb20b57ff7d14d3744e02d3a537ab41f3044b77038ef81eba9a2931f374"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0026",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0026",
+      "case_sha256": "f30150bb5dfd1172a4696bb84e8466bd2920fa23b2b66e82b09b93d2d8235946",
+      "files_sha256": {
+        "job.json": "50b6bb6b158b751b6d1222b3a754253a63d09f792cbe1c35ec882cdea3d3df04",
+        "fixed_resources.json": "f0f7659e8a86150cc0a2960b51d8e1bc0cad107ea2bac30c7a3f93fd6c3cb898",
+        "mobile_resources.json": "8c663822061d86e4bfa0b8109d7cc08edd8ca1a0a24c07367402ffe6ada80029",
+        "sites.json": "d0a0c31903139aaa3ce1c2eb243d420158e8fca9bf7418c01cae9187b096ae11",
+        "flights.json": "58d9452f8d26393f6cb387e1875621a06816b216a6a86c2df3d235e6d04bc61a"
+      },
+      "raw_files_sha256": {
+        "job.json": "ae847bf7bab2ed848235d4326b243d68bb98a8c0285fae7e5f4ecb0443e40b08",
+        "fixed_resources.json": "90c87db0a3d01c70dbb8af877424f8f5546e28efd92576355497686b355f8c0c",
+        "mobile_resources.json": "08356aa35495eba8cba98fd2b5e71e70dcda760756f830f86aad7bd6be1298a7",
+        "sites.json": "cf3ef2559da5e88a0e6d33e7326254afe4ae07845d48633d198751157fdd6789",
+        "flights.json": "40b0e2098887a8f86fd452978137e2f0367ee3b436acbec4aff39fc906ce7f72"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0027",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0027",
+      "case_sha256": "28f59c349aabfa9f81d1cddb028a6999d3a9eb48f34bdac1fa4769395168b881",
+      "files_sha256": {
+        "job.json": "6b29d89d981d78259671c738eabf5880e1b7f8bdc031e02d830360f79a25967f",
+        "fixed_resources.json": "5657a5968e7270bbd745d9327a4f88dc3bea46e4052fb3606208f30a37c934ef",
+        "mobile_resources.json": "3bee1abc23dbdfe30106922ed09405fe8b801b655b598b35e2444c20ff556e80",
+        "sites.json": "4435686ae914d5bf27fd57bfe698758b1cf4726a6576fcce8f8a975ffd461124",
+        "flights.json": "0f83acce060438af584cac4a6649e392bb2aa987fe700ead2be34ce4b3640721"
+      },
+      "raw_files_sha256": {
+        "job.json": "0ccdca5b386866f403c65cc1c0395aa5699a086c3cb264fd26f504e24685fc0f",
+        "fixed_resources.json": "bd6d74ce9df840774500ebad8fed540475da05b8901dc2d9afdeed5ff604205a",
+        "mobile_resources.json": "cd6488687c4f32940d931494775a7c778aeae53a0f4d3cc2e1fe9cdb6a868426",
+        "sites.json": "f54a6533150593ce54308756c33fe9ce50b712841ff5f55dc86ab6d897b93454",
+        "flights.json": "919feb005a72efff16a33349e5600c27f5931ab5b4c694941b54c96771aecf34"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0028",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0028",
+      "case_sha256": "1148cb77ccbd1bcea009834025faad420f37b94de686c24fd6ff2480fe7b7954",
+      "files_sha256": {
+        "job.json": "bb821b6a5394d002b956181c6c219018e52cfbb29ca496a2c94305f26e74cf89",
+        "fixed_resources.json": "c770302953cebba2be5686d4ad4d406f8f3e14ce1b4dd91c9179b12fc921156d",
+        "mobile_resources.json": "690915b48b7d00fed384c51fb046a8680a0089ba256546c5fa66e667ac3c14f7",
+        "sites.json": "971169b7f6c6be355ce74e13842a1e28171921d9bf8f1394c8a5e363b7d5880b",
+        "flights.json": "283627d51ee89eb06988dcf54851785bf722131906a750a455a733fb63db277b"
+      },
+      "raw_files_sha256": {
+        "job.json": "5dbb323e8305d5ad34239fe0305dd22313f96a63ba39627898b6eef583465e48",
+        "fixed_resources.json": "6be453eb268143a846f53e8d34272247088bac33cb5e5c8f3d2b46ed8bb7d787",
+        "mobile_resources.json": "ef57b4a90866ea3d2051b081589ee2082ee2bb0f9afcde302929a6a6fd304612",
+        "sites.json": "ee85b4368b2c17995ed1af88de1d7464f430d16637ad9c4d11ab8fb53db607ce",
+        "flights.json": "72633dbd92a10cd380648fb6000b6ccbac866eca961a6444dfcd1c2824fcd60d"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0029",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0029",
+      "case_sha256": "f9a099c945dd1cd7bf6aeeeb37cdbda3ad01401181ace21b3e30c4ecc13076f5",
+      "files_sha256": {
+        "job.json": "4acc95a88f063fbe0b4870194e07da70935ff5005f958e405284071aa3ca5c1f",
+        "fixed_resources.json": "15427b89f1f1253c43f5034f9159532d563eaf3cd994cc49633afd39ca56b4c3",
+        "mobile_resources.json": "62bb911a65a367e59eadf606399a6f1c7cb2651f6d7faa7eecec3570b24119f2",
+        "sites.json": "430bd2e0e8dd0dd7cc770f9f1504d62cc76bde5c3f2bfbd5808b2f113756f4c4",
+        "flights.json": "4c89d14552dc688a5e0cdfae61c34d22b396cfa7dc3c22bd9f0ed59b9c0c5a65"
+      },
+      "raw_files_sha256": {
+        "job.json": "a10a3ac1a7b40459847f1d9805e6cf8eed7b954a9461d8cb9c1f3d500c3eefb4",
+        "fixed_resources.json": "1d707c26dc2abc2d800f4646a470aa7bfdb87486dffe2955f9ec8cf6b7fb2f0c",
+        "mobile_resources.json": "09d9662cfa7b2f57f63c317db97fc45cc662f779105afaba16694e855d5a4a88",
+        "sites.json": "8d6033d488b9d8a963d4aefc5b3ac5ef522c23505990ab2474680106c579ee0c",
+        "flights.json": "f2b507850e10dfddb9fbe2b87fcdb0eb5a2262e84426a03847508062f81e6bf9"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0030",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0030",
+      "case_sha256": "ad4a980d24f419d585084c43d6105f3bed800380571c95119aa11bc36e9a9baf",
+      "files_sha256": {
+        "job.json": "ba4b60881583f7fbd1dc7d1e828567d0e25d3e85d00b0df3eb0b425c031522ac",
+        "fixed_resources.json": "95f5e65e2c30cb7c7e2e1741f911c6924e8a9908ace8c6dfd8a937d713c56675",
+        "mobile_resources.json": "d8be3cec249b24b3c4dbfb64cdab0b7204ce091803b8b75d734c91d74306cb00",
+        "sites.json": "556169668792123a2c88a08b5376601df8f53cd37d01081b104b51c679a58d7e",
+        "flights.json": "5e66a3960a3f17dcc962edc2d6f3e543ed4cb209b187341cd125cbdef43546c0"
+      },
+      "raw_files_sha256": {
+        "job.json": "6a738891dd9b90f5901ab6b1c818c0b324fbc9b2e3103393bfde114e17d6ec1b",
+        "fixed_resources.json": "2672754f0451c6317e8bf3b28a078a6aa6682a01c63c54a953407ed1541c09ac",
+        "mobile_resources.json": "9eac06fc6b7b1af675018493f44352a2e2dcad2a52ceae3efdaa831592b17747",
+        "sites.json": "18188d7f3295ca62642d4e837ecde987fcf6f4c4a0a2f60e033c35e4773fd038",
+        "flights.json": "768300286548c2e7b3a69215b63f1c94aa00c1527fc0f6e0e018450657f3bd0d"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0031",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0031",
+      "case_sha256": "c2ec48ce4d4c6dd04e8a68b1a6395fd0007cc84ed3a6dca368bd66e3cb975011",
+      "files_sha256": {
+        "job.json": "712e772a8c446441c1b2fdae4b64449719cc21ca281e287cb880901aab48ecbb",
+        "fixed_resources.json": "5d1751d9c1582380996f0eaa7d4d67b565b15906aa8066eabad427430e06240e",
+        "mobile_resources.json": "70cfd8a319a72e5cf2fd2986e600dd2af4f8483c20cfdad37e10bb86afb23fa7",
+        "sites.json": "8cbee0b0c0a9a1673ba5d90b0332ec7a498968761abf4e4d58dd512b7a59e572",
+        "flights.json": "a78629b876cc01593f9b340301753d068fe11c90a3b9b584c16f1c4e158dd78f"
+      },
+      "raw_files_sha256": {
+        "job.json": "547e98bcb4cc3b05e0cefa59e11f88738c4d2d0909ea582a54065ea236751baf",
+        "fixed_resources.json": "ca0a1f714c2b71631de6e869f6d326b34e323e2c8b9a7458a8078719437b318c",
+        "mobile_resources.json": "a2f57f00e9192cf78a0ac9f439bf94b17db9ebde9cd461fe4b24097cf6b76681",
+        "sites.json": "e0972a8f2958a89876d1bc06338036e7f2fff3dd1d38a2f1ef93021c34b0f26e",
+        "flights.json": "776eb27e24a1a7bcaa6d559743cea3b1b4fa4f6ee6c8ae54fec5861ece17dbb4"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0032",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0032",
+      "case_sha256": "f98c0afc67f7454e6cf5a275b331c05b41f1628173f21a86ef80e56f071124e7",
+      "files_sha256": {
+        "job.json": "c55fd4610dec4ed24b6a063d81a1bdb1a03b7e64edf5c3f539b714678bb6d2c5",
+        "fixed_resources.json": "2153b3ad4330e9ca70ad7cbb96d160996fc367b02b7af5ccc04af5c3b8004a29",
+        "mobile_resources.json": "179d753a6a51b1ca18d36be08827f0b459bb3344ee868ff5d548bb51e94d755d",
+        "sites.json": "b46f8015991b9a37ab77681219cb56532136d5550877718c7b5ce522d087a48b",
+        "flights.json": "4b8ce32e411ca58785e6e754025cdbde6e21f452e711e7c618aa08702317173a"
+      },
+      "raw_files_sha256": {
+        "job.json": "30ec2651c786b4879a69a5e6ed3b4f4d64d3eb7824a3741baa25e745273882bb",
+        "fixed_resources.json": "b2e93762aaba655b343e12b3d9cf7a933bb949321f8986bfcf5c69f9b5b9c25c",
+        "mobile_resources.json": "675b597f5e8c9bbb437024634e84ef4aa5c93d2f9859eb41fef93dab9cbd59c9",
+        "sites.json": "f9758e4f56514e406fc8e6ccad4c1b14adeecbdfff02ecb577028c0290fd8b7d",
+        "flights.json": "d1d914d9ee09b3cad6a9d70b9cc0d721576afe7d5a5bf18d55b9a6bccc253ccf"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0033",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0033",
+      "case_sha256": "eed1c11eaaa4cd0bb0a1a5e9bed63ea153ec68df26979dab5e14aee831ca59e0",
+      "files_sha256": {
+        "job.json": "32c303eae2e10e84a6137f304c4cc8ee70aa09b51281d6b9648052de7e6fa9a4",
+        "fixed_resources.json": "05cc5e265ea6602a01fe8c14fb05f94796d0fd80d5c5833c2e9fd43efd5ff2be",
+        "mobile_resources.json": "e120e683a07ada902bf9da0cbd131b827ffb1295167b680d685b4aa5e6319292",
+        "sites.json": "19601f0a334c1e805f6dc60899d2685ac8046b1ef0fe6be33480a71b22757104",
+        "flights.json": "71a94716d9cae0d3cc840dee13f4d092f47fa17ff61a5c91c1ed8a3e900e085a"
+      },
+      "raw_files_sha256": {
+        "job.json": "848f76919375a335adbe19c890d9287c4326b20758adfea50d24878ae51d830d",
+        "fixed_resources.json": "62ff916da81ca51cc97207bd52c54feab3577ab881577f2b0522cda52cff24f9",
+        "mobile_resources.json": "ff62bbc1753d474d473abe1adf24bb338f5f6f5d0f0f874b0fb4deeaf9ebe2e3",
+        "sites.json": "54cda4bcade81b2b917ea62f3bccf0a2d316bdcb092da38700af6483559bf422",
+        "flights.json": "b88cfb4e69af10990b1fbe2c1b01a90afd5a62f58ed803353f8831453c216d8d"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0034",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0034",
+      "case_sha256": "bc84ce1e0f7d4ab201245bd27ceeeebd47211cac50326b23ed9fc6411df8a8c9",
+      "files_sha256": {
+        "job.json": "200ce986a33154b60c11f210157487d89584a1cd9bcd024480d4c6d21f5dcca2",
+        "fixed_resources.json": "d4e3587f459810cf7314865dd7df68f6f606286e1128b93e98ae1090a86996d6",
+        "mobile_resources.json": "2effbf2d4fc0962a6a48802517d4237467110d648b33f064683beff4e58ed92a",
+        "sites.json": "81b5a5b2cc2b8f4c86a4c03f7eac5ac1b08d9324f6b4371c1f6f204b6cc4bd27",
+        "flights.json": "93cf8a0412518e5943ec7e02d17e5e526275384904bf1ecd88656ad04ecdc791"
+      },
+      "raw_files_sha256": {
+        "job.json": "f49d919f15605cd8d554ae213be922b2aafc2af0fdc9a35fb76a060ca07e2e22",
+        "fixed_resources.json": "9b84f1abf2775b10e9f81e41f8e77f82a088b627443366b49053d6f98b7c0964",
+        "mobile_resources.json": "54312a7327ae7cf81d801453c63377fe53c556460c4daf0e6ef9e55975f88f6a",
+        "sites.json": "d390b02d8f77847398c7bf4faed1d43c78437c61f36da5064410c6d40c206754",
+        "flights.json": "cfb9bf95d6083140eae813ad4cf9d9737b17db9c5123cb92fdbaf2373ff50962"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0035",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0035",
+      "case_sha256": "9e87af2e3bb0332823413ece7c88444ee094b33758da58f957d9f5ed9a750bf3",
+      "files_sha256": {
+        "job.json": "3aff93748888a35799d6267c2a96f348c01f966742ae62d00e016e1c1156b89a",
+        "fixed_resources.json": "25eb870a5f79f9b91c7cabcf0ff96fd14d338cb6e171091b3d9be23da79481e3",
+        "mobile_resources.json": "4d0019e83195be1046a4329ffd67aefc887cbc05c1ff3e8b7576767d3c1ff432",
+        "sites.json": "86b214e8347b8cf250fbc362f48cef55248e0a89d13e365c699ea853883fc63c",
+        "flights.json": "e0581cf7c5bc921f322e8525f73a1ea22fe5be72ed3cd8a456790296333a3d01"
+      },
+      "raw_files_sha256": {
+        "job.json": "4c74856f3da0e39c0dccb75c7b812028423b42c1e41cb78ce248e282bd9d5594",
+        "fixed_resources.json": "a26bf8e9a6a468236abd867f00172957d4bbfb6beafd7db490ef91af199ff38e",
+        "mobile_resources.json": "2faf795b1ed771f50c5d153f7d770be07686bc0e545ce500b6b2fd0407ab734a",
+        "sites.json": "a8d36bb54794e97e12b4fc2c0cc7db20cfaa93a5b06e9e1a4b64cf0b51f2be3d",
+        "flights.json": "7975ce231e036a9f0cfa9f1f23dcfac11909e458a40e871b612e0455178387c6"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0036",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0036",
+      "case_sha256": "16cd8f6df57f940b23f57d3a2f333aae44b39ea8907b338dd146161e8c3c58aa",
+      "files_sha256": {
+        "job.json": "17c93fb71da5d5306d2a33c84e79db3c5ef7212ec933920cc947a9393496609d",
+        "fixed_resources.json": "7db4ba2fe977d67eeeab7144280c33fa69bd831e126400690d2e4d285cf9cbb7",
+        "mobile_resources.json": "2fedc6ef3f52d08e81d0f19b7a974e3ce16a708a8069db7af1b300587fdada1a",
+        "sites.json": "4ae2c64e87a019f860874a1749d58ad68c1402b869d9a6b172e5c7b34ff0db38",
+        "flights.json": "0333bd00033f52e9e73c8213927da070afe5c0d799412723728d7bddf4ad60f1"
+      },
+      "raw_files_sha256": {
+        "job.json": "6d6f0896239837e41f6427e365bb05f66b0ccb4d121b610587512a34c6bb80dd",
+        "fixed_resources.json": "ad1b7f663dacce6dbafff2ce9cbe730de81553ac5fc8dd0f6acad67c9a5ab86f",
+        "mobile_resources.json": "9cc7986766cfbe876e75b3e6501bb72aa3502b49d1cced73e6ad85df200c7532",
+        "sites.json": "4f0673480af1ff7582cef3d89b3fb745fcddc91a1e0a8517438ef00b3faf0d50",
+        "flights.json": "1d120a9346b4c5e91f4c6a0ec55a9c4eb4cf710f7c8baf130c2b501a39b9050b"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0037",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0037",
+      "case_sha256": "636fad000204d68158efd0335fd406b4b2effa179cf4796613968bef8287eb37",
+      "files_sha256": {
+        "job.json": "3f0ccb53010ef74811e7482c6e7813f03e24f470fa797e30cac33b2196e20cfb",
+        "fixed_resources.json": "bf5328e0e8113324b041ae465ecfdea21f95cfbc988539d094dcb039bb9aead7",
+        "mobile_resources.json": "88ba708a6bc39462056636b3d7ccc6d183011ea56e255a235c07593734de531f",
+        "sites.json": "4ba55107d5948c071337c971110068cd1dee3a1832f752aa3834be343f168c73",
+        "flights.json": "ea91131a78cb9da600aacafe38928ad85db04ee200c28237ee47cbebf7fa231b"
+      },
+      "raw_files_sha256": {
+        "job.json": "474e9ccd30f46c37489994cc8cb90591688701099d7bed11b78e69ede7a2f982",
+        "fixed_resources.json": "54d3c693554bef931c0426b0ef7764d9477c8a80034d36a973b6ae72bd9fbcd8",
+        "mobile_resources.json": "29ec1590a4e4a0dd4a9e44fe913d3b6655749a80f71e9327d51c03d4a4880917",
+        "sites.json": "131a373ca0bfe041cd9c0d25fc2d2389fb6285b7b965aaacda33375fe3f1bcce",
+        "flights.json": "cf63b670e60e6ce06f9d1179ac7962d6531f5b93b0495dac05c858e94e4bdfa4"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0038",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0038",
+      "case_sha256": "bed48ef0d314fe7cef85a5bf0b7937769103a3643b4a950ce0f0d09ce515ac6e",
+      "files_sha256": {
+        "job.json": "ff4197483d9d251ae4ac40efb3b1da22f264da7eeaab5b496c4a75ed105f68c9",
+        "fixed_resources.json": "f58d736d934198c84266384ead7960acd14063973aaab3298dd6f7307079187e",
+        "mobile_resources.json": "211206518943961c13b69d793758ec1aeab51d7a2d081d692337855b50438abb",
+        "sites.json": "8ac34ac8cdc203b031fa4a9b0235c7bee51981ecf258746ad3441a81b454fa18",
+        "flights.json": "46f4e7f2ac971d476a38bd470c3411928dac9a662bdcc660e854934f3b9faca6"
+      },
+      "raw_files_sha256": {
+        "job.json": "db2c56d9a6f904bc629701d3eeb154b699fa017144072d2dd4d0bd7d13915dc4",
+        "fixed_resources.json": "b4cd7839f7a8e5af2274340ddef22a186bf2025ee8f8917ecb87bc8d04ee5818",
+        "mobile_resources.json": "90b3551e1b4778803e834ebc5c33bb45f4f6db7d2f5942bb27df4002e876e188",
+        "sites.json": "ae9466027e724e2c49be2833babd12e0dc271b04be9cba07ef8121a0064c9a22",
+        "flights.json": "5bdca3cb78e12a286392abdde17404fdb9a95bb61bb9a0f354557eb1850b47e4"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0039",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0039",
+      "case_sha256": "aaaf41f305dc6d8af572cc7025e2597096fb0a7b7c4952a77e67c5c2924308a0",
+      "files_sha256": {
+        "job.json": "df3b540081df408befffc32b6947fc68c805551a373ce63b7a8ec2683c8f2270",
+        "fixed_resources.json": "f9094b44b7964c304a2352232dd9266813f6937405d0c7a1abfb7009aef1390a",
+        "mobile_resources.json": "f453106f77abae0e847fb35e6791a77439bd45ac75af26352ed651187f709047",
+        "sites.json": "8ef41adb1201c3bbe896ea57ce14fe2989d86b36209ff102dfc07f1da552f321",
+        "flights.json": "5058d198c8c0a6567f054b7dfed35640a97562a05f802bd150062fd81c5795f5"
+      },
+      "raw_files_sha256": {
+        "job.json": "59f45fda51c5dae2cf6087bf6bf0b64496d26c31a8644937c65830e47af29c3b",
+        "fixed_resources.json": "14f38b45bcd04bc2215a57b8a65b7314f1a2617138fdc6ad8de07368ba30b0a8",
+        "mobile_resources.json": "77a1eb1767f0a5069ed61f92b98194b16c2480aba712b0aa6caaafe14ecf516f",
+        "sites.json": "c7f1fa61a05861f40c64fc93b7b80d4953a177ec299b3fe16306fbc194066fee",
+        "flights.json": "6e8955e628ac63642cb1c8f23942bbc18b4d36b37d3b2e78ddc10a6ba50ba4bb"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0040",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0040",
+      "case_sha256": "bc53ad147e1002ee92b66554c3cdaaa5d19fd63ab59229fc65ccf8eedb48ff78",
+      "files_sha256": {
+        "job.json": "13774401f826ca20cb2df13b54180c30ff78a9ea14617f56b634b875f208cad0",
+        "fixed_resources.json": "3e103353ac7dff150060556bfeeb8633b15981121745d29b6aaa63afce7e6077",
+        "mobile_resources.json": "55344600d00d6b27ed378babd366db0dea5b016cbeda33ee00dc9d52f331564f",
+        "sites.json": "fd11609305e90a5654cac9eaf50cbb17b6b94b9c883c605b6438cf48675d829d",
+        "flights.json": "ced6210d42a7c821408f6d39b4d0fecd6d4759f8e0673d56b1cc8366d62103a3"
+      },
+      "raw_files_sha256": {
+        "job.json": "c70b447f10aff1e5fc838f6a5a46f2d0ce58def9c3ff9d229307ca73201a4c97",
+        "fixed_resources.json": "37979c38caf398bcc41f1aa7123d665f52e04b717f5bfbd82a257fc696b7b8be",
+        "mobile_resources.json": "fd45c16b073ef68755b040983f1ae7654cb499d2d1d4d033dfabfb03031e54b4",
+        "sites.json": "00e4462970d184f470e8131a6e620995f04b07c937c36f38db5c2212064fdcdb",
+        "flights.json": "9c186fb7501c42ba043d27ac49ac04161e8b5c9284917bf504b2c141bd21a1e7"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0041",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0041",
+      "case_sha256": "e3557652a538b5e15c2787382a44a717099642a9c065aa805ade99faa00f44ac",
+      "files_sha256": {
+        "job.json": "74c0e280f437bc5db2a559e7f5ae4429f838d91a594da7a0f0ce8a9644d23bbe",
+        "fixed_resources.json": "f247fb67fcdd31855785ab5bebcdbd4723db9743d62c5dd32e2f7c05c716a4e4",
+        "mobile_resources.json": "5b1ee3ff66d3a5266a3e0e2bd1d36a063fab0f958513a7b26c4115e93c0e4902",
+        "sites.json": "91cbe5c9c2e0fdc5b256b982ab3741ce86246d941963eb909bc58ad8db813ae3",
+        "flights.json": "e7c6da57266f68e6eef20bd232f840ceb3f34773a7c4ec9a6a5bbdf79b9b3806"
+      },
+      "raw_files_sha256": {
+        "job.json": "708dbabe14c431408bbc454d7209b4dda02b4c26c6e4d12499a7aa75167b2bcf",
+        "fixed_resources.json": "6291ca83fa40b667b731a3d6606d43aa42b8965b50fc6434ab124fb0ef60cca1",
+        "mobile_resources.json": "8e73a67c3326fc2ac9108114e9e3c6ac5838fc97584f0c34fc1091ce38c7b65c",
+        "sites.json": "287dc24afd348e786149569574e5ed36df7b7ea44f68bacb317fc166e5f23686",
+        "flights.json": "7786014d71ff838c6f3d5563c31149546e1d482909b5c75092bf19acc1450f28"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0042",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0042",
+      "case_sha256": "b361de35968a8a51e620228460cb6b589f302b5d2300fba8540b5aac27c58821",
+      "files_sha256": {
+        "job.json": "056fcd6ba34fe6532edaf0b2242fe03fab82397bcd43e6148a5e3405249804fb",
+        "fixed_resources.json": "473353b85ea82b222adfbb7577ca54457eca40bfbefc03560b65f828c5305906",
+        "mobile_resources.json": "a704cd9756cb29cef6f7179454950ff7994ec873d0215f60b20bf44342c5a728",
+        "sites.json": "8f47130c92afd1b3d34ab1730fe01163dca44c46269ecc2c76645c8dc5e3f9eb",
+        "flights.json": "fcb98f5c86e2af53ac8add9c8385911eca3d019d95f9cee95ae44d00ffcb8d42"
+      },
+      "raw_files_sha256": {
+        "job.json": "3ba311b5af3be3195fba83820b23847f298d57f3e010f36ebad65779738f1e1d",
+        "fixed_resources.json": "73ffe071e8cb54e4bf26392dc92c71dfad756f5b8bac1b59429db1fc54cd27dc",
+        "mobile_resources.json": "3cb68c9ff8cc479b129fba2d5b80c6cdcae478a5a369f5ea9512849968ab51a4",
+        "sites.json": "46e0a5bd8df17dbefb4cc1910e0929436c7680f2c14c394660ac17ffb5710c4c",
+        "flights.json": "197331ac7afc0ffdb9ec04c96a0f0c66d6fc20d235641130158e315da6992002"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0043",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0043",
+      "case_sha256": "b40f68a86eac2f732dabc2956e37892c071017a831a9c91eff759fc60217ffbf",
+      "files_sha256": {
+        "job.json": "a240b6d2c1b8e902ef2d63d7b66610c6dc32ccdcab618223af2ee27208b2c33f",
+        "fixed_resources.json": "a5d86b5c012b8fe098096dd370ab9864dd2a45ae3820a52a2b3b732f721d21f6",
+        "mobile_resources.json": "f702b51dc54eac9b727b2a30e5c025a0e3bcfad89aae94d9166053edf02397e7",
+        "sites.json": "4c73a43711727f6701e0688595d49ef9fbac5395badca7c4cfa24021a28efd0d",
+        "flights.json": "a8a58c8eccae67d863b7a9c9e698c05d3c16d37d406858492c3e0ca7c3084d59"
+      },
+      "raw_files_sha256": {
+        "job.json": "2901868c618f2474d6eda9d66ce4b185b57fd487061f6d687f35a646b5b72662",
+        "fixed_resources.json": "43af391293f47f70371136af2afa726eb0c903557a5c8759c944718f6cbaa45c",
+        "mobile_resources.json": "7ea941e4c1aadc9a25880a6b43515a514fb42393b094e39d1867906991a8177c",
+        "sites.json": "da3f062bfe160f4047747b346dce0dee37a8ec874134860194e1b29decc8e45b",
+        "flights.json": "81438ce83667d0357c59cfebe7445c03a4e1d6c14a6b29692cf6a2e0782d5a82"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0044",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0044",
+      "case_sha256": "e189851639430354a8ce685b8980e5d1778623462863d3fe4b72f27a31bbc6e6",
+      "files_sha256": {
+        "job.json": "21107def094b27a15632576fc674a90a49096965418171aabc6c4b8bcdbe2b43",
+        "fixed_resources.json": "b2cf785397f8fb7ccadc45bcb6e6ae365f2e773d7beb8cfabedc83868a0500e1",
+        "mobile_resources.json": "7266de9e36ba8446bacc3a6dfbc795515ae22c9d877b1f564bb6f110f65d6113",
+        "sites.json": "8afea06bf0bc34080dbfab973e495872a541fd26f83d2374ee5c94e5a64061b1",
+        "flights.json": "220b7d2747171f8d2fe6919f3317138e2d456f427fdd443a182a92c4d226cae9"
+      },
+      "raw_files_sha256": {
+        "job.json": "5077e1911164aff4f104a36e159ebf297e87cb9d00e81dbd4ab4578ba1dfd08b",
+        "fixed_resources.json": "b0604d4cc7538378330907b6c48b6bd38a24b1603a1cb67b540b4e8c0a8208a2",
+        "mobile_resources.json": "3ace47bf3906e73752e16c85c84bee149224a513ab49602a8d05739abd69bd1c",
+        "sites.json": "4c0cdefafaa0f9da74fa0f2ddbf5ed8f068c47b770ce8fedc531a21b7077f576",
+        "flights.json": "58e3e4cd9ee41af3edb0d7e169d51de214bd29884f31ce4e3faf04699fdddebe"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0045",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0045",
+      "case_sha256": "c9ad1115001ff951d4297534ef33d6d6403096cfe9b8b51ad1023e2763dbec3b",
+      "files_sha256": {
+        "job.json": "81a37c7284074ef1a156deef415bf889fe5e48ba3ea977b2b8a4afea22d16374",
+        "fixed_resources.json": "40e097c5f645fa688a334ca724d4654fde35d5afc5c715c1f58bb129bb07d9c0",
+        "mobile_resources.json": "1e64fa2d1e9e171d5c166c44f22d42b2942b4a77257e7fde7cadfc490a000f8f",
+        "sites.json": "b1ee7e82702665adf838e8f899acb59d0c8442c7246f1a1419508b5eb21c2f81",
+        "flights.json": "ed137e581b1e3b5c13c266bcf1998a3795188af98c1e9bea961cc9663ea243d1"
+      },
+      "raw_files_sha256": {
+        "job.json": "317afdbf4f70cb7c275094bd903e926328225e24873e5d7a379072962881d5da",
+        "fixed_resources.json": "1832f51f0acc3656120f8beb2c562a32caff9e144fb42c30d90abe333671bb99",
+        "mobile_resources.json": "2c54d60bab09d458b38a30b179b42574c8569800e25d066785ae74dcb5111dae",
+        "sites.json": "09c206f0e7a41c6c99d3a596be55dcf57abe7c4f2f3434398bb0d6edaabb4c43",
+        "flights.json": "3cc6e1ff80c9c9967cbb2b88d3c4c535b1ff2b04f6700d5c672d37f5466101cd"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0046",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0046",
+      "case_sha256": "97414dc27c3e67d980676239b9d76639998adea42fc48a6bff5855b2f28047e2",
+      "files_sha256": {
+        "job.json": "9d2f3da737da508b02eb03bb6cc033ea0d02f212cc488bc5c716a9c27d6f059c",
+        "fixed_resources.json": "19fa4a638b502eb0e119fcddd82b1af6b3c1ceba42d3ee8cce357c2ee88b05e9",
+        "mobile_resources.json": "2d53f9938db9a3395f4c4d5baf8f653e082fc7e4cde917c9c83dffb84bb4c70d",
+        "sites.json": "e7552af184a8aee1db5c21f0265e40dd2a9fdd83c9dd0d2be010a4761bcab478",
+        "flights.json": "0f5a9fd20770cfec9eca880fb8bb513c61aeadf14c9ac076e5032444207dda8c"
+      },
+      "raw_files_sha256": {
+        "job.json": "7170972b28e1239a87acc936374756b28fc7e945d0ac18d7cc6e2acba054fcaa",
+        "fixed_resources.json": "70fd928f087f23c5ed14d0599faf74fe53c9767dad5981cf9194fb2521ac9bf8",
+        "mobile_resources.json": "92609aacc332d7681dc507e48754c9c72169e3292fea49067c14d3da1b2595ea",
+        "sites.json": "aa984e5343cf4ce9e9ec808c8342c7fe4187e64c2be45df3ff5a4e552fa2ccdf",
+        "flights.json": "330ea47589e900679aaf789bc8e2f0f043f281c88dd31e9435533fbab7ee6db1"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0047",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0047",
+      "case_sha256": "a3adc0e3bef114f4925a27aaa900cdeef792b8f393e9ede00d687c7f5280a20d",
+      "files_sha256": {
+        "job.json": "6cf343ba40eed079c00f28528c9b64210048929c4d304f768e5f1be875ba0cc5",
+        "fixed_resources.json": "5db00b1855e1cb9ab75d51208c7c2f28d53f10a04edfdaca6522ba0edac19156",
+        "mobile_resources.json": "28b6934dd84c2ff4047a3c8ebf40c964d4b689d559657db1d1722c411c069546",
+        "sites.json": "90c3a130b4d18449034e4641dfb80f0b10629af68263a5d85afa200d4539eadf",
+        "flights.json": "60e2c16914d64061f9ff69d367a0f99e47b7a8213809c971378cca0c207b70dc"
+      },
+      "raw_files_sha256": {
+        "job.json": "dabd1bc0811b0b7d84cac8ee5fbb7eaf7f08d7e311eea21842eb7df066318423",
+        "fixed_resources.json": "a9007f9d876527b067e9886b38365316fa461b1f6b8d962b48ea0afcef836447",
+        "mobile_resources.json": "71e77d96987f45909165f48ac3864f6ea754a5f3d80ac7ff3d9d459aeab4679c",
+        "sites.json": "c4e4e91cb9cde10c47ac02768205993112b826476a0ca08b21176393d08d93e1",
+        "flights.json": "715c6c0fa975b29068cb924ef18e45e6813433c9fdbc4fdd0fafb4ced65db799"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0048",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0048",
+      "case_sha256": "ef4459c1f8362fc6c3104c08c3ddc4007dc48aea45ade8ecb071f216f1631cf0",
+      "files_sha256": {
+        "job.json": "056d63de20b56d86a1543864f891424bb549c71174954a2610a9e1d9da02c671",
+        "fixed_resources.json": "60696316144f46ef38d63e2a0d098b11cbbfbbb84e1e10e6b12fc7d8866aa08b",
+        "mobile_resources.json": "06aabf7708ff14a853af76148bbc3aa9d722c51138fa767adbd4b3d31f485753",
+        "sites.json": "9a2bd7b70b33c9315f0cf8fd6d11f8d948a0ba0e7ad68a8a1b4a6bc7d29739f2",
+        "flights.json": "cde93771ba9e04890ec9abad5d66fa3b13cbcf6a4bacf8599790037299539c2e"
+      },
+      "raw_files_sha256": {
+        "job.json": "28c2716d3fddd6415609a582ed498621e21d9494de2e79b3e98e39616c58f1c0",
+        "fixed_resources.json": "0283aa5274aa041bbe3f13f67eb3b0872fe508b7cbfb49f017c063fbd5b700d3",
+        "mobile_resources.json": "b92f8f13179e6606c7c02e123caa422bf5b5c807589c10a4167a7f1d6dc36f80",
+        "sites.json": "1a90cb784a01fe7a91c32119a710837cb6ea36d0a16fc4f9c9fb8d4cbcbad218",
+        "flights.json": "318fbfe7804d756b6ac0713425930e28168b99a8a021063818310a05d8894f95"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0049",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0049",
+      "case_sha256": "c8a2b7acd9d01bc405d5eb958fb9fd39c7bbd7d3db795f3c10686788d42b109e",
+      "files_sha256": {
+        "job.json": "816cd27a270710f63b50eef881e02fd50f59701abab4750b394ddd6002a80cf1",
+        "fixed_resources.json": "ed2a0b77f283e97f0821b00f94d4fe292658c50e90b725ab55961302fe776dba",
+        "mobile_resources.json": "bc6a0fc6283fce838da3c0a6e0aed3152e2811b13ecca7f1825e72eec3611427",
+        "sites.json": "bfedd8f95e4ff1e11d406a43e5ae5e6bc8160c234e1e51bfdfd7edb6bfac179f",
+        "flights.json": "c3988c60ea45a9161cdc46124226f7d5be7d17ffb7b78dd1a6eacc777ba4c8d7"
+      },
+      "raw_files_sha256": {
+        "job.json": "77cd092aee246b159f020634ea2e71bf268eb973d0edf310e38a7f65bb45ef10",
+        "fixed_resources.json": "646f7b1136e28fa4046c1c9ab9e5e84ed060e1fac7afda092e391fa466472b58",
+        "mobile_resources.json": "c50766ae96dc08c722c53f84267b73a15ba236b26554c60ac004c0b281fafe3a",
+        "sites.json": "d52fc97022313c6dc5225a9d6a8b4c4410e764953567f3a3ebd3112e709c1d0b",
+        "flights.json": "d7b3a38ed505a7498367198f61fa473c4560de395e213f3bea2b02bb3caf7cfe"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0050",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0050",
+      "case_sha256": "aaf8f71e0d18da78557df062b7405ad6ed37ec6de58cd913d7496e2a0aeb4936",
+      "files_sha256": {
+        "job.json": "9711abcf43f42d50176276dd24d1200ed5daabf89eea6aa4f1aba7463fab5efe",
+        "fixed_resources.json": "1b64b432f918ccb75e64393dc1798983af81913b2e84adbcd6e2dd660fad2139",
+        "mobile_resources.json": "b2a1a47b333cfdc4b84bd1d692348ffd6d6205ab582ad01d1b98b76b25b6aa1a",
+        "sites.json": "e7993b6742ec1780ec31e53695f163d43ba268fb81d2926d3827b481123a895b",
+        "flights.json": "2706035d1440cd4ab858cacd425df3d9367d6db68a6ec2fca85a2a67924dc2b9"
+      },
+      "raw_files_sha256": {
+        "job.json": "84d529db7b9c1000a756bbaca6f37efb7563164afb11b7d6a1a85371eabcfe0e",
+        "fixed_resources.json": "0a90c3489cc53352cc651b73bee7b46d37300b1dcb541049f96cb3e55cb21794",
+        "mobile_resources.json": "293a0828e10d565d3dc9467d3b91b75ad301279d719a7133a8e948c35127603b",
+        "sites.json": "0043fa736012a7a54a91e3ea85a346cda67fd94f9a5b17f06787a0b45d5bb0c4",
+        "flights.json": "bf8c3defec3b51ecc6ca05e0978040cbaeed0407ed06750f624c365b840455a3"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0051",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0051",
+      "case_sha256": "5dcc022151846c4b7de806a8d448eabf541fa9134a29dc1ed69935d88a4a1217",
+      "files_sha256": {
+        "job.json": "2e2f77f158729c0e00c142214aa986f5c5f314cf641bc8f0805726f8c7b562b9",
+        "fixed_resources.json": "e59c0436ff30d3d09bad05d914f637a48ee77c4d08811e9dd745d38bbd418377",
+        "mobile_resources.json": "ae6a1f3f2f9fdacc78f83a9fb8644e2b3c46c23a53113c10d9411088dd2b87a5",
+        "sites.json": "a0a2e5095126b8edd6eb07b6a2df5140eaf292f3ec871f27dd16174abba2e8dc",
+        "flights.json": "df96ede82c37fae90a5857f667d95b5781338b19985ad54e5d1c3ac343eede7b"
+      },
+      "raw_files_sha256": {
+        "job.json": "bb11a8cf39c2f93d5bcb479102d2e3a9c0081be0633ede80e74b4506cab9545f",
+        "fixed_resources.json": "811a5389faad95a438f7fccc3583279f222fbc8e85067532ccdba72ff704b0d9",
+        "mobile_resources.json": "d519e6cd6f5dd52edd84e741660f1fa07bfbde424fea5147335a26b0a79e6b54",
+        "sites.json": "931e54810b4855f0b4095de5426e24b285438da715fc4eb9deed6ff0ec7c5ac7",
+        "flights.json": "b7d8a895f0406c9939cf818cd2805c70b8468c58b3bf04fbbb76941ec6b41e49"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0052",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0052",
+      "case_sha256": "549cceed6f988a5dc6fddf53c5299fe50e9d7b126e169d0a8d9f4cd1e3c39db7",
+      "files_sha256": {
+        "job.json": "7b11b86e0f4f0f1eadb65b40d836ae738ec97a9eb3dae4a277a6a0120c023ce4",
+        "fixed_resources.json": "5f4cdd2028c9c126b592977717af9bfc6ebdd7b5824ef3ef97d5961f49753487",
+        "mobile_resources.json": "4e4e285ef2fc92e23759dcb077230420e0515d3882fb8ec21bfc8a8e2e964dad",
+        "sites.json": "287eccff22c53862ecd159944b0a02dc3e9326126817d813a736cf1c4a93bf7e",
+        "flights.json": "b01c264580a9b90d94bc18fbf416d8f232806e97a885acbcf3be8e67200dafa9"
+      },
+      "raw_files_sha256": {
+        "job.json": "c48e24daebfdb4cd6c410756172c8a07aa7a7efcd1b81115b6e533aed60818ce",
+        "fixed_resources.json": "b69a89c9bc0dcf72f1b2b436b7cbe4745b6190ac7ccfbf21963e7dd144570ec8",
+        "mobile_resources.json": "7eac67632f4526828f5dc29cf8e4ac2db2bb4e4953a1590cd81b2d62cbf2547f",
+        "sites.json": "9a7a665b07225cd19293e1c41e6e4c93f564c55a5ba6061ba7ad7460dde37bcb",
+        "flights.json": "54354f022bd42fb77bec53077d2172cb5b1b1795f1331a76f4382329c89b0dbe"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0053",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0053",
+      "case_sha256": "cf629600143a958f4f93a56434fccd4582483435ba8ec15da204e641d01c25b1",
+      "files_sha256": {
+        "job.json": "4699b433da140563cac8f52ee673ec412c944193fdda78d92191db0e7d213a59",
+        "fixed_resources.json": "b6c4811ad9b949071c1b77783ded8ff44f91e00bf48c9d963e25723810ffec6f",
+        "mobile_resources.json": "0f70ed6ffcd86deaf89d71e9401aaa71d32f6c3bd1575bfd0cd9a5e633c71f08",
+        "sites.json": "2ae5c4c373f8cc723ce11a8d075abe46b14a97698640e33740d669502317001e",
+        "flights.json": "f32daff651585264365d994e11915ad6dae9d7580680c0b2cdbc88698cbb3b8d"
+      },
+      "raw_files_sha256": {
+        "job.json": "6efae7cf906729b558e8c8a75df9bfab6814ed0b817fddc945a105758d3e15a1",
+        "fixed_resources.json": "6f177731cf5668e5ab789f7b1e7d11243234c4d76cce60d354e47952a746d195",
+        "mobile_resources.json": "5ff86dfe4d38110e47f3c567c2cc1480fecb116a90eea0b9d100a69b3e301dd9",
+        "sites.json": "9cf6b843e2c44e674d6a4ede170f64c97eccf228056cd44efc2f46fa60788bd5",
+        "flights.json": "2890e74f806db74f69120df189a8187d2bd85d9ae6cecb06a761a72ce60fa768"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0054",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0054",
+      "case_sha256": "85ce8fa77f8df6314a2caf8e624124650c55708958a34fa68d4454045113198f",
+      "files_sha256": {
+        "job.json": "569b313ebaf8d56b8fd8ec5347d345e42262c84f7a6dce1545436d168815aa70",
+        "fixed_resources.json": "c30bef27d76b01aee921fca22f825d5a07de5f39ca2426c0eab4a1e514b293f1",
+        "mobile_resources.json": "041fdb6fcba9f59d362603dd39c385c4674c6e60bbe2987f89242baf72e09da7",
+        "sites.json": "a00680c396190b88ed626bb09809db2af4997a65cb05d915811ba0b2491ae827",
+        "flights.json": "5c31cea0154507964867626150fa46b8385b8e502560c850f802ab7485f566cd"
+      },
+      "raw_files_sha256": {
+        "job.json": "25283449b4d6470cc724097b71a24271e87b9b8d7ef5ae3be19d50ebf26752ea",
+        "fixed_resources.json": "26059e4a1e3b8ac245bb19b027e108ebfe7ac8f3beb7698e9cf74b2a70807751",
+        "mobile_resources.json": "fc010ea8cbb7508c4fe7065907345c36c712bf824f189dca16c499067b19cb90",
+        "sites.json": "3a804a308d749bbe9d7f3fd0569c28157701984416b1022936ede3f5485ad3fe",
+        "flights.json": "0e09e9db0cdb04bd159db111fcc955110e439dfa43c5b02c7ab1c17da82adb90"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0055",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0055",
+      "case_sha256": "bcad58cc1ca0f7775a5c81b4e4819ae462303ec65262fb95bc6a4e7f25fa335c",
+      "files_sha256": {
+        "job.json": "d65e16c224895b95ffc209a7ad3d977b7f24a8ae66d9552150fc33be12cee84e",
+        "fixed_resources.json": "80646815182ea4c1e79a2637fdf2e1c1d6641808280b3922f8f0b96dc467616c",
+        "mobile_resources.json": "a66551c4e626931a7959e7f5c84ccbe7cf2fb6551a2c554996157803df79618a",
+        "sites.json": "3514caa3b9464beafa7f7861387fd44f3777f2f18c773292420b7dfe1a697b73",
+        "flights.json": "bca6ce1d86fd107a7ea1f737003467495b67e853c47ba137dc18b8013204c754"
+      },
+      "raw_files_sha256": {
+        "job.json": "b2e7172e7bcffdaed1ff61691ae7c7d60d88e74b598468d29ea6d0cba4b90214",
+        "fixed_resources.json": "4bddff3b7fab16f4e2e1963379dbc4dbe6a1349a43647e836b0871c543dad952",
+        "mobile_resources.json": "b44d8c4b540d5d048e4cbeae288679cbf2cbd6c84106d45b339fd0acfb8dc930",
+        "sites.json": "30904441abbe0a51e48afe0a8571da32e5d3fa367ce3041678ff6aadc76f941f",
+        "flights.json": "4b7be27322a3e26823f1662620b53122c88dd9444756f43438ecd798d1fe14ba"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0056",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0056",
+      "case_sha256": "8fb6afa8888620242b1edb31d1e02d8272521f89992276710dad163927f86cac",
+      "files_sha256": {
+        "job.json": "e49a25cb188c4f4342fb5b65f50ec5339db6271717ea78bc9ac40c672390bebe",
+        "fixed_resources.json": "ec9eb653770cbf3a1dd309d068858bc92efe93fa68f5f4cf8f18b06362932ea9",
+        "mobile_resources.json": "1df5bc3b3a22c6cc57ae91bf31eb40d685bbb5073de4f80726326103a4e185e9",
+        "sites.json": "b39081408e4312d7b075855d4b8fc1b07be49f5b1c7fa9bb06ce706386133ae2",
+        "flights.json": "7b92d40ff09f14ff29cae614c346f9294ed888668c8e7390c145137aeca3b1d6"
+      },
+      "raw_files_sha256": {
+        "job.json": "3f67113c8d3a80c065c30fa0b068ee8d957dd746aba16203dc18470733d6039b",
+        "fixed_resources.json": "2a59e0b5ac2c934b6027580a9d467307175780c812ecc781bcc3faf1c80d8a86",
+        "mobile_resources.json": "ec4fb978d8a59855353e30ec8b0bf8e9539dda798b6f1cff7f679b38484e1b01",
+        "sites.json": "6373f8be00e9dbf100dba4aabae78ebf81b6d4d0e41116b219f911fcca8805ad",
+        "flights.json": "54b69a0c43181b93b69f2a5bf58a84bee4600e2dec93ab38fb8657d0f93642a8"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0057",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0057",
+      "case_sha256": "cd1cf6389997ae8dd3a6b260e969ac55bf86c61143becf7b0ba86d19327ffe08",
+      "files_sha256": {
+        "job.json": "bf8c35350fc17dbcf6715c6bdaa6885417737309d1249dbf28610ffc60ba2e64",
+        "fixed_resources.json": "ee6101a8d343f8a4338f7413e250f096c4b3ec2e032bef4c5b429fe6dc313282",
+        "mobile_resources.json": "16b26e48d13eb5ff6437abc5707c3e3f42022191c30d4c8c4e0c955e8b02d897",
+        "sites.json": "b59856567cec41f75a3f52796fd009e1b4f3af6e4dea18fca0a0c790d6b13243",
+        "flights.json": "fca79cd1fc21b95b774ef233f5fda427ebae19619d6074e3307b517578a636db"
+      },
+      "raw_files_sha256": {
+        "job.json": "e487d63db01e3d946314da8371a6f4c8c932d4c1cd3a6a53c9ebbf836646cd60",
+        "fixed_resources.json": "44d07e0394a8c3090cdcf03f72e1db3b0ed458c4d6af96201f53b41d67d2e6b1",
+        "mobile_resources.json": "4152241fc57dc8db3d3683d5bb40582183c5f39de2fddae9e1b6ce40372c2226",
+        "sites.json": "e52ddef6585c6f3d0abf261eaa956d277f5d144babbf9891486dac76219e52f7",
+        "flights.json": "07ecf4a415955fe219a2063303baa197d53ada22822f41daf542b1e28f8dd2de"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0058",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0058",
+      "case_sha256": "296e605ea49f73a59e8c149388e5303d3098c5e24de3917acd9dde60505ccc0d",
+      "files_sha256": {
+        "job.json": "b5b41fb904bf253e1488c2105a0b1b3d82ea183360024e6d512ef7141023c8e7",
+        "fixed_resources.json": "d8db9bff7dbbed840a1ae6787c1a3449ca9a6b7694a7988f151008bf2a3fec1f",
+        "mobile_resources.json": "b8e4af29f809a09306ef9e7aa7fd4cd98c0dbd30c22cfc539b242d78e232ba28",
+        "sites.json": "27c1c9e5e5f6e6be5b77779b5d785cd6b63df7799860cee9789de52d35e94c82",
+        "flights.json": "39a6993e7a5f97d448163c44902d0af0999b5447982dc74de3bd10df117538cd"
+      },
+      "raw_files_sha256": {
+        "job.json": "db4cf498ecfacb02fd67ebbe33323d09ec8611576214a12d9f4a29eeb1710cda",
+        "fixed_resources.json": "6cb5b6a6add38439bbc78901a083793d58faff6523e0e47aeb0764d6448e02ed",
+        "mobile_resources.json": "920fe8ca4582d62b7707db501d5dc6c2516bc03a21f0e2e71cff6ec306d26e49",
+        "sites.json": "2b6f9568efbcd468aecf8e42a434daa3ea564ffd36fcded31cf2469ab937da39",
+        "flights.json": "922b0e14e020c7fe075183f590050a8bd938113c88fcacf7c70641bae293ca60"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0059",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0059",
+      "case_sha256": "d385a67c4539f779663c0349665ec614ac4c8b50dec65e2bd3f63059758604fa",
+      "files_sha256": {
+        "job.json": "87d8e3e98e11ebc22601821d5936dcd92266e9a08b350f01b571615a3c82c8bb",
+        "fixed_resources.json": "5c15723c488be9064a6c0686173df6ebfa8728cba86a3a4765e1fb6cbbb2a2d5",
+        "mobile_resources.json": "9f500737c223ae5d01f308bc9c98532cfb82634cce42f0618e78009d421f2d1e",
+        "sites.json": "4c86ed6c7bd470af823e70d539a874d4b1f0afc2b152bed534cbc4f360dd488e",
+        "flights.json": "277719bec5453c7baddf9e321803eb6f15de4e560eb97630faf4c4e125620c53"
+      },
+      "raw_files_sha256": {
+        "job.json": "e5f0ed77b0c95fb9cfb620b79cde2dd84a02e12a95b8d49f0eaee01fa39d0bbd",
+        "fixed_resources.json": "bbff77c80605d363f8c2deeb41ba14b62dde92170d9df3cc5ddf2fb3295c3515",
+        "mobile_resources.json": "156f45feecc2cc6cd6c92cd42be86292ffe8a9f0c7982a1882f84b629d3f5c0a",
+        "sites.json": "cdd983dcc96200a257fa28c207c6903f324fe8d9079f808ed067cab8202a88be",
+        "flights.json": "040a93e1675c13dc7176271c37907cf78b63c0b109da510fc9395e0dbb17910d"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0060",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0060",
+      "case_sha256": "b63603facfc7b7b2e895cf7c73a68405b050b77e3b785fd04b807c72a80b6c5a",
+      "files_sha256": {
+        "job.json": "39399e490e5d2a3c4f198967ba4c93be2bb296f458c1232ec59d173d515be719",
+        "fixed_resources.json": "a54745de3f9d376053a42283e9b62e09149bfd53ab8afa5eab21d212649bb8f4",
+        "mobile_resources.json": "9c28bc837dee353a1fa3710f2c003f9683babc5f1b19ad02014307f00e9bdcea",
+        "sites.json": "a277db223751c01279ce2a97b344e6b39fd1da0500a8653223d35ad4dcd2ce8d",
+        "flights.json": "84d2bd3608758d0511b1e405e5c06ec7ad9a678de75c538704d769b3b6cafdd8"
+      },
+      "raw_files_sha256": {
+        "job.json": "0295af50c69b8e7f5a170fc55d31f9a618b072361ae42263cf7273b554306382",
+        "fixed_resources.json": "726b609bd4a7267839e4e568861f4c3eaa9ad9c14def999a9dc3be3109c0c0fa",
+        "mobile_resources.json": "ded2e4cc1182b7183bb4602286c2c1f66fae03e69ce41f8bfb6e9363f8682a71",
+        "sites.json": "e9866c99e77e025f19cf19650af67d008eb98aab690063e1301087e7727b1c7b",
+        "flights.json": "8925cde3902ded01b79447bf253c61323b4bc8eed0b29da88dc2dda9be9070c3"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0061",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0061",
+      "case_sha256": "29638a3656b957dbddee50076268db5a2e837d690768a295d93c0435b39fa273",
+      "files_sha256": {
+        "job.json": "dd7893c76e7119c74660d4f6b7f6ad7685bc6b2a9041300ce978398ceadf4ccf",
+        "fixed_resources.json": "a2e077eb8d791013f190ab20d047054550f74d87007fbfa606843e07f3a827ab",
+        "mobile_resources.json": "9a3763d73e431a6391c6117837cd8acf7b0968c5379a90792944b682f214c2c3",
+        "sites.json": "8c8593844bf5f1f3392011db98fced9bee4f6517508b8ddb3a25709ab76d163a",
+        "flights.json": "a5039a6d38152d151a1a5d21185e85f956f7def7bb1c579dbe70beaaba3a326b"
+      },
+      "raw_files_sha256": {
+        "job.json": "25760b6e9004ff0e5e88a2af19cb7d9f891600c1285bcac0eaf47a75357092ae",
+        "fixed_resources.json": "dddc56df064c06e0fcec793a78903d4c21dfa42fe6b57844b97a376f2398d242",
+        "mobile_resources.json": "4da5b716f5ebeea49b5f0d8f15a56f10e62371dbc16a1acc08c89221a9d9b959",
+        "sites.json": "04476a3a61d8dd07528f3ef5d88c56ac764c7c52cae418cd82ff750829b70c1a",
+        "flights.json": "841f3d058b32d3666c15f18c6ae109c8b32815e041dc2eeedae3d66972d54b96"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0062",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0062",
+      "case_sha256": "418072f81e74202b7307ca57826eacf4df5d62d7515e2d715efb08d15cd97c85",
+      "files_sha256": {
+        "job.json": "b611330be072254a766ce363b1d3fbbfcdc6f940020b863dcb5f558d7754549d",
+        "fixed_resources.json": "88b14cbce38a34d03e1e30fc6084e7862fc70d075ac6a6c5c332156d72b27478",
+        "mobile_resources.json": "72107e61719cfd2e1667c821b8c0c7dd4aff1bd702c66a02036dac1c3d3dd6b4",
+        "sites.json": "191ef84b1f5ae075ad86a71bc613078761da869641d463a88b88f6c7ad1fa1d9",
+        "flights.json": "d45681214271b15df4afd180b5b0a7a48638fde8c684096403af0729da7f5827"
+      },
+      "raw_files_sha256": {
+        "job.json": "5f2d9d7c470188dc6f84277020bb71eae58a6ab32644d3ee27526292c7eb4b68",
+        "fixed_resources.json": "2de237c76a68a947fa0880bdb6cf62f07ca1a7a87b52faaef743c7bdeaee5a3f",
+        "mobile_resources.json": "04dcc2cbdacaf437c170dbaffc9d46de23ed9281174ee68f3c01ab9f212f9c34",
+        "sites.json": "91b308c58a10a77546b759ebc0fd7038fd9853c934794229e084250513a8ba3f",
+        "flights.json": "4a85bb3b6a23ab1a5658ef356c89990c561b4987be6a551678b1534d494109ea"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0063",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0063",
+      "case_sha256": "b287b9d2021dca5e1c79c20dfe894f6c2051d1640879a46790c738e42ac49fb5",
+      "files_sha256": {
+        "job.json": "3e330157d9bd03a55b35540a9239bd4e45033807daccc8061b60485d5039a8bd",
+        "fixed_resources.json": "8737031b3b33f39b84ed6a24c6a6f4d5a69763fdea12f4f657aab4c1e84ed037",
+        "mobile_resources.json": "f92fd22857d73cc6f181673109603b0e75f3b7d2477c86e9de82bd6c8ed8d820",
+        "sites.json": "4b574475eb18b4ffb3cdb38f942369b22e7d1e5eab3981d58f776fccb5a6abaf",
+        "flights.json": "d5bb4c5bedbe29f9409c8f365930e523b914c3206686af7d5d6e7b18c12ae049"
+      },
+      "raw_files_sha256": {
+        "job.json": "38d419948a640df8e09cf55b0ab159e98e1c9550740f49582019f6b3db3b1a13",
+        "fixed_resources.json": "7b7a26015ec4978ab9435fb5da39543b752958f9c040a3b7ade98b7ad05ea301",
+        "mobile_resources.json": "09f86e15dc5830640a28f72f76a9b711fee2521755f80ec66d0b9e5a08beef64",
+        "sites.json": "b4b95f7ca78f6e75c33859e69eb0e673c71d8de1be18f795edb9295770f41b30",
+        "flights.json": "da4ce489bfce691c5cd20e1246ea7ff085e26f92d23a0727bf65cebe0484f510"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0064",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0064",
+      "case_sha256": "404bdacef003f4e997eca8a5420a2a345e4783a459e2e25d3f8f1c198f64ebcc",
+      "files_sha256": {
+        "job.json": "c0d0d5c8c5ffd3647d982eb8f6d890c0cd50384a40e68557a58368733e9ce97f",
+        "fixed_resources.json": "e7df4a8b4881d8dc4d1d8abb6cfb2461571dd4f81e15e426c5c98d67178b3f9b",
+        "mobile_resources.json": "dc80a11aa69d9a3bc13bc654afb668c58f60ab2e123572d5bf2e2b1b082fa8c2",
+        "sites.json": "3650ff8935d2bb93adbe54a536e2559fa0993d6abd1d98470b644f75c977db29",
+        "flights.json": "47c8b5d881331b2f60cf9d723c8a55f1e5825d6e2cb17ce962dec18bec62b3cd"
+      },
+      "raw_files_sha256": {
+        "job.json": "f7a5927a1900461463be4e9b1787c011faa82600a0d70b673130c6811de57bed",
+        "fixed_resources.json": "e5b3596c24018d1a55eacf5f9e5d24e2f6ee3e7bd362bf1a73ba58294928c6d9",
+        "mobile_resources.json": "b8c4f1358ffb1a3ec5ead0d5c80ed00b53f18b60fcedb6e35be32322000f7720",
+        "sites.json": "4d9e1244f0bd549ffc197de85e792fd6a7b72e70306059fda501bb37b943241e",
+        "flights.json": "97307e46591e790daefaa1a8e940a48087ed8c9b625107802a8b0b5d28d17245"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0065",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0065",
+      "case_sha256": "fb9b85f7cdf257b11e81cbb5a33ef37b6a86a7a477873e6d28ff03d7ca85f6e2",
+      "files_sha256": {
+        "job.json": "d7a64e4108ee1ddff10166b8e1f53d519c1f66271573287217cb59cfec1d874a",
+        "fixed_resources.json": "ba0fc03c17fd230871fb628fa8c1cf810b0e52e693cfc94f31129b08f3147e5a",
+        "mobile_resources.json": "1888d5451694322c8d5ca566ffb3da4f1f55925916267e36c58b7376545e5422",
+        "sites.json": "718f92e491cb96614c468e8c6e87695e72310a588d3413b5991c160230f8864b",
+        "flights.json": "1bba053389c0d7ccd7688349eb7a91512d943104b35c1dd7ae28c670e623d178"
+      },
+      "raw_files_sha256": {
+        "job.json": "375cc030b1287413c2ec84dd1e7a5e05186d294c34219335db8b79c2ea2a33a8",
+        "fixed_resources.json": "464958dac61978af2f1306aefe646160177531e16a2d0c8ff0d63a9aa9b74eca",
+        "mobile_resources.json": "3fc3d1bb29cb7e8a06e23bb631fcfcdffd04a9cec0ba6040992a5f519bd2928b",
+        "sites.json": "97861f631c0c1e885dd34099762dd77f72f97d66ab95211be428506179abff7d",
+        "flights.json": "56ca64099ad2ab9e11535a24e0451be3a17c81fa774195c25e5e8fd4babd3172"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0066",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0066",
+      "case_sha256": "c6c8bd3099270c43fdf731a2544ff6102d686bb9d93bd3737de4ee2b7ca3f91a",
+      "files_sha256": {
+        "job.json": "899dc94469c32a3abf6b2ec35035c580924aad6cd0ba51c7fad0919ccfa4c27c",
+        "fixed_resources.json": "576050e24ab2e71011932a2ef9ae13649717ddc2f1934eea90dd5ae79ac345a5",
+        "mobile_resources.json": "3807fafe64eb49de1c4d96bebbfc2505756ccb83fa7399baf36415b1274b198c",
+        "sites.json": "74a70f3ba63045ec390863a3815350b99194900369157622f37e330d59d3d528",
+        "flights.json": "37aa6e4aa040a2b0790641b5fd40c963b33115ddfc0c727c39e7c991e5fa5191"
+      },
+      "raw_files_sha256": {
+        "job.json": "6bc9672bbacfcb1ebb88f0451bbc60439ee2db68d19e22be21e2119eaa91d44d",
+        "fixed_resources.json": "f507f5314d3607cb4c3397b8a77bc7a776287ff9134d1574c8e07eab266f922b",
+        "mobile_resources.json": "8fdb5f4bb5586f958381d33f4490e00abe2b4a7989915355991750e0b4079053",
+        "sites.json": "e285bc82cfd407ae565b35e4cfc9bb44618b27d3963d5f13d26bdd1abbcd9f3e",
+        "flights.json": "05d455a2f5a755b2f52915979c49a8335f493b581dc762364e57b1034ba060e7"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0067",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0067",
+      "case_sha256": "39ab3dfb49db8e4ea0e981bd25a37832a8fc44897ebf7212c9b83ca01f0b15e4",
+      "files_sha256": {
+        "job.json": "ccf5e9a573765c93597adcb7202835153a58f355865445ea6eaec9a3dfc3593f",
+        "fixed_resources.json": "14eed662867a9a1036cf2e1538f696b21f8fbef92ebe1168f4aa068afbee09ef",
+        "mobile_resources.json": "381c8b0ca293a2c211c0e6956bfe0dce10228817ae82429212c4419cb93654b2",
+        "sites.json": "e8237b8cae3dd4f75de55b931a2c7b4302e06438cdc0ceae5eb7a68a5db4fba9",
+        "flights.json": "326b49ebeeaa8e949ac752a45aa33db91daae2d268e415797d1f25bfd0e014ee"
+      },
+      "raw_files_sha256": {
+        "job.json": "c99c2dba7ab8714f01dd5af55b7d81abd16e00e70c05f32725324c66f58011cc",
+        "fixed_resources.json": "aea43f4b2e415c2ff19483b3ad36bce4ca87eec1f9b4a51da3571de1f18923e3",
+        "mobile_resources.json": "155908634dec07d37f790ae869b749e99b4446a97274671432e3acfe87801f1c",
+        "sites.json": "03524862be484978aa93ff82a9be9284c37ba81999a6f2a7fbe21f327cc3ddf5",
+        "flights.json": "c75dcfe74818a540ddfb37aaaf1a62da33d621082e42327c81aef872e82195e1"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0068",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0068",
+      "case_sha256": "5ec501e0ead8b74b9255c2cc0c52c200a27670e9ed02abcc2250167bad696b20",
+      "files_sha256": {
+        "job.json": "c9201b8c9ad086520dad6a12ef3742c1a95e476de0d2d231ec64b24741e9ba4b",
+        "fixed_resources.json": "b93063040d2527c3b02beab7ceb67970425c3a517dc3bcf63859a0b8e980382e",
+        "mobile_resources.json": "842ecee262a744751a687b2066a3429080282dd0ae887c3e8b053a3198261a73",
+        "sites.json": "45dbdf7e38d0ab844a90b17721b9a078bba6c5c265a39ba48bc6704098518649",
+        "flights.json": "b87922d60d2cb3d5bb71fb4dd210a0d3d8ca6dfac3588c0da889c81fd2dd08f9"
+      },
+      "raw_files_sha256": {
+        "job.json": "b05c76642a6b591c6b97f18b3e843dbcbadaf0b05a8e05d5b531ede5b323b067",
+        "fixed_resources.json": "690649d376c4b17879e242f96f8df53a1853a1e0206f39f003ebc90d8e0fe54a",
+        "mobile_resources.json": "788669e5f6df6c2b2fe29865b2b01752a1e7d9ad96ce959d280e8f327b88488e",
+        "sites.json": "83c8d7f645afe157cb047d078ef014375fbe1d31a4e3247a59e88010305a3d0f",
+        "flights.json": "b006003f79157893fd330e3607e9bce47541efc0820328d57e708784bfcdfc13"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0069",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0069",
+      "case_sha256": "87d7f7b18bf2d9c4cb07d77357130dcc0568a22c159cb6cd90c6014fce74fd61",
+      "files_sha256": {
+        "job.json": "e1e377b976e6246837b01e5ac70e0e6576f4c3572ee3f20044cb1313abff26b8",
+        "fixed_resources.json": "257d3c8f1809eba27730a3cb47e4e4233302c9b7f9e69f9c8be1e81b3cce7ded",
+        "mobile_resources.json": "69bfbbdf904e1291beaa8240583928f2d2a5b2407c1a2562593eb6c04d380a9b",
+        "sites.json": "92015b58740602788c6e7640a9bea974a78e5e98f9149c1a64359e372cd62f77",
+        "flights.json": "dbb9f4ac09874f97d45242a2a84750d32634965c847dd589e35ca1f2d97b3a7f"
+      },
+      "raw_files_sha256": {
+        "job.json": "3c375ff6840160ea4869a31afc5e0848d9a2bacebd1cee8412c4e0fc8fe1e00d",
+        "fixed_resources.json": "c72ce1459b47dbc24e06825ab1c120fa4f1a8905655bb6fba4f288ee263e4394",
+        "mobile_resources.json": "a47b4fff7f74832bd89e66819bf4772c18da2fb26c6939e4b1876625d66d4ef1",
+        "sites.json": "b0e9768399fa99b372d94b03192ce9432fbc7b7a1b5781623bf798fecc1bd514",
+        "flights.json": "6344e703a2cc65a036e082121c8f42aa0895fe902829578aaf6039a2f60212f8"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0070",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0070",
+      "case_sha256": "ea02989e08f3e4f99d47dda57b55f7700dd8829c61b18bb3a60faa57604960e6",
+      "files_sha256": {
+        "job.json": "e58fba19f920877a02128c07ca57da2bcbfda22eeabc2dd8a8b3a14277ea2a9a",
+        "fixed_resources.json": "932068243c4ca83ac32b54e6d0caacee040d6bcf8075fde8c9d80afc99d2aac4",
+        "mobile_resources.json": "6a13fc1237b52676b3ed578c6cc8a17dd761af3c108f8b0a9ff57513d8cf6551",
+        "sites.json": "ee7955549412e31dea7cbe64714e2578bed4602c442c1ebbd2f21c02c4cad8a3",
+        "flights.json": "f9057ffdedae68cb238df1b4f1b82e9fce1e9a5fc4236033ddca9ab24e28b636"
+      },
+      "raw_files_sha256": {
+        "job.json": "364d9a13a629f05d9af044274c98ec41141f3c662dfa51e3bbb8649d0ed364bb",
+        "fixed_resources.json": "1d8888f7721d0d85def4aa2d931b37b7aa0e7f8720a620f23c3580d38d51cf5f",
+        "mobile_resources.json": "bbc0bf60a56bdcdffc1adf6053f161aed5ebb2ff87ed5a0d74a485f248880735",
+        "sites.json": "233e7fb02ccfbacedc8c48609d7692dbf03ef8e7b30675b0ba24c0e7d9057606",
+        "flights.json": "5396d532af8cc110fb5722dcd83d65c820992380d0cea26538b6d7825cf2a717"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0071",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0071",
+      "case_sha256": "7dfe73ad90f061e70fad7517e93bd194fafd78c38c70a6324b69306dfcb9c3ed",
+      "files_sha256": {
+        "job.json": "209755e29725ef08013e87e7aa7f80b1b7086a62738d9dd9b3394c4193922da7",
+        "fixed_resources.json": "eecf1e82ed81cd87f320985b5d717cec9931ee9b596007a62940228279e2910f",
+        "mobile_resources.json": "9ebc468efd08b84b8ff72ba4505d295f2eaee452ad72fddb3137564f6d2d3459",
+        "sites.json": "6c113d6d53f84fa89f6da216c500334ee87bb2fed91a6601a38a5899e741ff92",
+        "flights.json": "05bf07737fb215dea94e88fb3b365d4579fe7a3d32c667e95d71ccc2622a52b5"
+      },
+      "raw_files_sha256": {
+        "job.json": "0eb92cdf319b3d83806af0247cbc3a861fc5f57808fb62817c288c54b1d462e8",
+        "fixed_resources.json": "06a19c7f04658fe7159fb87d3153796294364e70fce03a7e8565107eb19780a9",
+        "mobile_resources.json": "d295be6039d7b709b0aa4e466810f34fdd3616e1d476309f0d2f98c818ef3dbf",
+        "sites.json": "ca404faf945f6fbc2fe86e99dbaf166573f82c5547f7b9b05b8599ab3765ee7c",
+        "flights.json": "46b082c5890b733dff9738bb70a4ab7b2780bf9196a371de6e9d016a9822185c"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0072",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0072",
+      "case_sha256": "841e0faa84fb02afc43f59f75343ebbf0292aa55b5800a73d00f2ba2d0bee689",
+      "files_sha256": {
+        "job.json": "47caf3ce328137dc234606252be06694bd172e08e664f8664a69f0caec771a18",
+        "fixed_resources.json": "de19d5624ae5c9779b36134b4ffd646449a6b73e8feaefaec9651a9a3007d3d4",
+        "mobile_resources.json": "12a272d3e32795b46a423ecae03db1b0d597ded6172d61b544e76503838bf5de",
+        "sites.json": "a28b8573124b1676388263a44b53691cf77919ea6a8d06d5459aeb30fd1c3b8f",
+        "flights.json": "3af49fc251f0b875ee083af800d19d8f6cc7b1a0f0961c382e6d24c4d97116fe"
+      },
+      "raw_files_sha256": {
+        "job.json": "7292a89e1abe35e406509d320f07ae130053621ea330427a53d424adfe3b0599",
+        "fixed_resources.json": "4ca429f98ebbb88814191936766062eb02a2d8cb170630eaaa25289ff3299779",
+        "mobile_resources.json": "e17df08779b8d6eaca6a046fe31e094556216b08d7e9bc6e614dc19bec24c80e",
+        "sites.json": "af6b8e5ff356a679a44a895d7f6c079a02d80d125a9ff1b544e746b22bcc09fc",
+        "flights.json": "3eeaeeae2aadafaad1060c80d1c0965515459f774934fa904ed279687f50eece"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0073",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0073",
+      "case_sha256": "16031eca52a0af3b0851b8e4584e1dcaa2d650cd3d3075cddbe0ed57d1311d8a",
+      "files_sha256": {
+        "job.json": "166b232725eefc02b7d4388c2797b74f91a54b3fa6578b5742b96153a87fb762",
+        "fixed_resources.json": "13c1df9c9b2ce9166d12c62c793453a990af969d99a56a43d83d5a2f1cc54c07",
+        "mobile_resources.json": "181729db192ac1e0a7c617646f20d3bcb8f5eeae549f99740ebfa53a9e0fd7a8",
+        "sites.json": "da3e5b0740a558a825a30a9bbcdc0ab30cc7687a11a161300a86b61009242411",
+        "flights.json": "e8b240a8595d1f70fcb556009a8148d4198630c794afc63f5985495e73a7b2b8"
+      },
+      "raw_files_sha256": {
+        "job.json": "da33d9a099261d1f70041234f5b72d8f3cad63fd351855350b06ab369200890c",
+        "fixed_resources.json": "60dc5891a840b77cdf69194fc0a84b2badbf773ec9b8e42ee591ab7768532229",
+        "mobile_resources.json": "77c4c571f0971ae6e257d1d0222d156cc43b0077e48688ea6c7c739464d50996",
+        "sites.json": "ecfb85673e6443f8152ea21ba636bc2094c20de95335b030c1c0514751467606",
+        "flights.json": "e51834452709ed7531c9a982ecbb2a9809d7ff06bbd3ce7ae4984782a6707ba9"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0074",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0074",
+      "case_sha256": "f91f13f9a6072cbe2c61b532e1094cfeb3fe469491a25af86c69f444a19f1cce",
+      "files_sha256": {
+        "job.json": "bcd61c029acbe45fcf1942f6c8662b06805a84dc35423c1d1088eccc900fcac0",
+        "fixed_resources.json": "b6b9fda844418f99e65a01936615c6e1cad92cd34a77f2ce9e492a6f02fd3676",
+        "mobile_resources.json": "ef358a89b2d965299c9bbcd8b65f6d7bf5f516094dfae296540d49b2fdc534a3",
+        "sites.json": "d2bc34fcc9b4044e0086e4ad5e9e84e61795596f643adb9288460fb64b250a59",
+        "flights.json": "70ec0e974a1821200599b9114f432af8b46cb08eb03da6cb1717cde4de25610c"
+      },
+      "raw_files_sha256": {
+        "job.json": "18a6c25c3b637492eac89e35f1e98437d6f28b5e8cd9f22cb87e383952b32901",
+        "fixed_resources.json": "82d052129c83b2e13f40ade478bf7f73e5e687ffb2050a5ffe8c06c37a9850f0",
+        "mobile_resources.json": "bae1d86b26e86c2e80b4472021f5fc58141377650a397823684ce740f4312d0b",
+        "sites.json": "5472fa0e253bdad5fdc9d759d2f7a890fbef8acc6955f397da2b68682af8c953",
+        "flights.json": "08a1d34bcda8c3dbb6df454ae1f41aba21bb8a245da1ca221b59fab6be4f9669"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0075",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0075",
+      "case_sha256": "3723af82584199af8c8109157dffd1004f77c6cbfaeb6aabe2c6962c350c4f3e",
+      "files_sha256": {
+        "job.json": "2bcec0c8dbb6b85c420e98cb28b139c004259c333d2b7b374a00d5051c9b4bd4",
+        "fixed_resources.json": "9b0b12f9bce6f5bc8ca0f2eb32cf8cd4ef4774ec37039926bacf86f708ae00e2",
+        "mobile_resources.json": "d208b62b427c86a427c6f0f776178dca40336d77f2919259c77803516c756aa8",
+        "sites.json": "36fa3ab3f591d55d377c7a55b01bc754da000d02433ff4691f4b9a9f013c19c1",
+        "flights.json": "9c19c2b72aaf08f1d121113d4811046ea1cc2c600dc1b493bedaa3ef8de4ca46"
+      },
+      "raw_files_sha256": {
+        "job.json": "7719b0de90cf087ec53a6aeed2e97436c98e1c1fc6b36506dbbc5fd723003494",
+        "fixed_resources.json": "675f7f4d749d62509b82d58d008433831c67854cca4364f64b56a0abbb598df8",
+        "mobile_resources.json": "c786579d38d133094005689601fe79097280bb01b0888ff2a8b7cb001cf94e05",
+        "sites.json": "b0ffd5092515267556e3063819ad7f7bc5d67b87d840939b030bc8996db82b79",
+        "flights.json": "b862323efd823268ea284c362ec57408998404b762bce4fe54c9ca8f40e33cfc"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0076",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0076",
+      "case_sha256": "c71df3c69f0e71d4865b258e74235fc70177452e2e37c5ea85d6463f5c457d22",
+      "files_sha256": {
+        "job.json": "2619870d78d0413ab18914c980f9b8d9c12740113bbcc534269e9d2d28ad4ce3",
+        "fixed_resources.json": "553c84bb22e1cc4ec27d2e668a76e7e87d3130fe15e717c5fb0426121adf067a",
+        "mobile_resources.json": "72d0f421934d178c67304b8b177efe917035ea662e9b3fd495fdcfeeb5c0f13d",
+        "sites.json": "1a86d5759fe21fffc74928503f37173179bb959e3481761e17c103c03bdf0934",
+        "flights.json": "3a1b9b2c29e312926a6632a7dc7427fd36ed26bbaf9466573b8f3200876790e5"
+      },
+      "raw_files_sha256": {
+        "job.json": "d4c5d43a5027409f8982235846ba6d3005b7a790b0c7faaac8173c09f43ab621",
+        "fixed_resources.json": "50e434e485e0ea0e5eea0b7e912f49259b853d221948dfda3c0e30a2aeff6e25",
+        "mobile_resources.json": "3de716b3ca3e1195a24de25790b60c013647d37dcb534a61f0535c042eb3c0ad",
+        "sites.json": "a2708ccb16403010a180abb0c9b769ae2728824b8b06d3a2977318a80ba2ae36",
+        "flights.json": "4bfd2c175ee988bed6964092ba10eb577c2da8dfadfa47a1ba95b4a2b83afa91"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0077",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0077",
+      "case_sha256": "c3c3b41f892b6c9ab26585a55537a1e8d445b8cf7c1c43da4999adb39beb51c3",
+      "files_sha256": {
+        "job.json": "bda6f334c94b5ed1ed8ed41a2398d84ae8f1f0ac38babb7b1f6d1d5d5eb9e809",
+        "fixed_resources.json": "1a4a096211cedd9d171c3e2c801ee769640e86d4063dbb83e77f880765b56f76",
+        "mobile_resources.json": "0e9ff6fd0b478bb7c92040fe55871cca85c4f7d231c13378205e7269d4c0e8dd",
+        "sites.json": "ab46232fe54d61f27bba2f3dfae3b83f0a9fcf9d8cdf6cfff88227895956487e",
+        "flights.json": "dccaf1ba4189b776d806b3325c6d1e8c74cfa048eaa24174e571cc159f20810c"
+      },
+      "raw_files_sha256": {
+        "job.json": "b3dcc994f9f8a31abf8d7d9fe2070aae672c93b0f8b73726e7d939b7e63f1949",
+        "fixed_resources.json": "8aafd279eb4a9397f2b1d3ee48fe9a3c94ec04cccdd6d5c03aa0159abc33f668",
+        "mobile_resources.json": "fe72b19063f0e6782b65f3def9260327e32fe1a3544f5d59b5fa10e8d1d7e50a",
+        "sites.json": "ca9dddb29a4ab405e3c5beda0aa3e2f26ba5c9495894d2ba9a08b4c95f06450e",
+        "flights.json": "7927d87aabaeba2fb34d14c9f6bffad99b51c893654f5629afe5ac9723db7223"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0078",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0078",
+      "case_sha256": "4bcc17ecf328ea24a7549a1b9dd6ae163be348f9580d412d1e88957351f388eb",
+      "files_sha256": {
+        "job.json": "6a391cf8b83533df8a61e4befc30aefc1d79743991c01844bec4a8be32348b55",
+        "fixed_resources.json": "6e225dfddbb152cbdb69a7023002103ef6bd84b094083b14ad85057884c17bfa",
+        "mobile_resources.json": "700592b0ce3a8c8e2c08f8a579c23737b95a182887db421c2f54127dd4379664",
+        "sites.json": "4cb4f617ac2f0c1ae00233e1b4694b2fc43a7a77c6628c1f35ab657d01722268",
+        "flights.json": "880caf0ef78d736d5164e501bb2a5c28ca40d9e7b73e7b3e35681f48e144cd0b"
+      },
+      "raw_files_sha256": {
+        "job.json": "4d1c6baafcb18a81c02ab364098887cc8059f3f565b3ae201492f346557b9483",
+        "fixed_resources.json": "8a43f59c1a46527fa6567f3b49918cc603f72050b53716a40530e51f3831c7fd",
+        "mobile_resources.json": "6f2c0e6ff7657c5aec74ec7f2af170ccab7d488caafb336db626cdf057880d1d",
+        "sites.json": "c87f1d4c198a81e556dd2f4ef539b08bc58aeeb3b23239663e6496cec41c5fcd",
+        "flights.json": "735a88b3ac4b4a073e5ac8fcae57fd5001115f227e307da31dd45f8677e7ef30"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0079",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0079",
+      "case_sha256": "e6e08a862a5edb5520580860d2e06810963e044fc84020bcac1cf80cdae294dd",
+      "files_sha256": {
+        "job.json": "aa8001c86bb7cd09617c8c77fa07f4893d1ec0a1a46136aa261bea746b5dd8a6",
+        "fixed_resources.json": "f100fa39223cae3bd2da734d3a212fe2a4fa6ade5b57f16dcdc9492a5d5fd57f",
+        "mobile_resources.json": "f7d2beab00c79a1494e43e9743de093a15537787f88320ee82dec80e0e603712",
+        "sites.json": "b3267eeb826a5ff9d6ad70eca732f34c985467765a89bf12f660bc996a7bc66a",
+        "flights.json": "f61d9724941555bb8b6eb133a0788560eb3e0040171d87079d8c756163985208"
+      },
+      "raw_files_sha256": {
+        "job.json": "25340d2ee3f9dbe2b3e53242773e32f826181d87ce6f24dda622535403e2fc01",
+        "fixed_resources.json": "892f85f788feb0c4c89fad9efecf87847e24bf6a1f4682935b0a08bb9dc6a960",
+        "mobile_resources.json": "28eb990db03e7c4b723f59e7d01b2f776f9f23cf8fbe440dc654aea457d7ed12",
+        "sites.json": "7057813ffd3dc454a64d49054711d887f87205e54176d13eab2cda8897f23cba",
+        "flights.json": "f855348f209b970c6272bcccc10f201de3c6a91d171911b16d9e0aae916d4218"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0080",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0080",
+      "case_sha256": "fe6750e06f0c1f94f402f4f8e72f1ff0b489c3b43c3f7cfaa174e9f4948bff53",
+      "files_sha256": {
+        "job.json": "7f0b715025fe3de44f881fd93bff891d35d7b5eee9d2243e48e753bea0bc9027",
+        "fixed_resources.json": "aead03c88d5d2bc8bafbf8720ffa5eb76f2281b07b540e5b47d65393ea5cc912",
+        "mobile_resources.json": "3f7ffe5524946cb5db19b15f071eaa98091ce762e120c108c6aefe171399055e",
+        "sites.json": "28939474aca6c02de4f574374809738d989a95f277c44908d9efa2c7feccaa03",
+        "flights.json": "4ddcb621bafa6ab6569a90b81842b0ac8f842fa17369ea4c5980c19dff5ed974"
+      },
+      "raw_files_sha256": {
+        "job.json": "bcd7e193ef564be7a902122f1e9b9e1aac87350544573f1d5357b895e44a75a0",
+        "fixed_resources.json": "5a014da97f2559926ab6d98c6dbb44a6b91ba283ec962a0f15a70ef89d51610d",
+        "mobile_resources.json": "eb54c1b34d47685c0235162711f4dead18cc1c254fe2fcb176b1c964a48bcb45",
+        "sites.json": "91500e7e28adfbbcc5a7d776c61cdd69ab92f26d56cbd0e7d672a1feb0c5257e",
+        "flights.json": "61c2f78d9b103f319377462bb72384a07870ec6cc9bb60f13739559f21474f2b"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0081",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0081",
+      "case_sha256": "ef642c00cfa02e3560a9fd1ba8c7b6b76c1712bb999832e7177b29d0ec77583d",
+      "files_sha256": {
+        "job.json": "b70c2e6008b3f32117b5260f7e4f7cba2e8f7a13c2fd032b5ccef9b2b367686c",
+        "fixed_resources.json": "3b97fb68d582d64b45cb123043fd93af720f93b88b26af9461e50062f59e5df2",
+        "mobile_resources.json": "93244a87c7d79402157ca29f8fcf6f3c0cc8537311e3bd0d569fbabcd18621d0",
+        "sites.json": "69b2f8fc0df4644622b05d8de9c568051b8311f98ee73be85112c420ede68d41",
+        "flights.json": "c2ab39c56ae28cb20398fb487770024cfdb527e50ef317ff8cdbc96ebfc5e67b"
+      },
+      "raw_files_sha256": {
+        "job.json": "6f1e488fe19754ecb4d9e7db33230b33c119abde3e7ceee97257feb8bdcd8713",
+        "fixed_resources.json": "7be994f223fc1ee4ae3938fd39969ef2e86274398c5141bb5d8d8a8e91a33318",
+        "mobile_resources.json": "e0b283f328022229b18717ed076289d989aef0fe425aabfd3a3f5b6cae5bb74e",
+        "sites.json": "91f6ae9c796dab874cb4710109a4171b2a97ccfb73a3294acc2c7a97ea64b668",
+        "flights.json": "eccc281f5b52801e96f2bc920e09f2f72ae9b39fdde32fc28f786024a977fd5f"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0082",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0082",
+      "case_sha256": "a35c5c607eb6b49ddf042cedaea9f9d011fddcfbacf8788bb05a71ffbe3ad71f",
+      "files_sha256": {
+        "job.json": "2252c4fe32c82e5a55122548ea7524e6f1bcb01fdfed6d2dffccd25a4944afd3",
+        "fixed_resources.json": "f916f384b750607c038a318f371d9ec0fc041cecb620069a5463959730684bcd",
+        "mobile_resources.json": "1e77f48a1042d5b872b3968a5606f39830ef9af1f43a6ba286eb1f77f3d16c5d",
+        "sites.json": "425462b372214b15e358fc00b182e2834937da17f577d2fa0599e9877b3a0ac1",
+        "flights.json": "66357f86c441e8dd5b8e7f4ea36e119840c968fd4b8808752b2d21118338af90"
+      },
+      "raw_files_sha256": {
+        "job.json": "41c9e43ce77215e7c15378e10f4435c091de3c6c510e0a94f89cb62701cdca71",
+        "fixed_resources.json": "c4f66d7f10cf7b93815a2dbafc1bae29493d2a8e998939e8195be18dcb95abeb",
+        "mobile_resources.json": "88a65399136c331bbd7a5e3701ac5d82bb437dbf92c3c55071955a8d0c8ffc8b",
+        "sites.json": "965825de58b5309cf2183218a6bbc5f9b4bfb6e40940918a105420822f756af0",
+        "flights.json": "0c2bcb6ab8cb520e9e93dbe4c4cb737bc96ce6d2b53dc522a4bd08f4f730f38f"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0083",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0083",
+      "case_sha256": "43ec7d3dc533a7314d89abf37b547dee1e317d18c00203c9b7bb98d2e8470b6c",
+      "files_sha256": {
+        "job.json": "ab1e678dbb90800789916fbbbe6f7a8d7882174aac5bec2dc88e22457c34a52c",
+        "fixed_resources.json": "9116692195773d7143979e220f23a2485c49ae6bc5e210bc0966b37e354a5cec",
+        "mobile_resources.json": "f922f9a8598103ce38cfc82f2e3298e01b4ccf152288a996f8d93cde42e2194a",
+        "sites.json": "bea32501f201d6bf06ef0809c8339c388cf6e8bf2ae2819c46ac2cbb2658ff6f",
+        "flights.json": "b830f10207063482734c0fa3fa4aed53b9f1156a2f1f83bf5fc8028a023e4c48"
+      },
+      "raw_files_sha256": {
+        "job.json": "e039de2836079ba603d00eba3f27f506bc33ce51beea54037158e18d9b9f9945",
+        "fixed_resources.json": "aed9e2abf8c8b11105be94a62fb36d94f9d70334ac8305e9332bc48bb6b2449a",
+        "mobile_resources.json": "f62135d08fff929d3baae7c43e19e23353d383974a2b8ed4f2182cd65b137bad",
+        "sites.json": "e695737f40f937547804d7a78c3c192b81af311e97dda931e5552e9a56e8704e",
+        "flights.json": "d4d4c37f39087aa6f6edd8df20f79ee927aafdad73b5b99117df433c417a7f58"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0084",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0084",
+      "case_sha256": "f0cc82751416836cf8ee01e0c448698e50afbc2fdf6aceb167c2c85b46098884",
+      "files_sha256": {
+        "job.json": "ae6362de55719d8ca7f58ed3484d6687b44b6c89d5cfb188358ba1e0b1bc9908",
+        "fixed_resources.json": "010a21bef32c16854ffd8273cffb7b095c8d9e94239381e157e68a4c1733233e",
+        "mobile_resources.json": "cd48e9ab2fcd04da4161b0944f262b94342c952b72bf9bf2befba4882f6d464f",
+        "sites.json": "b998ec69ecc919fc4bbe092b7b73d36d321213d74e4a24fcd45dc97cc3eaf805",
+        "flights.json": "6bebde7fb126e26eb00f04ef4dc82fa60d171c62086b9a73a3e01e4056406f90"
+      },
+      "raw_files_sha256": {
+        "job.json": "d3576a6caee6e7f1a1c4f9ba9e9904854efcb63e9a2d42bc0ffd8381070599e2",
+        "fixed_resources.json": "813b2f1b47cb04d023014ef03f4c2728c1a7ecb75bc0b3bbd6fa06ac18fb8a44",
+        "mobile_resources.json": "deea1a5ff693af7462a2b9739ca48460564c1eb821c5528d2d305f40f0255582",
+        "sites.json": "5f910795612f84001bd550213f3f16da56b79b7c02ac9e4a60eea02822508d44",
+        "flights.json": "eae7af7b50a4028478fc217da6597ab45812402469b983ec948062fe7f3f9fc0"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0085",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0085",
+      "case_sha256": "d455c855bd844901710e65db82e2c21794fbbb316a1e2001c07b6bb9d93f63ae",
+      "files_sha256": {
+        "job.json": "9980429639fe48dd605ae09e79246cc2fcc527a0ffbcba2a64804b026de2fbc2",
+        "fixed_resources.json": "0c9357827dbf76ef54a61b794235c7130a959210009cec917f15b36222f8b8f6",
+        "mobile_resources.json": "f2389a504ad0d7d13f54b79f667b20f06278d430edfe07ca0bf1daff5e290c6d",
+        "sites.json": "0fd0d4e5ea05056d327d5d051dc72b5127df482c9254f8d5414ffa969bd8fb15",
+        "flights.json": "454c9662ce4c45470b81d93ff5032e258f9e08a55dc29adb687de5db6730a734"
+      },
+      "raw_files_sha256": {
+        "job.json": "d16ddd4a227b359af8be0f4d5f98544061dd46d521dbe927232c25aa9b85db24",
+        "fixed_resources.json": "4b60741a78199269aae6391a43cf6312f1edcd9a6f7b4ae21369d6f3c58e3b23",
+        "mobile_resources.json": "80e8304af99d33b5633e98158107a6e8d519cc94c849b37ec476cd6d76dc2f7f",
+        "sites.json": "f3a92d48acd7be29bf70841e4cd7a2f8c5ad3b2a6b5de5e5d41e896772b6416a",
+        "flights.json": "733ad04cfbe1bf342999d570b378e119001d8a0788f593bbe82611c1200f8383"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0086",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0086",
+      "case_sha256": "5f21fd8d547366c983970a1568a66fe064b55da1ecec54493d444fa5b2514cdd",
+      "files_sha256": {
+        "job.json": "83c2f1263244536fe07e0c276a274f0ae0218ebdc73e75c99d36a899157058b8",
+        "fixed_resources.json": "e2da0781d22c78b850249132c767fdf434bfecc6cadde38c98b46bb740a3b8ad",
+        "mobile_resources.json": "0299cdaed6d314c2a8c9fca1c171e2aacbb33bfba58605188f4eeed61ce192f7",
+        "sites.json": "5321984ec9aadcbd528e9ce4a6f1a9b1b6c80b6d0b2d52e9c288f9a944c9a0ba",
+        "flights.json": "bb019cfe0e83adfde3473daa38a52cbafef96184aa9c206d620c0d3afbe12368"
+      },
+      "raw_files_sha256": {
+        "job.json": "82030a88207c90a92f55bc0fdb99e191f35af2e8ed382e81b396b865712851d5",
+        "fixed_resources.json": "a2ee4457c97437373ef4cc59ae9862153da845feebc162d58451fcd6c877e3df",
+        "mobile_resources.json": "4870892bae1c6a83fca3d65cd219df7eed01294e4324c332c848d054cac5bb9c",
+        "sites.json": "496eee853a152f97773f814ce3a98cbe356845d87b2c51c9113afefb1dd01f52",
+        "flights.json": "68699508d8d9a0c9991d322e562d86ef0aacbc1e54323c186ac1b67cf8f696d2"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0087",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0087",
+      "case_sha256": "e4d1263ac8ec0240a94b8f8304b2dabfa7fecfdaed5c4e3cef7b08b8ae1a87fc",
+      "files_sha256": {
+        "job.json": "0456d0178885f85119083c11a8880a9bcbfad029d706fd6e5c1297fcd0f867f5",
+        "fixed_resources.json": "f2990f141c233d3180fe3c484f23d022d5eb64e253503d1a7505839dc77367f8",
+        "mobile_resources.json": "4fd0e060e496314d8eac2c9e345620b53a62174ccb3670a9ef04d15ef9b20341",
+        "sites.json": "211c74087996dfbbc3bd7c61d1c51f36a5abba71d99ecabccb1d986c87b4018e",
+        "flights.json": "74126593dd04559b84cda8f52a9edccdb0cfe4ad2db2cb0907b4840fa68528c0"
+      },
+      "raw_files_sha256": {
+        "job.json": "8e10b89740a8fd48dbf196d35fc234ed7fe2d73a07de3228c608c7ef9bbfcc20",
+        "fixed_resources.json": "633b8389d999feed1c59312c47f0f83da6ae6fd92ff6c2f69d38bc93a182454a",
+        "mobile_resources.json": "e0cb052d29f55f227264e295de4dfcfe494b8a187df76667eba6f52cb895d384",
+        "sites.json": "fde32d8fe195ab9661b6f83468eb15de19abcc0ed41da6fb931e620f8cdb3146",
+        "flights.json": "8a0b7946df7b47ec67be55e1560a308b3912763f5430b0e6a195432e8b4cea37"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0088",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0088",
+      "case_sha256": "5a37c13e8b055d16f579ae942d0d0deaa5ccd915b898f47b5d2bbd1e31ca9955",
+      "files_sha256": {
+        "job.json": "628f4c4d72a75ee53b31ed0554ee438fcd867b1c1d081b4bdcf5ce64a565e6fe",
+        "fixed_resources.json": "a5492cd8b99883bdaf544365f403f6b61b9b249fb05aa43ca2ec1f10157a33fb",
+        "mobile_resources.json": "71f9ce7cbccdbe89d855009e4d5c916b3e947ba88786754a696be20a7f4b98b4",
+        "sites.json": "9bb179b15ac344a47230e61abdbccfbb1f98c829a95b11c8db30d22d4b7a9a32",
+        "flights.json": "ba1c614441208deacf33b07d30f45946645273683e6a5f5a3353d18c99d33b3d"
+      },
+      "raw_files_sha256": {
+        "job.json": "8f12536e3a45431c62899480d215d2ce1887f72cac0a0282cd2d02eb9501b55b",
+        "fixed_resources.json": "d2599abe0f1460a09b9d3ad9a01d0990495fc44ed5d286e727b9332979af8ee2",
+        "mobile_resources.json": "298c75849427ac0736ac0127b82086b0b2e61d0b6b43dd5729f56806b7ad6e9b",
+        "sites.json": "df1799c69c391aa9f9e884cdfb31b68b20991a20d9dfeb2f3cedf8401569600b",
+        "flights.json": "29c5f92966d4d0d927b23b653e45bd690d89b4c61034751f98725050ba7185c2"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0089",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0089",
+      "case_sha256": "9420ffc594533b25fb260596cfb4796eb89c72cd9b830d73f492df8aa1677bbc",
+      "files_sha256": {
+        "job.json": "3b8de06de8d6e3ce0bf1eb890068063a108c3ac5bdc34f8a332aaedd852e1b0d",
+        "fixed_resources.json": "e1f0e4e3a5c4e2efa111966c37bac4e58f69289995a8d448f596dd71cb7e23a6",
+        "mobile_resources.json": "38e71e8f24b2f496ebd54b54236747bb1d3bb257001e4a1d417fd4723e3ddc8d",
+        "sites.json": "27b48b1f87a3417dd729df00d9233a82e3246a1dbddd7dd565a4d69d7e9e3fe2",
+        "flights.json": "78cebeac91502e46c2ff0124845d71e0711a99dfce8c50a44067b466f5c808a8"
+      },
+      "raw_files_sha256": {
+        "job.json": "f7d72c742a9cadd9104eb6707dcfaa9b880aa1769b9f0dee18abefd2d84e37c0",
+        "fixed_resources.json": "b0d9ca5a730f7a807a9398a4aa9607de00e35eb9e4bc49610806623cd6230c96",
+        "mobile_resources.json": "fb5a082f43dc0062be5cb3ba326ecf049ccd37d5a5670511cc697c64438ec02a",
+        "sites.json": "9509ee8641ffc5fc4b54b92bf54b4e9076219e7ef468cf8a43456709266b994a",
+        "flights.json": "238248a4586bef232437f3c4a6d25e124eb5c1db3b298bd7859d7422fad669d7"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0090",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0090",
+      "case_sha256": "4fe92b830ceb6170d55d19ac170052809b3f979963d151069508a498e708ed7d",
+      "files_sha256": {
+        "job.json": "c03d8bf8db037ecfa49348e6cb5f4f0c1ec7af29ce984a4d71c94821a065af27",
+        "fixed_resources.json": "69887c86ff93278b4761a04d795c383cabde13cf8350d1688b07ee3ad0a79e9e",
+        "mobile_resources.json": "70ca992ad46f2b6dce0766d6da835bd51130e254467ee78ac1128de850477ec0",
+        "sites.json": "69b6e138e06e6a5541789215f5fb1136ce835fef23f51a28d81c641062eee99e",
+        "flights.json": "42b4d0cdb0b2cae13604bc80bbec0235f1963890a12ba278729b484264a32885"
+      },
+      "raw_files_sha256": {
+        "job.json": "8cb2f29a4992bbd0791c80bfe377e34c803c343e46ecce0437d13d8abb01bb3c",
+        "fixed_resources.json": "85bb97e300ffac5f11fae3eddadc1804d63ede7e2462a7e84681aec452a40b8c",
+        "mobile_resources.json": "2874e003f62af08c8dcedcad4776ba5cb1373242446b8a34482065d1fc94130b",
+        "sites.json": "2933064e64562819a1b49769f1b54d47c69c7c651f999ebde1b63cfe0d3fcc15",
+        "flights.json": "db478b521027f75d9f26bcedfb7b468b5f9c47d99c4bddd3b96e0fb51124f756"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0091",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0091",
+      "case_sha256": "dd3aab8f247e78d8e51d49cde18bc363195c94d0366654474feb746b09ba4289",
+      "files_sha256": {
+        "job.json": "33c014c2fdde134a2f992e003c7d2959196139e36b1b3e21466a8c9ae846ea40",
+        "fixed_resources.json": "ad28f731cbdf01e6cf26f1bf04fce2253929caf7026f2785da860545616f436f",
+        "mobile_resources.json": "5ab96bc27e65dcd13434d89b4012210140982cb2a553398493cb667c7c604106",
+        "sites.json": "c79a46e740e0655ed2d8122393fb64e7f698a24803b8f4bca3b0ec7855a45788",
+        "flights.json": "943d21c09ff7144ae0b12dfc068c3ef53f74d65f266731c36ee2566455fa7156"
+      },
+      "raw_files_sha256": {
+        "job.json": "a382af571575d91d4b6520d9e062cacb149a51eef5dd37204b2ab9cb18b656bf",
+        "fixed_resources.json": "fc486c1ba0fae0fe6d158383b33e4f7507e76bd891bf6358e27d2113d4ac63b5",
+        "mobile_resources.json": "4974a09e325a7e11e02e3f73f151bdb5d158971cee14a208019014742f804a30",
+        "sites.json": "6d4b5e2c36ca88caa80db30c455211469a6ba78d515d0b001e072ba8e1bb52bf",
+        "flights.json": "9bae4912b1867f96b76d3fb6d5dd596dfe91e64b1cf853dc5682cf6e22a9a8ab"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0092",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0092",
+      "case_sha256": "4b6d593c92883eaaf844973c6ea8db3964ec367999d2785e6f37436fcd531fb5",
+      "files_sha256": {
+        "job.json": "881b28a9c60a7cfb4c19700ce1660b2dbc6c7090ac382ffde99a4465b0bb23cc",
+        "fixed_resources.json": "13468fced01e47cf557a22e7e87aa7fdeccdd045f417266a56dc2c5bb669cc69",
+        "mobile_resources.json": "3a64d29fe2f937cb59bb338e2590b8e684a64b4223d2bfdaee6f5f9608fe13a7",
+        "sites.json": "2d5a4ff3e67b419c3a631d2f226c105004a120351b6bc3ccccdf516b2cb0e562",
+        "flights.json": "e3ff18113d47dd481898b414c72605c54bda17d27a305e39b8353db109657745"
+      },
+      "raw_files_sha256": {
+        "job.json": "699a67cbb644507bc74e534ea1aae252a1384f41f9215c598bd011642c97c62b",
+        "fixed_resources.json": "b50ff1261b6a53739540a4ebc83f2e4882c96124eb6fe7800c04e5c9a8088898",
+        "mobile_resources.json": "ecbc302ff9a7d90214656ef0c78b7c26f5b6769e3cb8cd26b33ed75bc3d9f674",
+        "sites.json": "8f72cb7517d0be976cd55e7248e5d27c74f49f0defb4ee2f850aba9251821118",
+        "flights.json": "4380136f839b7302841dd1d05742294bdf24f4af4d166a56237a3488a4e45c18"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0093",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0093",
+      "case_sha256": "9b492bcecf0084fc8fda6027194f3519cdda0a27e956c756e080054856704caa",
+      "files_sha256": {
+        "job.json": "8dc1f68a4a3a9334a3413c95199b30d38511ae9011d01183e910a67bc4b9e919",
+        "fixed_resources.json": "1fbab6c0af9e3479edec971457711036ac72c0b516c14eb1523619f1db1c7be0",
+        "mobile_resources.json": "597d0e777e99f4c388959a7ea089652432510b687efcaa4a993ab9cde0eac1e5",
+        "sites.json": "2df8bd110fa876c9e74f92884a848a13d04fdb1a689f6114e02e9a2e3c402e02",
+        "flights.json": "2e3b14c8f2fc37bcf89d750b045ffa9ce926699f0dc35231db0f82a87621ba90"
+      },
+      "raw_files_sha256": {
+        "job.json": "1d75a546887fed48f302d02152face38dbc92c1904a66817de4fb6eeb61b3243",
+        "fixed_resources.json": "8edf2cbd3093794f92cf28b6dff0272b5b30b2c9dffcae9a2ff614bfc99ce0d2",
+        "mobile_resources.json": "dc84ddd6a0727e486e106cb0e808a90db2151418c7f2aa14ff698a17b151e0ca",
+        "sites.json": "b0e06c76a192334591dac9e29f7baee3b0f900127400f14ad7ba43db76a337a8",
+        "flights.json": "2960fe77242cc8ec4cb46699d7f856a069eb5640d12c4e2e9d83df36f5a89815"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0094",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0094",
+      "case_sha256": "f02c2917961f7c117185dfa205278aebf43c77f1f0d8ba7ee4bc4daf0c08d23f",
+      "files_sha256": {
+        "job.json": "a95ea9032ca79e2992c8398a48a8cb9bfd6e6f28509808abfbb78119e1b8dd23",
+        "fixed_resources.json": "964de0b9dddaa19b84de6226ea367049104c69454f487ac37fd208c79f7adb25",
+        "mobile_resources.json": "116b6a67bdc3c5e3220e64f5ea08faec45a1296efc2f5f296b9e7beec62d9039",
+        "sites.json": "434531b509fa651b0fdda96ad58c047ae5e46d0ee44696991b366490e9bcea85",
+        "flights.json": "c4de1fcd96d58edd154493fcbc30c5cf4e2b1b641cc67cc89f10be628dc6b9b8"
+      },
+      "raw_files_sha256": {
+        "job.json": "f4bbad3aa33569fe0b225fcf0fca04cd247f1327f568386fe5772bb9f978e423",
+        "fixed_resources.json": "07baf34ab4e7ad692703900ff5c0c74ca7318649dfec317ef197f36c94f67210",
+        "mobile_resources.json": "6080c19a1f19f9eac30dc027ac430fb0bd6bddcd0d5e175fef70e66ba56381b9",
+        "sites.json": "8c4243578dde806a26f5c50126287941e3750609beae9633021421cff84f9789",
+        "flights.json": "bc7a91d13ade6f340c55b1958471bd372dd34d39bf3e2f460a24ac47705d268f"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0095",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0095",
+      "case_sha256": "df47f26eaac0d47562ba7e824fc7156d21517fce3730b9ed77faed524dac3cdc",
+      "files_sha256": {
+        "job.json": "429d797ca1e093e23c03c2fcd9c87644355c74c534dff83bf2c19332efe4709f",
+        "fixed_resources.json": "49b651fca24b8dc5a011774c44bc5b52f09543e762c7a82faacf6cc7634baa80",
+        "mobile_resources.json": "365c460db5cc133c9e8dd1ba84b7e940035560ced016a92c85446369c11179cb",
+        "sites.json": "9414655a6d01a5ffb8e440ad7ed6195e315e939de2d59e4953a398897e7e14b5",
+        "flights.json": "febb70ef9e6917a185304f01ef82b5cbd3e4246973e06351a6e378a95d80bba9"
+      },
+      "raw_files_sha256": {
+        "job.json": "7f17dd39a794380c71a4fcebf51a6304c92e79b4f28cc6b5c77e72d3c78a62fa",
+        "fixed_resources.json": "1c4d24b2d79a0c046e389d902f1551827f0da86b2c63569fcfe535bc5cb381d1",
+        "mobile_resources.json": "f64f657e327bf3979a9777d8a1774c7b545aa7fc3c91af6a143a9a362513f8f8",
+        "sites.json": "f3e0a5629f939d9d3ad13c6bc3e133973d781e54c61e3cbe232bfff6fbef5eda",
+        "flights.json": "15275b3b4b0160d79eaa03436670aaec6a0efb547ee44b3ec99895d8476e68f3"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0096",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0096",
+      "case_sha256": "dc6b1658db6edc48a4965049e2ea72bdb4d1a3ae508cc1b895052c6ee57615f9",
+      "files_sha256": {
+        "job.json": "602aa6060de3e9b1e33c7bd1ec2234ba8a37549fde3020a36588acb75ec88161",
+        "fixed_resources.json": "ebdcf949541b85febd205ccc7a7b574ea769a8ac88ab44f2728cc072e3edbcca",
+        "mobile_resources.json": "d951b793a70a5dc738fe83f8244e5277339bd81044967a58fb3d19c016da2640",
+        "sites.json": "00aa599b0f2ea09e57634cd4d26801b0a0db0e58001526d5dd6e5732fcb45577",
+        "flights.json": "243f0e7be2aee985cf81a023495db8c46b97dbac6dcab59d61d33f7ecf003396"
+      },
+      "raw_files_sha256": {
+        "job.json": "ac220d3b1785ea742c6ff5e9c33c410c3557fa8783e7302a57f21b54cb31c83f",
+        "fixed_resources.json": "3016ed8625bc2ed94eb6473c02b26a8d2f1666a33847a85e58c91ef54105d9af",
+        "mobile_resources.json": "245c3e66433e68f95977580af2290cc874e81b249ddb4e0fab20eb84fa3e702a",
+        "sites.json": "8175169ded66347315326a7470e818caeefe38cd14f4e27947b0af55438aa9ad",
+        "flights.json": "459add5f5a3b1b9911bc1cabcb58ad60a57ce50374f24ebda4a510aeca3221f0"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0097",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0097",
+      "case_sha256": "e3257b6c0109e898d8a1b5a0a9aed6502dd458d2780e5f7a1d585fadb1d0cc89",
+      "files_sha256": {
+        "job.json": "89f7f46b3b7a983070fb6a9ec8a2ef662908c31c065248d25514e9e98c421b5f",
+        "fixed_resources.json": "acfe74c313f0e84e07a62dba1e0107d236017e310fbe97cf6805d254f06d0153",
+        "mobile_resources.json": "649a95a551c5853c6106d7f6e4efbed4edb3202866f807647936abfc1fc55af2",
+        "sites.json": "126a478d400bf12c9a153a464486eeedda2131fe9d04c319caee0dfcc8ea6f45",
+        "flights.json": "7a4472b10eccf641e778c442ac8b6348ac88bd5974b0b9ff7e4fc31903de9f35"
+      },
+      "raw_files_sha256": {
+        "job.json": "c583f1585b3827ebb1bfe7bb4fa5cd5141a8905fc0fb21908c94a79778b4a0bf",
+        "fixed_resources.json": "0f284e4dec1ca31369e2fa877d7d7fe1baa3e45d112a669e4cc4689fb4732673",
+        "mobile_resources.json": "5ab6dd68bdae1b87cfff6ae6ee0c6db483ff275cb97903f723920e2723340117",
+        "sites.json": "3fe27a410ba9517fb61d9504dea4d7a1728cbc70dc3496a4ee8a3eda89485510",
+        "flights.json": "2a725a6356f415c89ee343f7fa7ae0306931d164d544913f9e9ff9071572ef79"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0098",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0098",
+      "case_sha256": "e7f6b0c7fe8b41d69eee21c0bd0bbf791c9b55db681b1cea7a946bb386af438d",
+      "files_sha256": {
+        "job.json": "29611584a4c73e74728fdf7ffa1d2ec08e54b08961cf7889ffcbda10d1eb1c6a",
+        "fixed_resources.json": "be790232424295fd75efdd5455c458ab1383a391ebdfd3358ea005e86cdb9dd6",
+        "mobile_resources.json": "0134f7c58b0a8652687b1541ba5f9d469b8455d1ca8f961fa247c58294389d41",
+        "sites.json": "57d224900a4208571a2352a48c7501669d8539897c74eebf59ccc5022ef82534",
+        "flights.json": "08b956f8c646c4f16f54d8d9b4e4d8d7b39bd90b7445f9380b541c9e356ed66c"
+      },
+      "raw_files_sha256": {
+        "job.json": "20960a2520374bfda53aa691b3875bd3a9abbd40b542c12d75d927fd65e77575",
+        "fixed_resources.json": "42755c44d26949d38b4b24ee68c859806847b2cdf5d1d6cc318c5b4ad4bd73c6",
+        "mobile_resources.json": "f6672dd1a63ee2827a4a015db21e97abd285ca07afb68581ffde5c8ba9d19109",
+        "sites.json": "5668fe7cc87efd8eed72f3e438978408c689f21ee01d4c811ca8a98f99bdda19",
+        "flights.json": "6fa06cc085f50dc3e22fde542caeeaf0e88c8e53d6976b25546dfa2bdce9245f"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0099",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0099",
+      "case_sha256": "eab1de4e8d3239a5bda41e02e81c14ed3b2ff1ebb4a7433a7e0f5cd37954039b",
+      "files_sha256": {
+        "job.json": "385e47ef64b312d493e75aab8150ed455e226bf8640d61f8c8cb85b78fe440d4",
+        "fixed_resources.json": "3b9cb04f244f3cb1e6d1c226f8560c726892054385573b031dc87279c1b52aec",
+        "mobile_resources.json": "9a164fc95da48176d5153ce246b5a0bb0042ddb3d2581dbd9b3b561c753ecf99",
+        "sites.json": "af0ed47bf3ed1cf267ea4d37ee4bac406b655e7139d9cccc19b19f0f48a383a3",
+        "flights.json": "c33c567e7aa3562410e7a1ae7d3ad4f203ea10e3ebb628192d68b51c33ec4927"
+      },
+      "raw_files_sha256": {
+        "job.json": "2a69b89b4234832a204de8839f26c4f156c0f130310aa4103e88efa35ef36ee3",
+        "fixed_resources.json": "a1a06ce0af4a8c3f6f11a3290fcb6ce2bb78e21d3d0daf27a1a6554f09179926",
+        "mobile_resources.json": "869c683bdc7ef9021435aa586d0c947b6a6dce70e68b82c5c536cd13ab3921c2",
+        "sites.json": "d3c81cee7db206ea1fd5e62f2f0b289262d1e807569e8bb842292b742b8b54a3",
+        "flights.json": "567c4cc625be3ed27ea1371a92f7291ba7d0dd3166d925cc4a84db7333ee186f"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0100",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0100",
+      "case_sha256": "4e8da84a5c301f9b7f7a4c60d67d65d9bca260486efc9cd5b9e62efe4e20686b",
+      "files_sha256": {
+        "job.json": "a8637571d6051c616c01f7a1d39c85edd489bb31d6fc6d2bb3366c68784a43d4",
+        "fixed_resources.json": "25cac022ba89e9c0ec25f6ffebf9daecbcf8af4a940379ad8ac364d57464d0b1",
+        "mobile_resources.json": "fa242ddcf23bcdf3511523e34415c51b9204c055d57d9f62752280a770cdfd7b",
+        "sites.json": "753e464c0c646aaf8e05a79432afa2293d5955d6595b5b417af37cb06f4f337b",
+        "flights.json": "237a8b83ff73f07e59749fa5a4c9f4df0b9eadff0424956305745c20b4129f0c"
+      },
+      "raw_files_sha256": {
+        "job.json": "21b614b4312cb993c8286a3a931bfd195ca55e8c3e8028fa600a7669d16d92d5",
+        "fixed_resources.json": "a459403bf24b5c27ad52180f2829537a60d069851c5e78a8695e37abba4a9980",
+        "mobile_resources.json": "3848aae11ca7a225160dd409cd1d1f1074fd54cb50315c6bb03755a7e64b435f",
+        "sites.json": "0f6a3eb1b5c2fff1eecfb123acc9ac106a2ab1d56ce86b1ea049c5c098b8580b",
+        "flights.json": "fa15470d977549132c8a9b6edf42ae9501d8672a0c4754bc4c865e0fdf8089d4"
+      },
+      "profile": "resource_sparse",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0101",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0101",
+      "case_sha256": "90f1c5ecd857da6f925a698a86dac637f75b32aacfcc5e643f3a9b4bfed2e37a",
+      "files_sha256": {
+        "job.json": "516a711c967311e38ae71f6918398ab59d57652374e791d4f76dce16ce284773",
+        "fixed_resources.json": "71b6cf441b439acbc4fef8775aad72d0c7281cea949e5d03a3f110f05cc39f52",
+        "mobile_resources.json": "355e169f0441b0e578e89a1cf6fe2b6d897e4025bc559905b3232b212d0a56c0",
+        "sites.json": "16c161dccfb856b80a80b28883a265e4c48d69fbfe56416d74901aa6b6ac1050",
+        "flights.json": "6fb92bf48e7e670b59589d09da743dff03c806b1d48fddb4106a9d3fcbbb8dd0"
+      },
+      "raw_files_sha256": {
+        "job.json": "9be196320e2800df55e02ae47854b3eb025e364b81c639407ea360e6bdb4fd8e",
+        "fixed_resources.json": "bfedbce288496004fe913340fd0d785729337436be3c5047147d05b660501294",
+        "mobile_resources.json": "8baef3ece0ddcba3faa515eb49a8a77449b45b317e814d53c8e2e540d04f5f41",
+        "sites.json": "54a1ccfd7d940fdf169ca2900be854a48797677fb0fd605c68774acb40605669",
+        "flights.json": "2626dc48c4b5b48d767ceaad15d588e510181d3c1bd6003098b1bf86870c6746"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0102",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0102",
+      "case_sha256": "36ee9f4fc38d542f4b37f1388542533da6033fa04dba42e33bb4af9e4544e7c9",
+      "files_sha256": {
+        "job.json": "b03b9be5093c900fc49bc90ada081944abef45d67108fa3afd6efdf8d7c9ce29",
+        "fixed_resources.json": "a4735e9a4d802857cee0b1ed40336cace26ac3fd669a9f82904c11ed4d7a5328",
+        "mobile_resources.json": "c59484718402da703547f9c69e63d726a9fd6b849cd0829e56d5d36635a640fd",
+        "sites.json": "c5764ae2d572c4806435f354de896b2744d65ac89e3e9e60b600bb977db67f52",
+        "flights.json": "14b57c46e32e4472ff9bc29df98364bf002993513f672c3e7cc48159c50836b6"
+      },
+      "raw_files_sha256": {
+        "job.json": "b5dd9a17f88040828162829f62537f47071c3b97bb2e426df39562cba5a4e344",
+        "fixed_resources.json": "a63b537f32d5324b2976572989fcdbdff42d9208e88023c28e453c88afe4dd17",
+        "mobile_resources.json": "8a3b59a3966c2fd301a4a50c3fb3237ae0206029afaf95a94793699026b1d65a",
+        "sites.json": "33d2810494973fc26dabcd0052350a6300aaba952a2e4ca70c25fe73a3ee7a17",
+        "flights.json": "f07b90ea9c3587c55e6ad39790f74d9735095f1012e0a802e2c020c9b920a111"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0103",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0103",
+      "case_sha256": "0fd53dd027f33d43754b8cc4004aedca33e57226e498f33d97d0bd27cc05a954",
+      "files_sha256": {
+        "job.json": "54fd2be38650e93a6d9ea8ced6858c26b00f17b1ae1b12fb0b63e96baa15c12c",
+        "fixed_resources.json": "76965f71352097536d271b49995e193b621973bb15862a0015a174567ed5bc47",
+        "mobile_resources.json": "256695647d4585b1ce7822bae1ba3dc23f38da21b38bff6ccbe402614b53abdb",
+        "sites.json": "74c743b0ef053db91f0c194836888b1f35cc48c41cc75e6f28df19b5442aa462",
+        "flights.json": "300bed5aefcb221ae0bf052beb08547c9aca53e10df42a87696d4a9d15909dae"
+      },
+      "raw_files_sha256": {
+        "job.json": "cbd759d9911300d6c501916242e68d364353f6a9af9881b5fe1937d532fac19f",
+        "fixed_resources.json": "74b9c8d20d950662df83814adc968d03cd1fbf8770f722f616c219d37727abbb",
+        "mobile_resources.json": "d40962f80081fc634e947dc8bb5eb711ba174cc5904cec6c4a2d3bc607fe60af",
+        "sites.json": "43d756808c8e678e491da71b59f90dbb1248eba9b35dbda765303a21c8eb628e",
+        "flights.json": "52a003bb74425103037f2ea7720bf46d4c584e39634b4d0f9c387ebe03b6e196"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0104",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0104",
+      "case_sha256": "a35c3c419eb597b0b52d813c99282c9948349ce460a841b55f0368ca14046289",
+      "files_sha256": {
+        "job.json": "1c32284e4fdfadec074882c3292636862a8bdc0771500c3afa3fd8780888de28",
+        "fixed_resources.json": "f7576271fb5abc5383e1cd86f27706a13e1ce89f2bf10585ee7da1ac6a6a9291",
+        "mobile_resources.json": "41d4d39fe12a53c974aa4631afcc96af0fdfe5edb1626905a6ad0793c49ad04b",
+        "sites.json": "375afcd36b289a1326ae80997e2b55cdcfdc56d4b3e297599799cb4cbecf4035",
+        "flights.json": "8a7a8524dfa7aa4f03b39ec7f97b467ce9e848610183647b171d1991b01b4f0e"
+      },
+      "raw_files_sha256": {
+        "job.json": "fe82c731abdef48ee72a26997fb6106bfb1cfbce4b3b1a8d9a8d3f0ef7de375d",
+        "fixed_resources.json": "7929b40624320f9de2650946cb5ced7e142ac07930a6f4b5f4b0097c95c8b68a",
+        "mobile_resources.json": "e42d52054dc4df1ab22c22dabfbaaee96695b81df1776c868b6199fd3e53bb2f",
+        "sites.json": "5092e33c251366fa00df5b3ccdb1681b2f52494d509ebaf4bad04f5207e6a3ad",
+        "flights.json": "e41e3c418391e245dda50991e2897c117ec1d2c2231275fca93c453519982b17"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0105",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0105",
+      "case_sha256": "83c8db33e3ecae6b8a5e2e5b3d0b89d139129d356f4f651a260e70046c261a6d",
+      "files_sha256": {
+        "job.json": "33504e5dfe5421a0e4881cd4c2c30c679885bd1ae119344f4eb4b4508e712796",
+        "fixed_resources.json": "bdeddfe15b768039d6772c14cc30b8505517a95f64b8d7d905b241d8f8434898",
+        "mobile_resources.json": "a4155b7e7c85ed188b0e188d70d6cb80fe88f4d27140e22667886d750531089e",
+        "sites.json": "3958c14eeb38b8a97291f71de7147f938eb4292eda023d5e1ed2bbdcd53367a4",
+        "flights.json": "0b1212f73a4ea96cbbf9a94d578239cc51d4a29c1a35c0ad0136a8a963c350a0"
+      },
+      "raw_files_sha256": {
+        "job.json": "dfb479b4d4fa0aa5e14bd0af84f3bd19160033c23d284d4bf0dce5e9fbce3b5d",
+        "fixed_resources.json": "cfb6c924e41cea7aee5217017c8215475ae355765d3e0ee2425fb282a84a9028",
+        "mobile_resources.json": "24f3ee60948d4b085bbc36dce0490bd8f62bec19103d2ddfcf023d4dca4a0006",
+        "sites.json": "fcd10f0216526e821e33dd33c84a4c68c42ba51a67b9c1f9a9b934667ef79f22",
+        "flights.json": "3c12458b097af45836c26116b8779d9359a5a70a194a2a4d1eb94f5ed42cd600"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0106",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0106",
+      "case_sha256": "400c910630ee82cddd4550c412488d220013a2492e555a43e0bbd89085dc33a8",
+      "files_sha256": {
+        "job.json": "31adfa42989e2add3d8f4443a4ae0a4bf5fedd9d1983c656215bd8ad8be0a3c0",
+        "fixed_resources.json": "c5e9b23fbb5705f6a7e2584e8a82ad18e8ecbc9f96febf3fb05563e749698fa1",
+        "mobile_resources.json": "4d70b8e7501bc6822e42e6d01cb4f8651db8f126c4a628f76bfa16f3fad6b9a1",
+        "sites.json": "719d780ff271150be7fd7938f9918131cc2dc7fb2f5028b823a50698a9c69b8c",
+        "flights.json": "6b8328b94f76150b5b64995daeebf666d8fff3336cdb5b0ba8f0e30db4157645"
+      },
+      "raw_files_sha256": {
+        "job.json": "414aef177b1ca3a73e1e9a71387c15f7128a85593fa4a17017409e9b7e3ddbea",
+        "fixed_resources.json": "8ac4cb3eb2c7639af2135bddf62a51591a3b04c1985e32e853ef1309cf44c2e9",
+        "mobile_resources.json": "5bacb3a7e9a7ccab607256d5a954fb5ea478ba51d67cae52339fafe26a8476ba",
+        "sites.json": "e9aadf7191d9616e09bb7123b35671ab0a48f2c01da28edfafc9396ae00420d3",
+        "flights.json": "f52ae455f4ddd8fc5978b6326d7e3913b47c163ff7f73a034b417c60fde8a7b2"
+      },
+      "profile": "resource_ood",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0107",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0107",
+      "case_sha256": "27a2e0498944fac568102373d45a44f0ba3e04b372d39005aab0f015da659055",
+      "files_sha256": {
+        "job.json": "8527e3223b7eb73053929bc83d38eb1e645cebbcd372587216c53116cb4ab925",
+        "fixed_resources.json": "cc7772ca26be63b361589086e3070fac3a6bf05a33930a1dd8c9c66cd3513199",
+        "mobile_resources.json": "ca2e979ca0ecccb169bdbd0ec68511b71b0600a9363d57af42b77a5281fbdc82",
+        "sites.json": "999e789d909ae082a8e5224086cffe0e10cf15cf1e75dfe287d29da2f2245b3c",
+        "flights.json": "19a0d487f161c51335850ccb49118ad2722e8766003366684803ed79fb03ca61"
+      },
+      "raw_files_sha256": {
+        "job.json": "0775953dde06fdb3680dfe14cd58940babaab90b107ad3acacc2f752133087f2",
+        "fixed_resources.json": "03951a11a449f875a2b31f7eb9f41f4e71c4d733c2cfb560f3039d447ac47536",
+        "mobile_resources.json": "8a929371cfc987b6118d38d9e3ad40f6827445f151161a973634a121028aac2a",
+        "sites.json": "8199434c9ec5fde0cb15419e09c3fa55b454662c20e8c852e675b7f2518bf232",
+        "flights.json": "9c51ae61f3f1eb5d0ddaf4e6fb3b3fa7d2b6eea22bff0a5dd3d835b2b6ceef23"
+      },
+      "profile": "stress_arrival",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0108",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0108",
+      "case_sha256": "4900fbff7341521e217b7d1307672f9cdfe6fd201d9df328e95f69d5eb5ad252",
+      "files_sha256": {
+        "job.json": "f5447e52655172995179dfa246ef293d28ec6bbb6e5441138fbf52f87aff2a2d",
+        "fixed_resources.json": "f836e873281f2935d0c7cc47129d9b7054cd82bc256ae96755922f87c8a6cd00",
+        "mobile_resources.json": "970b9e798230165cd9c380c7df7528aff8016391bf3d49add55ce433be6acbbe",
+        "sites.json": "2332f97e072cc9bb7f2e9b0e3bc997b27d44dfa6ef5888b93e76ca4c5fb05333",
+        "flights.json": "cc5c95e82035ffe62a57c0a1b1225ceb1d01e4df54a2a5fc8b518de903301fa9"
+      },
+      "raw_files_sha256": {
+        "job.json": "3bf89b767d3a5a176c18fc20f27c4bc5cf91ae653ca639b034dadf27ee60c1e7",
+        "fixed_resources.json": "e92eadeab9032f445fa551fb3afa8f2fa3b58924a6887f80bd0dbfd40f5a4eec",
+        "mobile_resources.json": "e715435a9ebd5fd5f83f61f3f90386b78d7d85c0db81e2ab272d5f9c89624d14",
+        "sites.json": "37558b17dd568451c545967f1756a5d97da4a732e69f534827929f8c16ad7f3d",
+        "flights.json": "640ded85636833930bb4b7549f83e54a7083d33c202c9e9389f4a107c8fda0ae"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0109",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0109",
+      "case_sha256": "eb5af98f58fbe94c2d457b69ea9cfcc123ea781994d6bf699d7b0debcee1a492",
+      "files_sha256": {
+        "job.json": "d1e6feb457d1806436d0707d7736ea766674e372f207e0fc05190401cb599ed6",
+        "fixed_resources.json": "e16a63d3b4e6365a12ad99bfff923814d3516c98c5fcd6f1b939242219f5b801",
+        "mobile_resources.json": "23c7cea2483b003bda186e8d525f7587acb703dbda7152a801a57d578848427c",
+        "sites.json": "267ba2a2b97a688f8a6d2c9237c94ee615656ade814437264b6359e9797a10ff",
+        "flights.json": "a21709338bd3aca08a07ee8efc11630c33bf9502162c8f22e4983c2baaa4cc01"
+      },
+      "raw_files_sha256": {
+        "job.json": "c48bca375ca35cce9b9bb5db076d6d17a5c2a089434241e27db845d03a560fe2",
+        "fixed_resources.json": "0438209d279dc2766180616ee71941447db52f24412bfeb2afe52dfae14eec7d",
+        "mobile_resources.json": "c3956cf61380a8d3a367531224b71d7b49568557d28c0b66d3f9170a15823472",
+        "sites.json": "ae684f37b8b6c85f0ae2169de2697e8118d993ca0d0df0205cde6ada72e38ae5",
+        "flights.json": "426dcc3e952faa89dcc7e85798f7cbea220b6f7748ebbed0dfb89338fd00d5a5"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0110",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0110",
+      "case_sha256": "6e4bae02f3924e72b8d1e3673b1a068fa3e8de5b62b687eff38459af00f91734",
+      "files_sha256": {
+        "job.json": "238d1eadb65611ccff5af2a22595d17f172bbf5d4c23198265ca69fcf5c6f558",
+        "fixed_resources.json": "0ee21863a99fdff00605853b32e7f9a61b1157c3e7b070ab2ef77ee5d5a0eeb8",
+        "mobile_resources.json": "2d29ab98407cc4253ab9edf1cc7458b8e6969dd9245d2ff280f08193c288a77c",
+        "sites.json": "95628b37bb4f900ffa7397a756bbdc65aa9028a7a6a60a5c240c1bbc0dc4f0eb",
+        "flights.json": "58cecaa2da67e45f1739d491e0b5eddfe0b9d49c6f81436ef1b34c0d1da5cd12"
+      },
+      "raw_files_sha256": {
+        "job.json": "7e8dd3288dad4541531054452be934886a7caad48ff7cfd03f2fc5474a697770",
+        "fixed_resources.json": "edebb97aa04724dbadfc039f56939fcb4e54275c55cdff46586c605377e229f4",
+        "mobile_resources.json": "0cd2e27ad06c1cb3fb1c37ea29a752ccd6369f7fa54a9092923eb095b17097d2",
+        "sites.json": "e7b048cc6efbad73f33eea4b601986c6777fffed8f7ec467c2f71aa509b79957",
+        "flights.json": "84524452688de462e1500b46cd37d8a24dcc4b814ae4fb091a7cb3d7630dbe93"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0111",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0111",
+      "case_sha256": "20bca5b3c0ec4b1e0aaf4daf01592aca6d605e08b56f5961546d7c1956a837ec",
+      "files_sha256": {
+        "job.json": "efd28fbc4e0cd2f7cdba111dca61c908aa51324ba2100e6e62ca3ef26fe00643",
+        "fixed_resources.json": "f5de80ef0d09870b5ab5573be7ed87d469f548ab2c150e0e6551c49c0eec60de",
+        "mobile_resources.json": "7f09e574a8a62e872a301cffc9827449e47cecb120f6d4c76f74297a4f938281",
+        "sites.json": "b396c90af11be258c28b35cb95474c6b774fd63b05265de476462c54bc2ce29f",
+        "flights.json": "b3eae88abf22a0d0eca7f5b5fd1c3f0817852444377fc30b847e6cad645e7f2b"
+      },
+      "raw_files_sha256": {
+        "job.json": "b195641a48f95745955f50ce24bd766e1645676cd64a0ff14e1c6980b6784bf1",
+        "fixed_resources.json": "e3c33889d3c65e6c0cad821b11e3662696c1bf5daec8da7b8dec597300eb29cc",
+        "mobile_resources.json": "205f5ab90c89d5f32904b72edb2b48e3ecda7cb9edfbd24390c71553ccf93a70",
+        "sites.json": "fe953a8b8a710e9031abf4632107ef0e2da250d5267a84eec679f22f9b239be9",
+        "flights.json": "4f579e229a48bf51a9623db01ae3d0cf596819d177831ff46083db806fee9722"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0112",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0112",
+      "case_sha256": "f2fde7986f3af8dbcbc803ab305848b27be51af8e463186762f59aa4df5ea302",
+      "files_sha256": {
+        "job.json": "571b9178e30517b35174ffde24f6cb7309791d5b57858cbbda649dafd32fd734",
+        "fixed_resources.json": "c1c4e3d454c1e3d0a225c697c4e094d279c8584c3c3e9a120413881734da300b",
+        "mobile_resources.json": "7bb90431ee41f0af61343bf3d904485d9a1d9238c3397bab13b8ab12a8413746",
+        "sites.json": "1473aed4f9c420cddd6d779bff5e6ab7e03228924a2ecef9296a5c79d877292b",
+        "flights.json": "f6683405b916800a31e9faf5bcbfeb59b3975bcd336e7636a46dbc25fc208937"
+      },
+      "raw_files_sha256": {
+        "job.json": "ea20b1dbee38889f0521c555428325119499073d7c488a15662e4edb076a9715",
+        "fixed_resources.json": "62ba039a2997dd408f86e5336b862241a337dd5ee70d7a1fcf974cb4cda4c322",
+        "mobile_resources.json": "3187d071489549cc9f764fc04ae74c68909521416f01c26efff49c9325e5bc7a",
+        "sites.json": "021e19b010361fdb2bce341c3f43ccb390eb328e1f1110d5999614e8f4f781a7",
+        "flights.json": "c1fc094edc7d6b95db7784e814dfc7bcfac983578ff464a7e2ecc5dc64c66751"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0113",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0113",
+      "case_sha256": "0e631a6c6187525ef52771962ae7ff98881f103d99ddf8651d94a614bb64acce",
+      "files_sha256": {
+        "job.json": "a9ac473328ba81c969c3d86c57ce94a351e537d859c996b4f3b47849e085cd7a",
+        "fixed_resources.json": "f924a28816426fa868e58d8cf7bdccb00b3d2cfc778b6fe60935e2053b792241",
+        "mobile_resources.json": "53ecb71e1b33c5fd00813cc67a9f28f0f6ccdacfc4cef7a34b8d40e12510c368",
+        "sites.json": "fd7170be420f43aa06cd6a16bc13f70f5183bd3ee872db462409e6728abd4a4d",
+        "flights.json": "085efea013203f1dfdb91ae8bd1d4fb6976b804a0406bdc755c33bddab2b70f0"
+      },
+      "raw_files_sha256": {
+        "job.json": "e5de20fe8142c64ab8432a89a0fba0adc336ce25a80c5a4816cbb55e90732854",
+        "fixed_resources.json": "56fc847eeee337ebd2c843cd1f59a5313b977afd0c10a6ba52787f0c0c9eabdc",
+        "mobile_resources.json": "0ad204e77d5c834de4aba62836ed2b21c3f2edfe23fb6f008fe33d9c76084148",
+        "sites.json": "066690d85b9207962c1523c8525f16690ab5a94ed5d6bdfd90c03be563dde598",
+        "flights.json": "bb7ca1dfa282554fbe8c659863c14bb7bacb2ed852bcbb799f1dd688e9e28dc6"
+      },
+      "profile": "coupled",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0114",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0114",
+      "case_sha256": "36eefb10f05866fd94447b0916b16cf81544a8b787410c7570830324f4743649",
+      "files_sha256": {
+        "job.json": "153814b94e2607853039cfc796d64002776d3f545c20a8edabcf048e8e37c174",
+        "fixed_resources.json": "6a1ecb359652a76f299c226acfd98c96a5ec8c6ed851c1100a6bfa6eb85003c8",
+        "mobile_resources.json": "6a4f2bd09d29c48348cf2d66f152099bd3e401e7563a6cbb098a8dcead30249d",
+        "sites.json": "03f863fca7a326dbf13cea9751a55ee10c4a2b1d6803df8b43cdbe3184e42a1e",
+        "flights.json": "7698fafef69500191746ea5a8887390d0ac9c94bce54cd4d6fffbcfb0b71036c"
+      },
+      "raw_files_sha256": {
+        "job.json": "b08769b61a92fdc4bab6680b8fa715b133308bb613a2d7d58bef8ff52c9c8ded",
+        "fixed_resources.json": "a1689d8c88623327bc65cdbd353096ed3ff2efe003561f59b1da2305f3b33a1c",
+        "mobile_resources.json": "3a670cc6291af5eb335cfed3af8b07c5aa040210cbb62d3590a6d15627c2a86a",
+        "sites.json": "7b6c0a2261df231b7e47aacf20ab11b5e232a4af85e14a4da7545df2c8641cf9",
+        "flights.json": "d832cbf8e594bc612e13b0376bee0ca611713bc355951982e4bf2801b0afaabe"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0115",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0115",
+      "case_sha256": "02ef16cb9fb74c3be24e3dafc06808a9b5fbc18d17d97b96d0320e3b1e4cd5c2",
+      "files_sha256": {
+        "job.json": "702ed409e749a3961f8c9ddcb16daf793a8f083c8a507a3596c154b50b3b7703",
+        "fixed_resources.json": "b7c1c0b456e97599399a4f84dfce3e35c5d378bdfad7535fa48804084e8a67a5",
+        "mobile_resources.json": "8650b8c0994052508f43ac48d1a41ffb22a38cf6c24375f8f7f644ac7fa8c81b",
+        "sites.json": "04dd1672c34785031f01f4e9e99dcd39ce58be012bce15f11b592e1f15999065",
+        "flights.json": "4b819c1b458aece4d7ab6b5b4a7172e109ff0407761895ca55e70d7d7aaeb945"
+      },
+      "raw_files_sha256": {
+        "job.json": "ed6e13082b5bdbf892976266ee5be399814eeef4958862033ab139766c07298e",
+        "fixed_resources.json": "de9ccbe8d32c8a946e2513650957d682a13fcc31de3892de9c22d06a146158cd",
+        "mobile_resources.json": "d3733bd66f9969f8ee67855a682b3d8448782b7b80faaf5e10ee1950684eba22",
+        "sites.json": "15b9a976db84ce5d268085ca0115a111168d8ec2c81682ce4d1457b01b3c0c5f",
+        "flights.json": "3d28d026a79c155ede5aa9fe88cd1646d426dce0127eb5d4a890543d5c91428d"
+      },
+      "profile": "stress_joint",
+      "distribution": "ood_stress"
+    },
+    {
+      "case": "case_0116",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0116",
+      "case_sha256": "4f22ebabc1a36fe1eb7dd48ad858ec0070d5196feb07d7af27a62f195861173b",
+      "files_sha256": {
+        "job.json": "571804ad370046ea4bd85d4c774f261199ab64c784b8f113088aba4467b88f7c",
+        "fixed_resources.json": "1424437a221c0edea9d7a09c6e4a64be0c7ddcec35ee12cb06f516a46105a1a1",
+        "mobile_resources.json": "3b90c2a38292ca2bd5e04d1459d3b9afc00bbb225473f0f0412ec137046f9a0a",
+        "sites.json": "0ac1c524a93e573b839933f777cbe2ee87ca0ab63a86fe37fb50a35dd98f6606",
+        "flights.json": "83d302a268510978cef89e716643d28a7d97091ce043ff8f07ff4438aabb58a1"
+      },
+      "raw_files_sha256": {
+        "job.json": "5ac450e1a19154ef89bae3b73a3574eb792870a3928976b92cb2e102850f6bcc",
+        "fixed_resources.json": "c9632cd42b149f99b8bdb1b2a62f2033865e1e9f26191513d0f20241a0b4ef79",
+        "mobile_resources.json": "c3e5244eb3a0e125b45cb917446bf28bf749600490433e52569665fcfda612d7",
+        "sites.json": "fb01230a750fea26b17410a8dbf208e59f89ced73ace522b52bc74856961d7df",
+        "flights.json": "530d6a73334e4b722d24df77c526c2f97d3cb0500c036296cbda3b31de42d8bb"
+      },
+      "profile": "light",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0117",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0117",
+      "case_sha256": "dce0d36aa6b5bf93869ed05abc662bd05312cec0210742a766a20efee0d33263",
+      "files_sha256": {
+        "job.json": "cde2ccf9ee9bbde6b1b1980f79b9c3c8d17df971d487e4487a598c3b0c4a84c5",
+        "fixed_resources.json": "3ebfc920180645a76f2e6616d01c8014128a32c43b08dcfc9cb811e30689e3a3",
+        "mobile_resources.json": "958ffe3ae0bdabcc05b5ffed4a914c20342b168598e72223633b3192db1633e2",
+        "sites.json": "9762c19282095256588f092beb2c0931c020af9d36485a753822d51859e33a57",
+        "flights.json": "042cdb311ea8f79b7550d6c9186de9294b4d5150f8ecab92fce87588f3cfe89e"
+      },
+      "raw_files_sha256": {
+        "job.json": "83a83974c0e06ac4f1f59ccd076037937a107ae8574baa7073c958a80d6bfca5",
+        "fixed_resources.json": "8b3c9a7a65f21d3d02ee8216fd4161b99db53e4a07e46574f36696a72ccab8b0",
+        "mobile_resources.json": "1bb26a89df954a29230349b257ab9039697a0d05796d37330f2efbe5cf60f357",
+        "sites.json": "bae62e1612bf1b9be7fc2e8801378f21f9e7f31925bef49c269cf4e40e9f6ba5",
+        "flights.json": "fff65001f319f64599115d0f61f05df81634575e11589f80bce07b9cb71c20ee"
+      },
+      "profile": "low_load_ood",
+      "distribution": "ood_scale"
+    },
+    {
+      "case": "case_0118",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0118",
+      "case_sha256": "ddd4f8430eee5add90d9bcaa8e16a06d38ac5fe2034adb3d6e34f23cdc1f241a",
+      "files_sha256": {
+        "job.json": "fa630e56a1b820c8ce9b63e6dbc4df3eb17a98669c18319596a3dfaa8e2f509d",
+        "fixed_resources.json": "baba1b3bc5817a04404ef351131f92da3c13bd1b0c80a8859ba10a2883d90799",
+        "mobile_resources.json": "42c3d430079e831d00c0b953491f276556ae13c90a18b1dde1d942e4f4c7ea34",
+        "sites.json": "41459d869f62c2f1fb188f75ba71024712275369f53aaab8120cbe1d3e818278",
+        "flights.json": "a58a4360e98f3534c22d0f912b942d1cc8e2d90ebc50c634fd1310f583de0436"
+      },
+      "raw_files_sha256": {
+        "job.json": "a65df26ec1e6ef270609c2343e80a17c2aaf3f76d0d86fcd905c9b8cc1d05814",
+        "fixed_resources.json": "d240c82e156a8f6c35b5b18d8cf26f8b180b2ec55fde0637ec0f2473afb06b87",
+        "mobile_resources.json": "e3920c957367a6337307d7b63bcd5824ee5310e7d88ee9a3f1a3fe185b7d1c86",
+        "sites.json": "2712b9a71411d6f927d4fb86ee5b00ee9e4a80398e1ac894707ac215bcee8e50",
+        "flights.json": "586beded64f1e3c0c610df8e0382c4c07c8f8bdf7a9417e083463e3da8a204da"
+      },
+      "profile": "balanced",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0119",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0119",
+      "case_sha256": "3c225da17702dc04326b483b329f0a6799e9ae472e8ecb6be9b0db58da3e2b33",
+      "files_sha256": {
+        "job.json": "fb59e5a180ddb4c5dddbb8c8ee5904839acadb415cd630e51bb03ea937371212",
+        "fixed_resources.json": "ade7d1340bbe6b542de584ecdd493fc003414eca041be472d240cdbb1e442851",
+        "mobile_resources.json": "72211c9da71552dc92a943718cb01da83f9b6a2b7c913f0144778cc2387382e9",
+        "sites.json": "94325c74fb6b03e1f0094c6b41202e866d9791f18f3b01ac644cfe61b09d0c36",
+        "flights.json": "8757027db335d4c74dc0aea161f7526c774df2b4b857829336ef1d894902c6e4"
+      },
+      "raw_files_sha256": {
+        "job.json": "6be52640d07050e7b3e1a2f6fb85acb4859544eab515af7fb448387789b2e741",
+        "fixed_resources.json": "4455deb2b9396d773fe7f65c055abaaabd819603479e0953f1f5522b1a50cabd",
+        "mobile_resources.json": "d02ca68f47a5a3ed40c6021fcfd62c8866e6e8ae5b128cfd4b8632077c536e73",
+        "sites.json": "132c058ed3a551d49351ccd393d9986fcc80badc8f9f51e8053a5cd3f33d73ed",
+        "flights.json": "315c5891b5cf98a2a1efe0cff44eb2d4a138b0a765e7c9d40730c7722aa9ef0b"
+      },
+      "profile": "bursty",
+      "distribution": "iid"
+    },
+    {
+      "case": "case_0120",
+      "case_path": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation/case_0120",
+      "case_sha256": "d69abb4f7d803bae5d53ac5a8123eac8c17c6ba30b447b852a788a55923ce56f",
+      "files_sha256": {
+        "job.json": "7222f17a3255967cbd27c4ca13283ae86ada130a4c9a5c0ebc38fadc0be5059c",
+        "fixed_resources.json": "0f04de3d913b71a10a36d0b92dbd152ff70ca4e11af4e15a7be426e35273d382",
+        "mobile_resources.json": "856c09a724fa75cd1a7335e12ae501ba1c11e1b5f5da3196d5473a24dcc14bdc",
+        "sites.json": "6481aae65f4edbda08c4c6c5ac92730b45848ec085cdcec08a6eb2bf82853749",
+        "flights.json": "7f305706dd4b52de1c384b0217cef437492241b46298b79fd793ebb0e586592d"
+      },
+      "raw_files_sha256": {
+        "job.json": "167595fed65bfab14d10230a486f9944bdccbb1dae29a63220f41fd8c09955be",
+        "fixed_resources.json": "38eb1d68e981192054822718cc8639a0b01113a78666423d46f065c81ce36c1c",
+        "mobile_resources.json": "a3b1cde72e9e19612f2bcd76ec994c2328c74f6c3a7e7ba2daaea9e72a71a5b0",
+        "sites.json": "0844fc4c700904a21695c449b214735ab0b36b44caeb2525dd0dc625ad02e38a",
+        "flights.json": "6652c0255af0517b9fb0add78d79ed418a20c40f22f7505ccfb910acdc57e7ec"
+      },
+      "profile": "high_flex",
+      "distribution": "iid"
+    }
+  ],
+  "aligned60_cases": [
+    "case_0018",
+    "case_0027",
+    "case_0067",
+    "case_0044",
+    "case_0012",
+    "case_0097",
+    "case_0052",
+    "case_0010",
+    "case_0117",
+    "case_0091",
+    "case_0009",
+    "case_0112",
+    "case_0043",
+    "case_0092",
+    "case_0003",
+    "case_0020",
+    "case_0024",
+    "case_0038",
+    "case_0086",
+    "case_0039",
+    "case_0089",
+    "case_0076",
+    "case_0022",
+    "case_0053",
+    "case_0002",
+    "case_0099",
+    "case_0028",
+    "case_0019",
+    "case_0108",
+    "case_0065",
+    "case_0075",
+    "case_0068",
+    "case_0114",
+    "case_0066",
+    "case_0073",
+    "case_0001",
+    "case_0031",
+    "case_0118",
+    "case_0034",
+    "case_0055",
+    "case_0057",
+    "case_0042",
+    "case_0104",
+    "case_0100",
+    "case_0084",
+    "case_0033",
+    "case_0088",
+    "case_0115",
+    "case_0095",
+    "case_0081",
+    "case_0072",
+    "case_0103",
+    "case_0077",
+    "case_0101",
+    "case_0011",
+    "case_0036",
+    "case_0074",
+    "case_0058",
+    "case_0060",
+    "case_0071"
+  ],
+  "aligned_evaluation": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/aligned_validation60.json",
+  "aligned_evaluation_sha256": "ff1a9f9f63fea5e3104fb3fdea8f22a116267507e71b7906f275f911ed1e5821",
+  "search_seed": 20260824,
+  "population": 20,
+  "max_generations": 100000,
+  "max_steps": 4000,
+  "budget180": 180.0,
+  "budget1800": 1800.0,
+  "additional_second_phase_budget": 1620.0,
+  "algorithm": "real_coded_ga_sbx15_pm20_elitist_tournament2_anytime",
+  "resource_policy": "heuristic",
+  "planning_contract": {
+    "device_lookahead_dispatch": false,
+    "device_lookahead_safety_margin": 60.0,
+    "device_deadline_aware_dispatch": false,
+    "device_future_intent_horizon": 0,
+    "device_future_intent_mode": "legacy_one",
+    "device_frontier_max_requests": 2,
+    "device_request_capacity_per_plane": 0,
+    "resource_release_aware_eta": false,
+    "device_lookahead_reservation_mode": "none",
+    "device_reservation_grace_seconds": 300.0,
+    "device_departure_lookahead": false,
+    "resource_slack_forecast_seconds": 0.0
+  },
+  "environment_semantics_version": "progressive-departure-r014-pipeline-v2",
+  "workers": 120,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127
+  ],
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1"
+  },
+  "python": "/data/fanyx/conda/envs/maia-hkbz-cu124-20260903/bin/python",
+  "python_version": "3.11.14",
+  "numpy_version": "1.26.4",
+  "command": [
+    "/data/fanyx/conda/envs/maia-hkbz-cu124-20260903/bin/python",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/code/onpolicy/envs/HKBZ/experiment/run_stage1_nested_iga.py",
+    "--dataset-dir",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/validation",
+    "--output-dir",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full",
+    "--aligned-evaluation",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/aligned_validation60.json",
+    "--workers",
+    "120",
+    "--population",
+    "20",
+    "--max-generations",
+    "100000",
+    "--max-steps",
+    "4000",
+    "--seed",
+    "20260824",
+    "--budget180",
+    "180",
+    "--budget1800",
+    "1800",
+    "--stage3-reference",
+    "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1/full"
+  ],
+  "source_root": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/code",
+  "entrypoint_sha256": "c57943f21024ba873f0ae7b88ed52515077c14d40456d1bd0c7341a3ec37dd09",
+  "created_unix_time": 1789872093.345846,
+  "budget_note": "Wall-clock search excludes setup and final replay; first feasible candidate may overshoot, as in Stage3.",
+  "stage3_reference": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1/full",
+  "run_contract_sha256": "51d278285dfc5443ea0547535359ab0ec0ff052cc639f2c73417698e6929fa15"
+}

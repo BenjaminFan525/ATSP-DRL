@@ -1,0 +1,30 @@
+{
+  "case_count": 120,
+  "completion_count": 120,
+  "overlap60_exact_match_count": 59,
+  "overlap60_differences": [
+    {
+      "case": "case_0033",
+      "old": 8781.0,
+      "new": 8812.0
+    }
+  ],
+  "metrics": {
+    "case_count": 120,
+    "mean": 9718.516666666666,
+    "composite": 9718.516666666666,
+    "median": 9225.5,
+    "p95": 13453.55,
+    "worst10_mean": 13536.5,
+    "worst": 15187.0,
+    "groups": {
+      "iid": 9053.216666666667,
+      "ood_stress": 10755.981481481482,
+      "ood_scale": 7034.333333333333
+    }
+  },
+  "evaluation_seconds": 882.7269745889935,
+  "policy_history_mode": "authoritative",
+  "result_sha256": "17af318e58e463d4d01d4580e00e8ed14cc7f0671f100ed380ad1551000e5a7b",
+  "checked_unix_time": 1789912867.7270389
+}

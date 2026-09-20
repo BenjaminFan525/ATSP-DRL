@@ -1,0 +1,1345 @@
+{
+  "status": "completed",
+  "budget_seconds": 1800.0,
+  "workers": 120,
+  "run_contract_sha256": "51d278285dfc5443ea0547535359ab0ec0ff052cc639f2c73417698e6929fa15",
+  "validation120": {
+    "case_count": 120,
+    "mean_makespan": 9016.0,
+    "median_makespan": 8741.0,
+    "p95_makespan": 11639.4,
+    "worst_makespan": 14946.0,
+    "composite_makespan": 9016.0,
+    "composite_weights": {
+      "iid": 0.5,
+      "ood_stress": 0.45,
+      "ood_scale": 0.05
+    },
+    "distributions": {
+      "iid": {
+        "count": 60,
+        "mean": 8557.816666666668
+      },
+      "ood_stress": {
+        "count": 54,
+        "mean": 9807.851851851852
+      },
+      "ood_scale": {
+        "count": 6,
+        "mean": 6471.166666666667
+      }
+    },
+    "mean_evaluated_candidates": 82.81666666666666,
+    "mean_optimization_wall_seconds": 1620.0668130238323
+  },
+  "aligned_validation60": {
+    "case_count": 60,
+    "mean_makespan": 9038.5,
+    "median_makespan": 8553.5,
+    "p95_makespan": 11094.099999999999,
+    "worst_makespan": 14392.0,
+    "composite_makespan": 9024.159482758621,
+    "composite_weights": {
+      "iid": 0.5,
+      "ood_stress": 0.45,
+      "ood_scale": 0.05
+    },
+    "distributions": {
+      "iid": {
+        "count": 29,
+        "mean": 9277.793103448275
+      },
+      "ood_stress": {
+        "count": 29,
+        "mean": 8894.862068965518
+      },
+      "ood_scale": {
+        "count": 2,
+        "mean": 7651.5
+      }
+    },
+    "mean_evaluated_candidates": 82.98333333333333,
+    "mean_optimization_wall_seconds": 1620.0481924300489,
+    "distribution_label_source": "historical_learning_baseline_evaluation"
+  },
+  "cases": [
+    {
+      "case": "case_0001",
+      "case_sha256": "3cb31c6bb00873f7e5af74427d31e7449761635afd9220c82eabd88e318e8b6e",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 10854.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0001.json",
+      "teacher_sha256": "824c0b26b6be95cca219528806ee0cc3a15a7666b4aad265503f5bfef24b8144"
+    },
+    {
+      "case": "case_0002",
+      "case_sha256": "9a76d695d55529c7e2f53f3303e13259df40cfc10a007deee0a9303fb38d5295",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 8457.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0002.json",
+      "teacher_sha256": "7ed6279c1fbea20692f7c32c2fbfb5dc52bd0cb51fbf186f7597c4bebb3a5d6f"
+    },
+    {
+      "case": "case_0003",
+      "case_sha256": "22bc8a026fda723eb705212ff68f9e7c9f40403d6f60a0e669eb29d7763d41df",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 10444.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0003.json",
+      "teacher_sha256": "c0a7503f7bf139f1e3721cf1079f05ce4f7f3eca664d27f7b24658865a159050"
+    },
+    {
+      "case": "case_0004",
+      "case_sha256": "1e79bf77c42d7bc36bbcd548c8772dce7da439255553d60b74e76d6a382d7f5b",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8741.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0004.json",
+      "teacher_sha256": "d972de848964dcb74b3f823618b598f11a73ec1e3494bb237049f737303187f5"
+    },
+    {
+      "case": "case_0005",
+      "case_sha256": "10b7a1b6e8daf34e6b0a7b242e2b26a74c560580a6e85f40324b210c7642ac9b",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8089.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0005.json",
+      "teacher_sha256": "8bce8860268f5cba41ae70f32c34d9fc49e62869c70e6b522ee7c5778cd30018"
+    },
+    {
+      "case": "case_0006",
+      "case_sha256": "f48d93238a8b4cf713c46c04f0db8fdc1d407f176b09c555ea6df9c98ba96b61",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8144.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0006.json",
+      "teacher_sha256": "d77f35ec2ecc40bc4f210bd6975a0b92cf2d8b037db51293b27a3aad1728ec5a"
+    },
+    {
+      "case": "case_0007",
+      "case_sha256": "bfccc68310d1c3b8e7cac5cd5c28e6b171b80a68b4062327d4ec500bae97c57f",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9685.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0007.json",
+      "teacher_sha256": "062f02bae114e4b72a75de20196be5a34fa0c571f34c3dd45a350d1b2f85de27"
+    },
+    {
+      "case": "case_0008",
+      "case_sha256": "c3025486879a8135a71f3c0fd1a486a2c7fa301f46c933074e3611eb0dc66c4c",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8024.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0008.json",
+      "teacher_sha256": "96ed0278a68cd3268a7719a9388a8f3647e625a6998bccbad910524fb3e93da4"
+    },
+    {
+      "case": "case_0009",
+      "case_sha256": "29101389765c0afee2e2ef63cc0129b46188ca33966c8c506a5a238c48806301",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 8101.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0009.json",
+      "teacher_sha256": "79e3f26c8f02fcd207e2933e3ddc4918e09f5465e264eec93da8f2d3cf19a25e"
+    },
+    {
+      "case": "case_0010",
+      "case_sha256": "c0fb6ba3cd2a740fe3c0a28b3d94fb4cd4efdf4e0e288ea6aa714a1d30df38fa",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 14392.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0010.json",
+      "teacher_sha256": "14b994c0efaeb51100f0f26bbd70c5509d615253713570ea50b7c9b68836ad7c"
+    },
+    {
+      "case": "case_0011",
+      "case_sha256": "c477c4dfc72b0a1cbcf6464d58f83e49ffbb4acf357cc8043c6c57ddee9ca06d",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 8991.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0011.json",
+      "teacher_sha256": "86107646520d2378f7da4cb38831ccc1c4bdd4b8a92cc523dcf345ba17d77b14"
+    },
+    {
+      "case": "case_0012",
+      "case_sha256": "ca1e5d28e8730447326ad498d786c3938c14ebdc45ebd8984065fa2047a9d9fc",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 10105.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0012.json",
+      "teacher_sha256": "486412a9ee6deb9bdf69764451979b13b102d5fc4fac966b609bc46ca6a4ca66"
+    },
+    {
+      "case": "case_0013",
+      "case_sha256": "bc0e5e2a4677596b9dd9eb266cfb37935c349779398b7559fa1e891aff74594f",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 7666.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0013.json",
+      "teacher_sha256": "bdf584c0042ec55e251c4d8267d5cc77f3b07f6973e6bd6cf25edaa289614d11"
+    },
+    {
+      "case": "case_0014",
+      "case_sha256": "35d22d8cfe9206e084506328cf6bbe6470db698ba8bfaba78b6c1a49aaaad581",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8284.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0014.json",
+      "teacher_sha256": "c903eb7926c6d48510500f787fb8c9b3bd4efc64b433334a1c2d67cd19b50c00"
+    },
+    {
+      "case": "case_0015",
+      "case_sha256": "07a18d8a49375ae4741704ea2488bae9a5415064078b78dd6a33a7d4f21aeca4",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8508.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0015.json",
+      "teacher_sha256": "7e570d7059f4c9048c1e8dfe0ddd593dd0c80dae3e25ed25a68c333bc26b22c2"
+    },
+    {
+      "case": "case_0016",
+      "case_sha256": "022fe8adc8994af52cf3669f7dddd8f276200a70aafefe5e46cf7341bc4b39da",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 8741.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0016.json",
+      "teacher_sha256": "00e1846588398ede618786d57c0650a8dcbbf7a9b0820e71e0a16c955dbfe3f0"
+    },
+    {
+      "case": "case_0017",
+      "case_sha256": "3cd8b47bb62bee33f9d3decf47d9a3213673862bf20a3f8af2dcc3d11403f4ff",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9090.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0017.json",
+      "teacher_sha256": "7f7d835308c9c757123a45b05db54720a38ab167b2dc6550f1d5eb0c204514e4"
+    },
+    {
+      "case": "case_0018",
+      "case_sha256": "cdb0dcfccf2ffb533121f8160eda2856230f698cbc4fe3aa6c0dd8342b9b07a9",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10864.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0018.json",
+      "teacher_sha256": "c99b4ea079aeca80a3b759d7237387bb608619d4c9fd789c9a302aed78620707"
+    },
+    {
+      "case": "case_0019",
+      "case_sha256": "a52990b1ebc97915bc6913cf5a08b7da27c502a880df3b4fd7d98f0216a660b6",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8650.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0019.json",
+      "teacher_sha256": "66166dd60a6d8e40fdfe0847673b3a3b6cb4154d9f2a42763857d86d2c69fd29"
+    },
+    {
+      "case": "case_0020",
+      "case_sha256": "55d6a99fc8f6f8b047e9be5915f29b908cabc07b8ec0121199285d3171ca7181",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 10231.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0020.json",
+      "teacher_sha256": "4ab8c60ea923361f6fb4254680f71cc650f24aad25e4087db5bc1917998c5c7d"
+    },
+    {
+      "case": "case_0021",
+      "case_sha256": "e8e97e7a18225e5911e8762e5190619ee373bf7db6861a218ed3154bf7b3ec64",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10406.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0021.json",
+      "teacher_sha256": "8cf20ef4d673a7abd65d2ca622b5f83a10f73d9ad3ecf3ea4a7bdc428def2de2"
+    },
+    {
+      "case": "case_0022",
+      "case_sha256": "283b5b29d4b72270021f01eb69824f1e06c9b1d6c771f6ac60409b9a0d89da2f",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8340.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0022.json",
+      "teacher_sha256": "3085d09124c7c971b5eddb3e6b655df6cd7b204abd22733095ac9cb96014de7b"
+    },
+    {
+      "case": "case_0023",
+      "case_sha256": "232406388a0e8f25f9bcf48869b948ec58c6f5c39254cc99da8aff4c56c58e00",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 8195.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0023.json",
+      "teacher_sha256": "a8a4077ef1e1c441c5206684db8efbdd26349904747808a3433038ef63a91fc7"
+    },
+    {
+      "case": "case_0024",
+      "case_sha256": "275bfc22c21939a4472add178b8d7ebda09d07b89340e72fa5419db140c8bd89",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 7537.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0024.json",
+      "teacher_sha256": "28f763d8aab9b29c716ae5c8eb0faa38c5a2d089462ffea57613ed0fb11e2c19"
+    },
+    {
+      "case": "case_0025",
+      "case_sha256": "8c14f2ac19cc142f41a344a0a73a2d6625623f49992b5c78b1459455bf12634c",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 13070.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0025.json",
+      "teacher_sha256": "a476e5b5dfbc06054dba4a25451b52bbfd4fa985d9e43d348897ef30253d9b08"
+    },
+    {
+      "case": "case_0026",
+      "case_sha256": "f30150bb5dfd1172a4696bb84e8466bd2920fa23b2b66e82b09b93d2d8235946",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8618.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0026.json",
+      "teacher_sha256": "bb36d0e2fdda254229c9ffb559b5178716e8f4abcc797ec8cec0cedeb69a135a"
+    },
+    {
+      "case": "case_0027",
+      "case_sha256": "28f59c349aabfa9f81d1cddb028a6999d3a9eb48f34bdac1fa4769395168b881",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8455.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0027.json",
+      "teacher_sha256": "58d33fcc4d3c7d21dfc121bc1f9400b40a22fe02b7d666204925952486d1ce14"
+    },
+    {
+      "case": "case_0028",
+      "case_sha256": "1148cb77ccbd1bcea009834025faad420f37b94de686c24fd6ff2480fe7b7954",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9806.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0028.json",
+      "teacher_sha256": "b2d0e0ec794ebabf0f0fb49006b224eddd2afa4a610f1c79ef53e2381133fc1e"
+    },
+    {
+      "case": "case_0029",
+      "case_sha256": "f9a099c945dd1cd7bf6aeeeb37cdbda3ad01401181ace21b3e30c4ecc13076f5",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 14946.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0029.json",
+      "teacher_sha256": "200fb19bbcdceb5e8baf5de9d2c5c7f1f654be195a22fb091b971a17b0568a41"
+    },
+    {
+      "case": "case_0030",
+      "case_sha256": "ad4a980d24f419d585084c43d6105f3bed800380571c95119aa11bc36e9a9baf",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 9404.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0030.json",
+      "teacher_sha256": "26b7653df2f8f4fe9acadc81a8689c82cf8a814b20ba2c15be0d94ee7635e868"
+    },
+    {
+      "case": "case_0031",
+      "case_sha256": "c2ec48ce4d4c6dd04e8a68b1a6395fd0007cc84ed3a6dca368bd66e3cb975011",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8248.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0031.json",
+      "teacher_sha256": "6881d4cc517342e0acab79bd9e6589462704feebbb606267b25d059230c7c713"
+    },
+    {
+      "case": "case_0032",
+      "case_sha256": "f98c0afc67f7454e6cf5a275b331c05b41f1628173f21a86ef80e56f071124e7",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8735.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0032.json",
+      "teacher_sha256": "96d90725dca2a8d5c9974e1f42f52c1ca191c2d648ae6246065d4c7c5a969bfe"
+    },
+    {
+      "case": "case_0033",
+      "case_sha256": "eed1c11eaaa4cd0bb0a1a5e9bed63ea153ec68df26979dab5e14aee831ca59e0",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8304.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0033.json",
+      "teacher_sha256": "68092281cfb39d6439b146588119355b0ec0b9ce8a87b1730863149f22106098"
+    },
+    {
+      "case": "case_0034",
+      "case_sha256": "bc84ce1e0f7d4ab201245bd27ceeeebd47211cac50326b23ed9fc6411df8a8c9",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8031.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0034.json",
+      "teacher_sha256": "f822d5a0dbf67a565b9a223c3b29a37d5fc0b71c4aedfecf85f49deb189ceace"
+    },
+    {
+      "case": "case_0035",
+      "case_sha256": "9e87af2e3bb0332823413ece7c88444ee094b33758da58f957d9f5ed9a750bf3",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 9664.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0035.json",
+      "teacher_sha256": "d0986c0d6b28f04fcf01fc4b83dfe82a663d48f628ad19e11201bda460f62dc9"
+    },
+    {
+      "case": "case_0036",
+      "case_sha256": "16cd8f6df57f940b23f57d3a2f333aae44b39ea8907b338dd146161e8c3c58aa",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 9161.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0036.json",
+      "teacher_sha256": "6cc356b1a62c1a1b4cb366df113120cb22ad07dd8b990178f98e5c5e450ce12c"
+    },
+    {
+      "case": "case_0037",
+      "case_sha256": "636fad000204d68158efd0335fd406b4b2effa179cf4796613968bef8287eb37",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8832.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0037.json",
+      "teacher_sha256": "3c3142f232fa8df1aa3b692bd4d6e8916edbd80bc00bfdd744438767e68903c8"
+    },
+    {
+      "case": "case_0038",
+      "case_sha256": "bed48ef0d314fe7cef85a5bf0b7937769103a3643b4a950ce0f0d09ce515ac6e",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8015.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0038.json",
+      "teacher_sha256": "b7f57cb717e050c97885e47b9d19cf37eb567606cc7aee9dddd5504ee4b2415e"
+    },
+    {
+      "case": "case_0039",
+      "case_sha256": "aaaf41f305dc6d8af572cc7025e2597096fb0a7b7c4952a77e67c5c2924308a0",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 7659.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0039.json",
+      "teacher_sha256": "d063797d123b996b4a22351a95914772c3b8dc2817875453326b0b4d71e9c687"
+    },
+    {
+      "case": "case_0040",
+      "case_sha256": "bc53ad147e1002ee92b66554c3cdaaa5d19fd63ab59229fc65ccf8eedb48ff78",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10277.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0040.json",
+      "teacher_sha256": "aebe86e954bbf18d3b3d0a4206cbc98f849145e3804eb8974763d78ac8cee9a5"
+    },
+    {
+      "case": "case_0041",
+      "case_sha256": "e3557652a538b5e15c2787382a44a717099642a9c065aa805ade99faa00f44ac",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9298.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0041.json",
+      "teacher_sha256": "38f1ab8f42baa94c238b15997719bb09838a85a91af32f0f4420431a6570df12"
+    },
+    {
+      "case": "case_0042",
+      "case_sha256": "b361de35968a8a51e620228460cb6b589f302b5d2300fba8540b5aac27c58821",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 9437.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0042.json",
+      "teacher_sha256": "9d966008987948a2719c66dee24343f715289d874c983325e5bdb74b41d4e694"
+    },
+    {
+      "case": "case_0043",
+      "case_sha256": "b40f68a86eac2f732dabc2956e37892c071017a831a9c91eff759fc60217ffbf",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 9223.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0043.json",
+      "teacher_sha256": "b297da1944924ce69164d36d0966843134fc3aa542fe94f544e787a6c0f60c0b"
+    },
+    {
+      "case": "case_0044",
+      "case_sha256": "e189851639430354a8ce685b8980e5d1778623462863d3fe4b72f27a31bbc6e6",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9073.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0044.json",
+      "teacher_sha256": "cd7fa898d2fc172bdad465fec06158f43d194daa42cf9b98bf7465a266edf3f4"
+    },
+    {
+      "case": "case_0045",
+      "case_sha256": "c9ad1115001ff951d4297534ef33d6d6403096cfe9b8b51ad1023e2763dbec3b",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8731.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0045.json",
+      "teacher_sha256": "368d361bf23ee42e9ade226a1dd04bc60ccfaf60c76be15ea43519bdb513761e"
+    },
+    {
+      "case": "case_0046",
+      "case_sha256": "97414dc27c3e67d980676239b9d76639998adea42fc48a6bff5855b2f28047e2",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9517.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0046.json",
+      "teacher_sha256": "d3920707cbe2db8e7b11c59b63e15aa58f9d82470a0b3b96bd20ba227732d307"
+    },
+    {
+      "case": "case_0047",
+      "case_sha256": "a3adc0e3bef114f4925a27aaa900cdeef792b8f393e9ede00d687c7f5280a20d",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 7962.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0047.json",
+      "teacher_sha256": "9fbb431137ac480e5d91ac1fa6adcefc6d14214546b793baf736c3ebfda7ded9"
+    },
+    {
+      "case": "case_0048",
+      "case_sha256": "ef4459c1f8362fc6c3104c08c3ddc4007dc48aea45ade8ecb071f216f1631cf0",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9364.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0048.json",
+      "teacher_sha256": "46030667bc90ca7f0b29ebbf500913d42a26ea4d16bb7e5c2a7aa19d9d3ec9d1"
+    },
+    {
+      "case": "case_0049",
+      "case_sha256": "c8a2b7acd9d01bc405d5eb958fb9fd39c7bbd7d3db795f3c10686788d42b109e",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8896.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0049.json",
+      "teacher_sha256": "cad478a41e60c4617d732f3eb4fe4d8e205228996cd169cd2acc3f8766b8e4a2"
+    },
+    {
+      "case": "case_0050",
+      "case_sha256": "aaf8f71e0d18da78557df062b7405ad6ed37ec6de58cd913d7496e2a0aeb4936",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 11638.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0050.json",
+      "teacher_sha256": "8f1b86f7c303b6f0b90b14191bdb411f3c61c7a49413e667dea9aa6e680ee03d"
+    },
+    {
+      "case": "case_0051",
+      "case_sha256": "5dcc022151846c4b7de806a8d448eabf541fa9134a29dc1ed69935d88a4a1217",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 7485.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0051.json",
+      "teacher_sha256": "476c290cb02f9cfd3e548250bc8f752488af90f3a5b01c043aa99a8bc3339092"
+    },
+    {
+      "case": "case_0052",
+      "case_sha256": "549cceed6f988a5dc6fddf53c5299fe50e9d7b126e169d0a8d9f4cd1e3c39db7",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 8111.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0052.json",
+      "teacher_sha256": "cb423fcf5311a066971fc5043acae41ac8e547e9972eee9c13f7f3f0bf8b3cac"
+    },
+    {
+      "case": "case_0053",
+      "case_sha256": "cf629600143a958f4f93a56434fccd4582483435ba8ec15da204e641d01c25b1",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 8340.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0053.json",
+      "teacher_sha256": "ceb881223733e806d1169de66f1108d519f26f05038b98c583fbfa818e950a66"
+    },
+    {
+      "case": "case_0054",
+      "case_sha256": "85ce8fa77f8df6314a2caf8e624124650c55708958a34fa68d4454045113198f",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9481.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0054.json",
+      "teacher_sha256": "8ec757e11ca1aae0a7ce9be72f1150b4b5fd193c91258161ddc849324546afd5"
+    },
+    {
+      "case": "case_0055",
+      "case_sha256": "bcad58cc1ca0f7775a5c81b4e4819ae462303ec65262fb95bc6a4e7f25fa335c",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10060.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0055.json",
+      "teacher_sha256": "3c5803b693cf55eef241f3a38b0e5290004aeb51d406770c9674296997c7cdb2"
+    },
+    {
+      "case": "case_0056",
+      "case_sha256": "8fb6afa8888620242b1edb31d1e02d8272521f89992276710dad163927f86cac",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 7323.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0056.json",
+      "teacher_sha256": "edf350677471aa98e5c4cbbccff78da11cd980944a12caf7b781cfb51cef1391"
+    },
+    {
+      "case": "case_0057",
+      "case_sha256": "cd1cf6389997ae8dd3a6b260e969ac55bf86c61143becf7b0ba86d19327ffe08",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 12814.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0057.json",
+      "teacher_sha256": "5de2f8a8648dcdfa7e4d4c12dc4d65b03de5cb01646c67edb02044fa0af37780"
+    },
+    {
+      "case": "case_0058",
+      "case_sha256": "296e605ea49f73a59e8c149388e5303d3098c5e24de3917acd9dde60505ccc0d",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 11666.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0058.json",
+      "teacher_sha256": "1d1ee9966a6636ea5050ae89362e6fb8153547fad4dd5ae610cf1fb61906c18a"
+    },
+    {
+      "case": "case_0059",
+      "case_sha256": "d385a67c4539f779663c0349665ec614ac4c8b50dec65e2bd3f63059758604fa",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 8234.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0059.json",
+      "teacher_sha256": "300214f5e8d20730dadf9209c5e8e34ff5c81c685d9eb62321d8676a5c686d39"
+    },
+    {
+      "case": "case_0060",
+      "case_sha256": "b63603facfc7b7b2e895cf7c73a68405b050b77e3b785fd04b807c72a80b6c5a",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10406.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0060.json",
+      "teacher_sha256": "548aee4a58c34e25f7336181897a7ed7f8d1d80ca2962796fb86628eff004157"
+    },
+    {
+      "case": "case_0061",
+      "case_sha256": "29638a3656b957dbddee50076268db5a2e837d690768a295d93c0435b39fa273",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6060.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0061.json",
+      "teacher_sha256": "d2ce666dcc3c622ec972ce97ca605fe00bec66a1f2dac1a3bb6d3efd68572ad4"
+    },
+    {
+      "case": "case_0062",
+      "case_sha256": "418072f81e74202b7307ca57826eacf4df5d62d7515e2d715efb08d15cd97c85",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8128.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0062.json",
+      "teacher_sha256": "88ccbafbd5c5e18861d722def7cf5290f884263a6f48905c4e1b313bda46902c"
+    },
+    {
+      "case": "case_0063",
+      "case_sha256": "b287b9d2021dca5e1c79c20dfe894f6c2051d1640879a46790c738e42ac49fb5",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9472.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0063.json",
+      "teacher_sha256": "8bf772f9c6fb1785137ca3d3beb57b7a9b1a2631cee439eb9530112cca7ecc08"
+    },
+    {
+      "case": "case_0064",
+      "case_sha256": "404bdacef003f4e997eca8a5420a2a345e4783a459e2e25d3f8f1c198f64ebcc",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 11120.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0064.json",
+      "teacher_sha256": "70df8a2e13b62527d88dd0c8b4f22fa343b0ac0cdd03d17ef3f2c075191781c0"
+    },
+    {
+      "case": "case_0065",
+      "case_sha256": "fb9b85f7cdf257b11e81cbb5a33ef37b6a86a7a477873e6d28ff03d7ca85f6e2",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 7904.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0065.json",
+      "teacher_sha256": "70d41a7b1150e179a6824ac9860004a89592069a4547199027feacb02ca6e2e6"
+    },
+    {
+      "case": "case_0066",
+      "case_sha256": "c6c8bd3099270c43fdf731a2544ff6102d686bb9d93bd3737de4ee2b7ca3f91a",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 9209.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0066.json",
+      "teacher_sha256": "878266ac21877a99c56ed84f6d1e5bbce71a276c26467debc8cdb9b2a20f51e8"
+    },
+    {
+      "case": "case_0067",
+      "case_sha256": "39ab3dfb49db8e4ea0e981bd25a37832a8fc44897ebf7212c9b83ca01f0b15e4",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 7969.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0067.json",
+      "teacher_sha256": "fa9405519911812697c0aee6366235e99bc7edc6f45a0e04c0c1ed164c755f1b"
+    },
+    {
+      "case": "case_0068",
+      "case_sha256": "5ec501e0ead8b74b9255c2cc0c52c200a27670e9ed02abcc2250167bad696b20",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 10016.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0068.json",
+      "teacher_sha256": "a9bfc6403085036aadaa3de5b6c30e4f736ee778dd120ad0c8328a3ffe2e37be"
+    },
+    {
+      "case": "case_0069",
+      "case_sha256": "87d7f7b18bf2d9c4cb07d77357130dcc0568a22c159cb6cd90c6014fce74fd61",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8150.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0069.json",
+      "teacher_sha256": "fcc7087679f83cbd4f9b5979ffa35f8fa7b5367746a48ace0985a4c80944e64e"
+    },
+    {
+      "case": "case_0070",
+      "case_sha256": "ea02989e08f3e4f99d47dda57b55f7700dd8829c61b18bb3a60faa57604960e6",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 8884.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0070.json",
+      "teacher_sha256": "f1b19f17099ffceb84b42912ae5fe86e44c9ec1abc49bf544da97213a8ff8b8c"
+    },
+    {
+      "case": "case_0071",
+      "case_sha256": "7dfe73ad90f061e70fad7517e93bd194fafd78c38c70a6324b69306dfcb9c3ed",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 7915.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0071.json",
+      "teacher_sha256": "e86e97cab50cc433689493b6a2e67c1207f6a2d8bc99d094a94f45f11bd8b09d"
+    },
+    {
+      "case": "case_0072",
+      "case_sha256": "841e0faa84fb02afc43f59f75343ebbf0292aa55b5800a73d00f2ba2d0bee689",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 6780.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0072.json",
+      "teacher_sha256": "a5c3b4e31d178012a94f166e834fdafd7d74cc4513730761a4eb8017f9388d2d"
+    },
+    {
+      "case": "case_0073",
+      "case_sha256": "16031eca52a0af3b0851b8e4584e1dcaa2d650cd3d3075cddbe0ed57d1311d8a",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9347.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0073.json",
+      "teacher_sha256": "37c8baff5674149c97bfb3bbe76f610c3877b21ba7c0cc6d81dc8a05e0c47050"
+    },
+    {
+      "case": "case_0074",
+      "case_sha256": "f91f13f9a6072cbe2c61b532e1094cfeb3fe469491a25af86c69f444a19f1cce",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8283.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0074.json",
+      "teacher_sha256": "ac8a5903e1115cd360d9eabe91bace698d2d41b1c8cb5c667158e7a82ddb5750"
+    },
+    {
+      "case": "case_0075",
+      "case_sha256": "3723af82584199af8c8109157dffd1004f77c6cbfaeb6aabe2c6962c350c4f3e",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 7376.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0075.json",
+      "teacher_sha256": "b2f3bb0552cf2e139a67fff048b27d7ac1543405ea8a706b76feda9ac4c119b9"
+    },
+    {
+      "case": "case_0076",
+      "case_sha256": "c71df3c69f0e71d4865b258e74235fc70177452e2e37c5ea85d6463f5c457d22",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10773.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0076.json",
+      "teacher_sha256": "e29f5ea5862ae42a0ecb3ecdcedf947459298c688cd94af3b8198a761c81b739"
+    },
+    {
+      "case": "case_0077",
+      "case_sha256": "c3c3b41f892b6c9ab26585a55537a1e8d445b8cf7c1c43da4999adb39beb51c3",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 7929.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0077.json",
+      "teacher_sha256": "f066eec4dc95a6682bca37bf83873e83865f8e15046c630fe64c62edf3dad829"
+    },
+    {
+      "case": "case_0078",
+      "case_sha256": "4bcc17ecf328ea24a7549a1b9dd6ae163be348f9580d412d1e88957351f388eb",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8362.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0078.json",
+      "teacher_sha256": "36ba87104be80d2bd191da65048039ceb754a3f2cba143b8532ce05335f2cb4c"
+    },
+    {
+      "case": "case_0079",
+      "case_sha256": "e6e08a862a5edb5520580860d2e06810963e044fc84020bcac1cf80cdae294dd",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 9909.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0079.json",
+      "teacher_sha256": "c525623a7115bfb6b9a7ef4ce249e1ffb0a106d8ef281395523c348648728757"
+    },
+    {
+      "case": "case_0080",
+      "case_sha256": "fe6750e06f0c1f94f402f4f8e72f1ff0b489c3b43c3f7cfaa174e9f4948bff53",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8228.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0080.json",
+      "teacher_sha256": "cd94b7b509577b6f90b1aa5e0d5b3bf9849b4104c02a3091c47f95559aa2f55d"
+    },
+    {
+      "case": "case_0081",
+      "case_sha256": "ef642c00cfa02e3560a9fd1ba8c7b6b76c1712bb999832e7177b29d0ec77583d",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8384.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0081.json",
+      "teacher_sha256": "794d69599acae15ab12c003a7f84ae5916f35d1624c1e13421afb34bca3f6a6a"
+    },
+    {
+      "case": "case_0082",
+      "case_sha256": "a35c5c607eb6b49ddf042cedaea9f9d011fddcfbacf8788bb05a71ffbe3ad71f",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9702.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0082.json",
+      "teacher_sha256": "0587b4eebf773b72e2c5a97d4ac83705beccc2c455539e03ae13d6566feac184"
+    },
+    {
+      "case": "case_0083",
+      "case_sha256": "43ec7d3dc533a7314d89abf37b547dee1e317d18c00203c9b7bb98d2e8470b6c",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 10946.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0083.json",
+      "teacher_sha256": "5222ec9f5086596f97faf3c714b847ebf15b9d8917de7410cafa4e9a5aeb47d8"
+    },
+    {
+      "case": "case_0084",
+      "case_sha256": "f0cc82751416836cf8ee01e0c448698e50afbc2fdf6aceb167c2c85b46098884",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 11064.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0084.json",
+      "teacher_sha256": "b09e52f715b8c19ef4f77c2a70282aa5d87e5e053057de62b1ced423a44d998b"
+    },
+    {
+      "case": "case_0085",
+      "case_sha256": "d455c855bd844901710e65db82e2c21794fbbb316a1e2001c07b6bb9d93f63ae",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 11720.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0085.json",
+      "teacher_sha256": "5a5f7d5e4933a9149f383144ce73393242350f054906a0d3e7ca547ba35d05a4"
+    },
+    {
+      "case": "case_0086",
+      "case_sha256": "5f21fd8d547366c983970a1568a66fe064b55da1ecec54493d444fa5b2514cdd",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10409.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0086.json",
+      "teacher_sha256": "cb4982a5643b477c5ad6b776228b292a800f4ddbc75526b5d9aa4d4e27e4649a"
+    },
+    {
+      "case": "case_0087",
+      "case_sha256": "e4d1263ac8ec0240a94b8f8304b2dabfa7fecfdaed5c4e3cef7b08b8ae1a87fc",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 8453.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0087.json",
+      "teacher_sha256": "5638b76fda26b7d88ac71ea6388002fe18b45281ea390d30fbd1c0c0cdb91a20"
+    },
+    {
+      "case": "case_0088",
+      "case_sha256": "5a37c13e8b055d16f579ae942d0d0deaa5ccd915b898f47b5d2bbd1e31ca9955",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 7423.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0088.json",
+      "teacher_sha256": "227bacbecbb3e38e256d8d353a11ba360827161b91a5a5fd63fa772c53021aea"
+    },
+    {
+      "case": "case_0089",
+      "case_sha256": "9420ffc594533b25fb260596cfb4796eb89c72cd9b830d73f492df8aa1677bbc",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8278.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0089.json",
+      "teacher_sha256": "be6edd16ebf0ccf4de5b65dff6c66a73bbdf5757690d22e61edb9676629e71b0"
+    },
+    {
+      "case": "case_0090",
+      "case_sha256": "4fe92b830ceb6170d55d19ac170052809b3f979963d151069508a498e708ed7d",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10559.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0090.json",
+      "teacher_sha256": "ba14d4aeb065466a165f5e46ddbf2a01b1a031fa52a5798232661165d47b94a5"
+    },
+    {
+      "case": "case_0091",
+      "case_sha256": "dd3aab8f247e78d8e51d49cde18bc363195c94d0366654474feb746b09ba4289",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8009.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0091.json",
+      "teacher_sha256": "06e3ee7d4a2165f8c4f0b77c128c8b3fba1e8f786fb4fa14ccaf19b6383c2f3f"
+    },
+    {
+      "case": "case_0092",
+      "case_sha256": "4b6d593c92883eaaf844973c6ea8db3964ec367999d2785e6f37436fcd531fb5",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9749.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0092.json",
+      "teacher_sha256": "be0b1e935013f7ad38fcb63504343f5fa4fea93de72a72edbad497b8ce24e316"
+    },
+    {
+      "case": "case_0093",
+      "case_sha256": "9b492bcecf0084fc8fda6027194f3519cdda0a27e956c756e080054856704caa",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 8830.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0093.json",
+      "teacher_sha256": "6ed4098d0f055a2131106914fb2c77e5f80d814f2323120beac43e79acd3fa71"
+    },
+    {
+      "case": "case_0094",
+      "case_sha256": "f02c2917961f7c117185dfa205278aebf43c77f1f0d8ba7ee4bc4daf0c08d23f",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 6862.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0094.json",
+      "teacher_sha256": "b7c0252e130800430c5f7e569cc0a5971071d6eecdea20fa5731aa1d17e275a4"
+    },
+    {
+      "case": "case_0095",
+      "case_sha256": "df47f26eaac0d47562ba7e824fc7156d21517fce3730b9ed77faed524dac3cdc",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6963.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0095.json",
+      "teacher_sha256": "ffc22565cd737fa6dc7cbe6a4336c2ef9924f0b0790fec8b5883bef34de0e360"
+    },
+    {
+      "case": "case_0096",
+      "case_sha256": "dc6b1658db6edc48a4965049e2ea72bdb4d1a3ae508cc1b895052c6ee57615f9",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 9065.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0096.json",
+      "teacher_sha256": "5b01234d789ab81929aac3357824df2013d0da6b0380cb8381d5aa09bae9161f"
+    },
+    {
+      "case": "case_0097",
+      "case_sha256": "e3257b6c0109e898d8a1b5a0a9aed6502dd458d2780e5f7a1d585fadb1d0cc89",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 8254.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0097.json",
+      "teacher_sha256": "76d3b391b46854458704c94ae6c39b695b8ffbd8cd202879ce9021b81d29b0d1"
+    },
+    {
+      "case": "case_0098",
+      "case_sha256": "e7f6b0c7fe8b41d69eee21c0bd0bbf791c9b55db681b1cea7a946bb386af438d",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 7984.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0098.json",
+      "teacher_sha256": "c9ffa4a8d782de637fa08a1457239ff89cd326ffd459a328272b67b285707be6"
+    },
+    {
+      "case": "case_0099",
+      "case_sha256": "eab1de4e8d3239a5bda41e02e81c14ed3b2ff1ebb4a7433a7e0f5cd37954039b",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 10232.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0099.json",
+      "teacher_sha256": "78780a56fd76d8ae60f6a25c66e5acd2477ba78e20ee1339301a20dd4522264b"
+    },
+    {
+      "case": "case_0100",
+      "case_sha256": "4e8da84a5c301f9b7f7a4c60d67d65d9bca260486efc9cd5b9e62efe4e20686b",
+      "profile": "resource_sparse",
+      "distribution": "iid",
+      "makespan": 9420.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0100.json",
+      "teacher_sha256": "6f3a7ff3dd7df631f4df93d4aee9a960702b26a9c74a90cd0ed980311ce9c81d"
+    },
+    {
+      "case": "case_0101",
+      "case_sha256": "90f1c5ecd857da6f925a698a86dac637f75b32aacfcc5e643f3a9b4bfed2e37a",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 9505.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0101.json",
+      "teacher_sha256": "745d613c094d5b3201939d2bc15d63308a8b217576006b575eb9b69ddc2b5b78"
+    },
+    {
+      "case": "case_0102",
+      "case_sha256": "36ee9f4fc38d542f4b37f1388542533da6033fa04dba42e33bb4af9e4544e7c9",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 9490.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0102.json",
+      "teacher_sha256": "b3d372140f75504c6f66788354f9803cfa7df3d6df3a59801c7233615ac7dbf1"
+    },
+    {
+      "case": "case_0103",
+      "case_sha256": "0fd53dd027f33d43754b8cc4004aedca33e57226e498f33d97d0bd27cc05a954",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 8327.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0103.json",
+      "teacher_sha256": "9c46c1b08a76886eb3815ebe529d2231619a061a3bb2a917087f88fa7ecb5001"
+    },
+    {
+      "case": "case_0104",
+      "case_sha256": "a35c3c419eb597b0b52d813c99282c9948349ce460a841b55f0368ca14046289",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8406.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0104.json",
+      "teacher_sha256": "d8257ab5f3a4fb92fb3df78b81868e3b84290535ddf169a83934aa42793937aa"
+    },
+    {
+      "case": "case_0105",
+      "case_sha256": "83c8db33e3ecae6b8a5e2e5b3d0b89d139129d356f4f651a260e70046c261a6d",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6262.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0105.json",
+      "teacher_sha256": "5dedc3deae54dd98b6c0344ed1fca94600e1e8ae46a17d7e943e6c795d212b91"
+    },
+    {
+      "case": "case_0106",
+      "case_sha256": "400c910630ee82cddd4550c412488d220013a2492e555a43e0bbd89085dc33a8",
+      "profile": "resource_ood",
+      "distribution": "ood_stress",
+      "makespan": 9537.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0106.json",
+      "teacher_sha256": "f9e1df02db42d88cca7d0b752dcac21e394228e4e925a6c1b94debf8bef31650"
+    },
+    {
+      "case": "case_0107",
+      "case_sha256": "27a2e0498944fac568102373d45a44f0ba3e04b372d39005aab0f015da659055",
+      "profile": "stress_arrival",
+      "distribution": "ood_stress",
+      "makespan": 8358.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0107.json",
+      "teacher_sha256": "113697c2b2ccabc45b01dd6c86d260843e6435bf4da9d46473c349576e6255f8"
+    },
+    {
+      "case": "case_0108",
+      "case_sha256": "4900fbff7341521e217b7d1307672f9cdfe6fd201d9df328e95f69d5eb5ad252",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6359.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0108.json",
+      "teacher_sha256": "f489c5dffbddab9caaef6fb13dff13c239af9476c365223f0d5d9393fc117070"
+    },
+    {
+      "case": "case_0109",
+      "case_sha256": "eb5af98f58fbe94c2d457b69ea9cfcc123ea781994d6bf699d7b0debcee1a492",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10527.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0109.json",
+      "teacher_sha256": "1190aa9b2bce6746dd2b07fd29622a887f8085d30954959df6555cd3d08cabc0"
+    },
+    {
+      "case": "case_0110",
+      "case_sha256": "6e4bae02f3924e72b8d1e3673b1a068fa3e8de5b62b687eff38459af00f91734",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6350.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0110.json",
+      "teacher_sha256": "e54103b7e578c3ab673db122361f655042466481e0d8ec5c7e090e93a341781a"
+    },
+    {
+      "case": "case_0111",
+      "case_sha256": "20bca5b3c0ec4b1e0aaf4daf01592aca6d605e08b56f5961546d7c1956a837ec",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 8934.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0111.json",
+      "teacher_sha256": "b086d3cf3e1bd204e8c51f2f825cf1613694dd95916b9fa7e7cfb42f05a23c54"
+    },
+    {
+      "case": "case_0112",
+      "case_sha256": "f2fde7986f3af8dbcbc803ab305848b27be51af8e463186762f59aa4df5ea302",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 9009.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0112.json",
+      "teacher_sha256": "ce12173f6a6a31f5455f405e5baa4ce24271a9246cacf2b5dc8b677b10726396"
+    },
+    {
+      "case": "case_0113",
+      "case_sha256": "0e631a6c6187525ef52771962ae7ff98881f103d99ddf8651d94a614bb64acce",
+      "profile": "coupled",
+      "distribution": "iid",
+      "makespan": 7857.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0113.json",
+      "teacher_sha256": "c90aa59b025971e22dd80d4c703f8cc506ab417c97abf747953a80f07e4e82dc"
+    },
+    {
+      "case": "case_0114",
+      "case_sha256": "36eefb10f05866fd94447b0916b16cf81544a8b787410c7570830324f4743649",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10296.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0114.json",
+      "teacher_sha256": "87ba7b49f6bf0057e47a8904c2505d27f59fbc915879ce3dbdac8a9393d0947e"
+    },
+    {
+      "case": "case_0115",
+      "case_sha256": "02ef16cb9fb74c3be24e3dafc06808a9b5fbc18d17d97b96d0320e3b1e4cd5c2",
+      "profile": "stress_joint",
+      "distribution": "ood_stress",
+      "makespan": 10345.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0115.json",
+      "teacher_sha256": "9a8cd0ae262ea83fefa0549062679c99dc8ad5d33f9e088309f01405bfef2849"
+    },
+    {
+      "case": "case_0116",
+      "case_sha256": "4f22ebabc1a36fe1eb7dd48ad858ec0070d5196feb07d7af27a62f195861173b",
+      "profile": "light",
+      "distribution": "iid",
+      "makespan": 9391.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0116.json",
+      "teacher_sha256": "4de80a6c02791443b0a55ae8d2ec6aae3c68c81495c6c02212b0b12e0229ca69"
+    },
+    {
+      "case": "case_0117",
+      "case_sha256": "dce0d36aa6b5bf93869ed05abc662bd05312cec0210742a766a20efee0d33263",
+      "profile": "low_load_ood",
+      "distribution": "ood_scale",
+      "makespan": 6833.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0117.json",
+      "teacher_sha256": "2636bb8959011131e4526de56c21722a20449a0b7db37c71bc116c5d9527b7aa"
+    },
+    {
+      "case": "case_0118",
+      "case_sha256": "ddd4f8430eee5add90d9bcaa8e16a06d38ac5fe2034adb3d6e34f23cdc1f241a",
+      "profile": "balanced",
+      "distribution": "iid",
+      "makespan": 7769.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0118.json",
+      "teacher_sha256": "ce750e37018ffdaebf9d85195eec5349d78ddb8d5ab488dde7a272c5dfd7f4f7"
+    },
+    {
+      "case": "case_0119",
+      "case_sha256": "3c225da17702dc04326b483b329f0a6799e9ae472e8ecb6be9b0db58da3e2b33",
+      "profile": "bursty",
+      "distribution": "iid",
+      "makespan": 7750.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0119.json",
+      "teacher_sha256": "26d97e72c506cec2182fb16d722829ba9ae55aad6b10977f6446fad1ec1ab2b8"
+    },
+    {
+      "case": "case_0120",
+      "case_sha256": "d69abb4f7d803bae5d53ac5a8123eac8c17c6ba30b447b852a788a55923ce56f",
+      "profile": "high_flex",
+      "distribution": "iid",
+      "makespan": 7672.0,
+      "teacher": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/teachers/case_0120.json",
+      "teacher_sha256": "279c9584274c6caca4e65c11e24a1fb803396470d9a14eff96b9233272800da3"
+    }
+  ],
+  "failures": [],
+  "aligned_validation60_case_metadata": {
+    "case_count": 60,
+    "mean_makespan": 9038.5,
+    "median_makespan": 8553.5,
+    "p95_makespan": 11094.099999999999,
+    "worst_makespan": 14392.0,
+    "composite_makespan": 9038.499999999998,
+    "composite_weights": {
+      "iid": 0.5,
+      "ood_stress": 0.45,
+      "ood_scale": 0.05
+    },
+    "distributions": {
+      "iid": {
+        "count": 30,
+        "mean": 8487.433333333332
+      },
+      "ood_stress": {
+        "count": 27,
+        "mean": 9908.592592592593
+      },
+      "ood_scale": {
+        "count": 3,
+        "mean": 6718.333333333333
+      }
+    },
+    "mean_evaluated_candidates": 82.98333333333333,
+    "mean_optimization_wall_seconds": 1620.0481924300489
+  },
+  "aligned_label_note": "The historical learning evaluation used manifest distribution overrides. aligned_validation60 preserves those groups solely for score compatibility; aligned_validation60_case_metadata reports actual dataset groups. Both use exactly the same 60 case payloads and makespans.",
+  "aligned_label_audit": {
+    "mismatch_count": 32,
+    "mismatches": [
+      {
+        "case": "case_0018",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0067",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0044",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0012",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0097",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0052",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0010",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0117",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_scale"
+      },
+      {
+        "case": "case_0091",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0112",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0039",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0089",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0022",
+        "historical_baseline_distribution": "ood_scale",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0053",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0002",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0099",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0028",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0108",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_scale"
+      },
+      {
+        "case": "case_0114",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0001",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0118",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0055",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0042",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0104",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0100",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0084",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0088",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0115",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0103",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0077",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      },
+      {
+        "case": "case_0058",
+        "historical_baseline_distribution": "iid",
+        "dataset_distribution": "ood_stress"
+      },
+      {
+        "case": "case_0071",
+        "historical_baseline_distribution": "ood_stress",
+        "dataset_distribution": "iid"
+      }
+    ]
+  },
+  "reporting_finalized": true,
+  "reporting_finalized_at": "2026-09-20T11:12:25.646181+08:00"
+}

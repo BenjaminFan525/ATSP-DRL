@@ -1,0 +1,259 @@
+{
+  "verified_P5_checkpoints": 3,
+  "P5_exact_overlap_cases": 180,
+  "completed_P5_evaluations": 360,
+  "status": "partial_suite_P5_complete",
+  "panels": {
+    "validation120": {
+      "metrics": {
+        "P5_s1": {
+          "mean": 9155.641666666666,
+          "median": 8892.0,
+          "p95": 11422.949999999999,
+          "worst10_mean": 12348.0,
+          "worst": 15838.0
+        },
+        "P5_s2": {
+          "mean": 9139.05,
+          "median": 8902.5,
+          "p95": 11413.1,
+          "worst10_mean": 12264.083333333334,
+          "worst": 15996.0
+        },
+        "P5_s3": {
+          "mean": 9089.7,
+          "median": 8864.5,
+          "p95": 11852.5,
+          "worst10_mean": 12414.75,
+          "worst": 15398.0
+        },
+        "iga180": {
+          "mean": 9324.183333333332,
+          "median": 9017.5,
+          "p95": 11816.749999999998,
+          "worst10_mean": 12539.0,
+          "worst": 15217.0
+        },
+        "iga1800": {
+          "mean": 9016.0,
+          "median": 8741.0,
+          "p95": 11639.4,
+          "worst10_mean": 12091.166666666666,
+          "worst": 14946.0
+        },
+        "P5_mean": {
+          "mean": 9128.130555555554,
+          "median": 8819.5,
+          "p95": 11565.083333333334,
+          "worst10_mean": 12299.777777777776,
+          "worst": 15744.0
+        },
+        "P5_seed_sd": 34.300168380430485
+      },
+      "comparisons": {
+        "iga180": {
+          "p5_minus_iga_mean": -196.0527777777778,
+          "p5_reduction_percent": 2.102626801393986,
+          "p5_wins": 86,
+          "ties": 0,
+          "p5_losses": 34,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            -261.24729166666674,
+            -131.70472222222236
+          ]
+        },
+        "iga1800": {
+          "p5_minus_iga_mean": 112.13055555555553,
+          "p5_reduction_percent": -1.2436840678300303,
+          "p5_wins": 41,
+          "ties": 0,
+          "p5_losses": 79,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            65.31090277777771,
+            158.96388888888885
+          ]
+        }
+      }
+    },
+    "original60": {
+      "metrics": {
+        "P5_s1": {
+          "mean": 9223.85,
+          "median": 8954.5,
+          "p95": 11339.199999999999,
+          "worst10_mean": 12227.5,
+          "worst": 14751.0
+        },
+        "P5_s2": {
+          "mean": 9231.883333333333,
+          "median": 8929.5,
+          "p95": 11150.799999999997,
+          "worst10_mean": 12145.333333333334,
+          "worst": 14842.0
+        },
+        "P5_s3": {
+          "mean": 9134.616666666667,
+          "median": 9058.0,
+          "p95": 11645.4,
+          "worst10_mean": 12232.666666666666,
+          "worst": 15065.0
+        },
+        "iga180": {
+          "mean": 9383.416666666666,
+          "median": 9010.5,
+          "p95": 11605.849999999999,
+          "worst10_mean": 12385.0,
+          "worst": 14572.0
+        },
+        "iga1800": {
+          "mean": 9038.5,
+          "median": 8553.5,
+          "p95": 11094.099999999999,
+          "worst10_mean": 11942.333333333334,
+          "worst": 14392.0
+        },
+        "P5_mean": {
+          "mean": 9196.783333333333,
+          "median": 8851.0,
+          "p95": 11235.016666666665,
+          "worst10_mean": 12146.72222222222,
+          "worst": 14886.0
+        },
+        "P5_seed_sd": 53.987539714682704
+      },
+      "comparisons": {
+        "iga180": {
+          "p5_minus_iga_mean": -186.6333333333334,
+          "p5_reduction_percent": 1.9889699025763548,
+          "p5_wins": 43,
+          "ties": 0,
+          "p5_losses": 17,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            -288.00569444444454,
+            -88.33152777777805
+          ]
+        },
+        "iga1800": {
+          "p5_minus_iga_mean": 158.28333333333325,
+          "p5_reduction_percent": -1.7512124061883416,
+          "p5_wins": 14,
+          "ties": 0,
+          "p5_losses": 46,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            98.97180555555543,
+            217.5112499999999
+          ]
+        }
+      }
+    },
+    "additional60": {
+      "metrics": {
+        "P5_s1": {
+          "mean": 9087.433333333332,
+          "median": 8784.5,
+          "p95": 11422.949999999999,
+          "worst10_mean": 12468.5,
+          "worst": 15838.0
+        },
+        "P5_s2": {
+          "mean": 9046.216666666667,
+          "median": 8764.5,
+          "p95": 11413.1,
+          "worst10_mean": 12329.333333333334,
+          "worst": 15996.0
+        },
+        "P5_s3": {
+          "mean": 9044.783333333333,
+          "median": 8725.0,
+          "p95": 11857.4,
+          "worst10_mean": 12596.833333333334,
+          "worst": 15398.0
+        },
+        "iga180": {
+          "mean": 9264.95,
+          "median": 9017.5,
+          "p95": 11826.799999999997,
+          "worst10_mean": 12693.0,
+          "worst": 15217.0
+        },
+        "iga1800": {
+          "mean": 8993.5,
+          "median": 8785.5,
+          "p95": 11642.1,
+          "worst10_mean": 12240.0,
+          "worst": 14946.0
+        },
+        "P5_mean": {
+          "mean": 9059.477777777776,
+          "median": 8766.5,
+          "p95": 11565.083333333334,
+          "worst10_mean": 12452.833333333334,
+          "worst": 15744.0
+        },
+        "P5_seed_sd": 24.220826284953677
+      },
+      "comparisons": {
+        "iga180": {
+          "p5_minus_iga_mean": -205.4722222222222,
+          "p5_reduction_percent": 2.2177369788527965,
+          "p5_wins": 43,
+          "ties": 0,
+          "p5_losses": 17,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            -289.6851388888889,
+            -123.9666666666666
+          ]
+        },
+        "iga1800": {
+          "p5_minus_iga_mean": 65.97777777777782,
+          "p5_reduction_percent": -0.7336162537141027,
+          "p5_wins": 27,
+          "ties": 0,
+          "p5_losses": 33,
+          "case_bootstrap_95ci_conditional_on_fixed_models": [
+            -1.9356944444445463,
+            134.66125
+          ]
+        }
+      }
+    }
+  },
+  "groups": {
+    "P5_s1": {
+      "iid": 8619.433333333332,
+      "ood_stress": 9998.222222222223,
+      "ood_scale": 6934.5
+    },
+    "P5_s2": {
+      "iid": 8663.066666666668,
+      "ood_stress": 9945.185185185184,
+      "ood_scale": 6643.666666666667
+    },
+    "P5_s3": {
+      "iid": 8624.3,
+      "ood_stress": 9881.222222222223,
+      "ood_scale": 6620.0
+    },
+    "iga180": {
+      "iid": 8839.883333333333,
+      "ood_stress": 10153.388888888889,
+      "ood_scale": 6704.333333333333
+    },
+    "iga1800": {
+      "iid": 8557.816666666668,
+      "ood_stress": 9807.851851851852,
+      "ood_scale": 6471.166666666667
+    },
+    "P5_mean": {
+      "iid": 8635.6,
+      "ood_stress": 9941.543209876543,
+      "ood_scale": 6732.722222222222
+    }
+  },
+  "P5_tails_mean_across_seeds": {
+    "p95": 11562.85,
+    "worst10_mean": 12342.277777777777,
+    "worst": 15744.0
+  },
+  "statistical_scope": "Descriptive fixed validation60 Best evaluation. CIs resample cases within true distribution groups, conditional on 3 fixed P5 models and one IGA search seed; they do not estimate training/search seed uncertainty."
+}

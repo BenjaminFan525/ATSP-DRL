@@ -1,0 +1,74 @@
+{
+  "status": "completed",
+  "phases": {
+    "iga180": {
+      "phase": "iga180",
+      "summary": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga180/summary.json",
+      "aligned_validation60": {
+        "case_count": 60,
+        "mean_makespan": 9383.416666666666,
+        "median_makespan": 9010.5,
+        "p95_makespan": 11605.849999999999,
+        "worst_makespan": 14572.0,
+        "composite_makespan": 9368.475862068966,
+        "composite_weights": {
+          "iid": 0.5,
+          "ood_stress": 0.45,
+          "ood_scale": 0.05
+        },
+        "distributions": {
+          "iid": {
+            "count": 29,
+            "mean": 9647.275862068966
+          },
+          "ood_stress": {
+            "count": 29,
+            "mean": 9221.862068965518
+          },
+          "ood_scale": {
+            "count": 2,
+            "mean": 7900.0
+          }
+        },
+        "mean_evaluated_candidates": 8.85,
+        "mean_optimization_wall_seconds": 180.04062887861608,
+        "distribution_label_source": "historical_learning_baseline_evaluation"
+      }
+    },
+    "iga1800": {
+      "phase": "iga1800",
+      "summary": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/full/iga1800/summary.json",
+      "aligned_validation60": {
+        "case_count": 60,
+        "mean_makespan": 9038.5,
+        "median_makespan": 8553.5,
+        "p95_makespan": 11094.099999999999,
+        "worst_makespan": 14392.0,
+        "composite_makespan": 9024.159482758621,
+        "composite_weights": {
+          "iid": 0.5,
+          "ood_stress": 0.45,
+          "ood_scale": 0.05
+        },
+        "distributions": {
+          "iid": {
+            "count": 29,
+            "mean": 9277.793103448275
+          },
+          "ood_stress": {
+            "count": 29,
+            "mean": 8894.862068965518
+          },
+          "ood_scale": {
+            "count": 2,
+            "mean": 7651.5
+          }
+        },
+        "mean_evaluated_candidates": 82.98333333333333,
+        "mean_optimization_wall_seconds": 1620.0481924300489,
+        "distribution_label_source": "historical_learning_baseline_evaluation"
+      }
+    }
+  },
+  "updated_at": "2026-09-20T11:12:25.652729+08:00"
+}

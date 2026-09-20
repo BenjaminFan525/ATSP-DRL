@@ -1,0 +1,10 @@
+{
+  "case_count": 120,
+  "completed_and_verified": 120,
+  "plane_only_heuristic": 120,
+  "teacher_hash_matches": 120,
+  "max_search_seconds": 180.21572771301726,
+  "min_search_seconds": 180.00084285601042,
+  "mean_candidates": 8.875,
+  "checked_at": "2026-09-20T10:45:44.482136+08:00"
+}

@@ -2,3 +2,12 @@
 # historical whitespace during checkout/publication.
 artifacts/stage2_frozen/20260912/** -text -whitespace
 onpolicy/envs/HKBZ/test/fixtures/** -text -whitespace
+
+# Preserve the checkpoint archive's hash-bound bytes on every checkout.
+artifacts/stage2_checkpoints/20260921_h3f4_validation120/** -text
+# Historical evidence intentionally retains CRLF and patch context whitespace.
+artifacts/stage2_checkpoints/20260921_h3f4_validation120/evidence/run/analysis/paired_cases.csv whitespace=cr-at-eol
+artifacts/stage2_checkpoints/20260921_h3f4_validation120/evidence/parent/source_changes.patch -whitespace
+
+# Stage1 experiment records and CSVs retain their original SHA-bound bytes.
+artifacts/stage1_validation120/20260920/** -text -whitespace

@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "parents": {
+    "1": {
+      "protected_stage1_parameters_verified": true,
+      "ready_lineage_preserved": true
+    },
+    "2": {
+      "protected_stage1_parameters_verified": true,
+      "ready_lineage_preserved": true
+    },
+    "3": {
+      "protected_stage1_parameters_verified": true,
+      "ready_lineage_preserved": true
+    }
+  },
+  "training_updates": 0,
+  "validation_case_files": 120,
+  "summary_conversion_matches_native": true
+}

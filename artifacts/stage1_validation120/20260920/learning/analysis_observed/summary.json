@@ -1,0 +1,474 @@
+{
+  "status": "all_evaluations_complete_reproducibility_review_pending",
+  "suite_state": "needs_review",
+  "ended_at": "2026-09-20T22:48:18.324878+08:00",
+  "total_evaluations": 1800,
+  "baseline_evaluations": 1440,
+  "baseline_checkpoints": 12,
+  "baseline_accepted_checkpoints": 5,
+  "baseline_changed_overlap_cases": 34,
+  "methods": {
+    "P5": {
+      "mean": 9128.130555555555,
+      "seed_sd": 34.300168380430485,
+      "per_seed": [
+        {
+          "seed": 1,
+          "best_epoch": 8,
+          "mean": 9155.641666666666,
+          "overlap_match": 60
+        },
+        {
+          "seed": 2,
+          "best_epoch": 7,
+          "mean": 9139.05,
+          "overlap_match": 60
+        },
+        {
+          "seed": 3,
+          "best_epoch": 8,
+          "mean": 9089.7,
+          "overlap_match": 60
+        }
+      ],
+      "groups": {
+        "iid": 8635.6,
+        "ood_stress": 9941.543209876543,
+        "ood_scale": 6732.722222222223
+      },
+      "p95_seed_average": 11562.85,
+      "worst10_seed_average": 12342.277777777777,
+      "worst_seed_average": 15744.0,
+      "original60_mean": 9196.783333333333,
+      "additional60_mean": 9059.477777777778,
+      "p5_lower_percent": 0.0,
+      "p5_wins": 0,
+      "p5_ties": 120,
+      "p5_losses": 0,
+      "old60_exact_match": 180,
+      "old60_total": 180,
+      "status": "verified",
+      "drift_absolute_mean_on_changed_cases": 0,
+      "drift_max_abs": 0,
+      "old_overlap_drift_contribution_to_full120_mean": 0.0
+    },
+    "multi_ppo": {
+      "mean": 9695.1,
+      "seed_sd": 47.27796350661986,
+      "per_seed": [
+        {
+          "seed": 1,
+          "best_epoch": 7,
+          "mean": 9646.583333333334,
+          "overlap_match": 59
+        },
+        {
+          "seed": 2,
+          "best_epoch": 1,
+          "mean": 9697.683333333332,
+          "overlap_match": 59
+        },
+        {
+          "seed": 3,
+          "best_epoch": 7,
+          "mean": 9741.033333333333,
+          "overlap_match": 60
+        }
+      ],
+      "groups": {
+        "iid": 9110.305555555557,
+        "ood_stress": 10662.611111111111,
+        "ood_scale": 6835.444444444444
+      },
+      "p95_seed_average": 13070.1,
+      "worst10_seed_average": 13803.416666666666,
+      "worst_seed_average": 19218.666666666668,
+      "original60_mean": 9722.194444444445,
+      "additional60_mean": 9668.005555555555,
+      "p5_lower_percent": 5.8479999633262665,
+      "p5_wins": 95,
+      "p5_ties": 0,
+      "p5_losses": 25,
+      "old60_exact_match": 178,
+      "old60_total": 180,
+      "status": "provisional_needs_review",
+      "drift_absolute_mean_on_changed_cases": 231.0,
+      "drift_max_abs": 396.0,
+      "old_overlap_drift_contribution_to_full120_mean": 1.2833333333333334
+    },
+    "fjsp_drl": {
+      "mean": 9689.461111111112,
+      "seed_sd": 176.46678282275943,
+      "per_seed": [
+        {
+          "seed": 1,
+          "best_epoch": 6,
+          "mean": 9779.216666666667,
+          "overlap_match": 48
+        },
+        {
+          "seed": 2,
+          "best_epoch": 8,
+          "mean": 9486.158333333333,
+          "overlap_match": 51
+        },
+        {
+          "seed": 3,
+          "best_epoch": 4,
+          "mean": 9803.008333333333,
+          "overlap_match": 52
+        }
+      ],
+      "groups": {
+        "iid": 9146.883333333333,
+        "ood_stress": 10582.444444444445,
+        "ood_scale": 7078.388888888889
+      },
+      "p95_seed_average": 12875.65,
+      "worst10_seed_average": 13482.194444444443,
+      "worst_seed_average": 16724.666666666668,
+      "original60_mean": 9779.072222222221,
+      "additional60_mean": 9599.85,
+      "p5_lower_percent": 5.793207167237262,
+      "p5_wins": 102,
+      "p5_ties": 0,
+      "p5_losses": 18,
+      "old60_exact_match": 151,
+      "old60_total": 180,
+      "status": "provisional_needs_review",
+      "drift_absolute_mean_on_changed_cases": 116.37931034482759,
+      "drift_max_abs": 630.0,
+      "old_overlap_drift_contribution_to_full120_mean": 0.13055555555555556
+    },
+    "daniel": {
+      "mean": 9678.438888888888,
+      "seed_sd": 37.19027121638345,
+      "per_seed": [
+        {
+          "seed": 1,
+          "best_epoch": 5,
+          "mean": 9645.041666666666,
+          "overlap_match": 60
+        },
+        {
+          "seed": 2,
+          "best_epoch": 8,
+          "mean": 9671.758333333333,
+          "overlap_match": 58
+        },
+        {
+          "seed": 3,
+          "best_epoch": 7,
+          "mean": 9718.516666666666,
+          "overlap_match": 59
+        }
+      ],
+      "groups": {
+        "iid": 8982.41111111111,
+        "ood_stress": 10757.586419753086,
+        "ood_scale": 6926.388888888889
+      },
+      "p95_seed_average": 13534.383333333333,
+      "worst10_seed_average": 13822.166666666666,
+      "worst_seed_average": 16000.0,
+      "original60_mean": 9796.944444444445,
+      "additional60_mean": 9559.933333333334,
+      "p5_lower_percent": 5.685920422198476,
+      "p5_wins": 101,
+      "p5_ties": 1,
+      "p5_losses": 18,
+      "old60_exact_match": 177,
+      "old60_total": 180,
+      "status": "provisional_needs_review",
+      "drift_absolute_mean_on_changed_cases": 84.0,
+      "drift_max_abs": 206.0,
+      "old_overlap_drift_contribution_to_full120_mean": 0.6166666666666667
+    },
+    "l2d": {
+      "mean": 10764.383333333333,
+      "seed_sd": 81.33538248784716,
+      "per_seed": [
+        {
+          "seed": 1,
+          "best_epoch": 1,
+          "mean": 10683.383333333333,
+          "overlap_match": 60
+        },
+        {
+          "seed": 2,
+          "best_epoch": 4,
+          "mean": 10846.05,
+          "overlap_match": 60
+        },
+        {
+          "seed": 3,
+          "best_epoch": 5,
+          "mean": 10763.716666666667,
+          "overlap_match": 60
+        }
+      ],
+      "groups": {
+        "iid": 10107.733333333334,
+        "ood_stress": 11856.72839506173,
+        "ood_scale": 7499.777777777777
+      },
+      "p95_seed_average": 14483.333333333332,
+      "worst10_seed_average": 15002.861111111111,
+      "worst_seed_average": 17571.0,
+      "original60_mean": 10797.855555555556,
+      "additional60_mean": 10730.91111111111,
+      "p5_lower_percent": 15.200617881294743,
+      "p5_wins": 119,
+      "p5_ties": 0,
+      "p5_losses": 1,
+      "old60_exact_match": 180,
+      "old60_total": 180,
+      "status": "verified",
+      "drift_absolute_mean_on_changed_cases": 0,
+      "drift_max_abs": 0,
+      "old_overlap_drift_contribution_to_full120_mean": 0.0
+    }
+  },
+  "overlap_differences": [
+    {
+      "job": "multi_ppo_s1",
+      "case": "case_0114",
+      "old": 10349.0,
+      "new": 10745.0,
+      "delta": 396.0
+    },
+    {
+      "job": "multi_ppo_s2",
+      "case": "case_0072",
+      "old": 6537.0,
+      "new": 6603.0,
+      "delta": 66.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0033",
+      "old": 9059.0,
+      "new": 8826.0,
+      "delta": -233.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0052",
+      "old": 8781.0,
+      "new": 8676.0,
+      "delta": -105.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0076",
+      "old": 12536.0,
+      "new": 12262.0,
+      "delta": -274.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0088",
+      "old": 7994.0,
+      "new": 8174.0,
+      "delta": 180.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0067",
+      "old": 8087.0,
+      "new": 8149.0,
+      "delta": 62.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0019",
+      "old": 8010.0,
+      "new": 7944.0,
+      "delta": -66.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0104",
+      "old": 8469.0,
+      "new": 8484.0,
+      "delta": 15.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0058",
+      "old": 15052.0,
+      "new": 15051.0,
+      "delta": -1.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0066",
+      "old": 8744.0,
+      "new": 8767.0,
+      "delta": 23.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0034",
+      "old": 8200.0,
+      "new": 8223.0,
+      "delta": 23.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0065",
+      "old": 8553.0,
+      "new": 8546.0,
+      "delta": -7.0
+    },
+    {
+      "job": "fjsp_drl_s1",
+      "case": "case_0081",
+      "old": 9497.0,
+      "new": 9517.0,
+      "delta": 20.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0033",
+      "old": 9516.0,
+      "new": 10146.0,
+      "delta": 630.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0052",
+      "old": 8865.0,
+      "new": 8839.0,
+      "delta": -26.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0076",
+      "old": 11958.0,
+      "new": 11844.0,
+      "delta": -114.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0031",
+      "old": 9749.0,
+      "new": 9827.0,
+      "delta": 78.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0042",
+      "old": 9219.0,
+      "new": 9192.0,
+      "delta": -27.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0022",
+      "old": 9463.0,
+      "new": 9560.0,
+      "delta": 97.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0019",
+      "old": 8356.0,
+      "new": 8547.0,
+      "delta": 191.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0034",
+      "old": 8511.0,
+      "new": 8379.0,
+      "delta": -132.0
+    },
+    {
+      "job": "fjsp_drl_s2",
+      "case": "case_0081",
+      "old": 9667.0,
+      "new": 9685.0,
+      "delta": 18.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0075",
+      "old": 8346.0,
+      "new": 8101.0,
+      "delta": -245.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0033",
+      "old": 9850.0,
+      "new": 9502.0,
+      "delta": -348.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0042",
+      "old": 12139.0,
+      "new": 12145.0,
+      "delta": 6.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0067",
+      "old": 9027.0,
+      "new": 9021.0,
+      "delta": -6.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0019",
+      "old": 8116.0,
+      "new": 8320.0,
+      "delta": 204.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0104",
+      "old": 8070.0,
+      "new": 7990.0,
+      "delta": -80.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0034",
+      "old": 8891.0,
+      "new": 8933.0,
+      "delta": 42.0
+    },
+    {
+      "job": "fjsp_drl_s3",
+      "case": "case_0081",
+      "old": 9168.0,
+      "new": 9290.0,
+      "delta": 122.0
+    },
+    {
+      "job": "daniel_s2",
+      "case": "case_0033",
+      "old": 9358.0,
+      "new": 9564.0,
+      "delta": 206.0
+    },
+    {
+      "job": "daniel_s2",
+      "case": "case_0067",
+      "old": 7795.0,
+      "new": 7780.0,
+      "delta": -15.0
+    },
+    {
+      "job": "daniel_s3",
+      "case": "case_0033",
+      "old": 8781.0,
+      "new": 8812.0,
+      "delta": 31.0
+    }
+  ],
+  "snapshot_file_count_verified": 1215,
+  "note": "Observed r3 results only; no historical makespans substituted, no selecting favorable runs across r2/r3. Three baseline methods remain provisional. SD is sample SD over 3 seed-level means."
+}

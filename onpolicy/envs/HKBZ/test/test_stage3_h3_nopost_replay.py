@@ -197,7 +197,36 @@ def test_switch_request_extends_from_the_same_profile(tmp_path):
                    plan=bind(root/'plan.md'), source_root=str(root), source_files={})
     request['request_sha256'] = request_identity(request)
     assert verify_request(request)['recipe'] == old
+    late = dict(request, after_epoch=8)          # boundary 8 is valid for a 10-epoch budget
+    late['request_sha256'] = request_identity(late)
+    assert verify_request(late)['recipe'] == old
+    too_late = dict(request, after_epoch=10)
+    too_late['request_sha256'] = request_identity(too_late)
+    with pytest.raises(ValueError, match='boundary'):
+        verify_request(too_late)
     request['requested_epochs'] = 12
     request['request_sha256'] = request_identity(request)
     with pytest.raises(ValueError, match='epoch budget'):
         verify_request(request)
+
+
+def test_arm_manifest_inherits_the_suite_epoch_budget(tmp_path):
+    """The arm recipe must carry the suite budget; a stale default kills epoch 9."""
+    import onpolicy.scripts.train.run_stage3_h3_continuation as driver
+    suite_root = tmp_path/'suite'
+    (suite_root/'arms/C03').mkdir(parents=True)
+    parent_manifest = tmp_path/'parent.json'
+    atomic_json(parent_manifest, {'recipe': parent_recipe(b0_recipe())})
+    atomic_json(suite_root/'parent_selection.json', {'epoch': 8})
+    suite = dict(root=str(suite_root), resources=resources(0, 'GPU-test', '0-31,64-95'),
+                 splits={'train': cases()}, recipe=extended(epochs=10), execution_mode='single',
+                 parent_manifest=bind(parent_manifest),
+                 baselines={'path': 'x', 'sha256': 'y'}, frozen_manifest={'path': 'x', 'sha256': 'y'})
+    manifest_path = suite_root/'manifest.json'
+    atomic_json(manifest_path, suite)
+    controller = driver.Controller.__new__(driver.Controller)
+    controller.m, controller.path, controller.root = suite, manifest_path, suite_root
+    _, arm = controller.arm_manifest('C03', {'epoch': 8, 'checkpoint': {'path': 'e8.pt', 'sha256': 'abc'}})
+    assert arm['recipe']['epochs'] == 10
+    assert arm['recipe']['evaluation_epochs'] == [1, 2, 4, 6, 8, 10]
+    assert len(schedule(cases(), arm['recipe'])) == 10

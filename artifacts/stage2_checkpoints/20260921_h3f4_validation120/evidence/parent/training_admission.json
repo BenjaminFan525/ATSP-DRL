@@ -1,0 +1,186 @@
+{
+  "passed": true,
+  "training_updates": 0,
+  "parents": {
+    "1": {
+      "actual_stage1_loader_passed": true,
+      "stage1_protected_bitwise_equal": true,
+      "ready_donor_bitwise_equal_and_inactive": true,
+      "unapproved_transfers_rejected": true,
+      "planning": {
+        "device_lookahead_dispatch": true,
+        "device_lookahead_safety_margin": 60.0,
+        "device_deadline_aware_dispatch": true,
+        "device_future_intent_horizon": 3,
+        "device_future_intent_mode": "bounded_frontier",
+        "device_frontier_max_requests": 4,
+        "resource_release_aware_eta": true,
+        "device_lookahead_reservation_mode": "soft",
+        "device_reservation_grace_seconds": 300.0,
+        "device_departure_lookahead": true
+      },
+      "provenance": {
+        "protocol": "b0_h3_fixed_teacher_cross_stage1_seed_v1",
+        "contract_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/fixed_teacher_contract.json",
+        "contract_sha256": "544477d8c21c079573202af66ea8ed922a7097d408bfbf427005da8ce101a706",
+        "student_stage1_sha256": "3055a1110502f63bf9db3be1c253cb922547e648a0e4cb90227ec0158229629b",
+        "donor_stage1_sha256": "8ce0244f9b0b3877e2cc581a2479a6e5edab1854c1ed643749712612d0c5379d",
+        "ready_donor_sha256": "c0c4825946e469b680e764a4c4b9f3bcbcfdaa66ccfb2fee221633b5d3afb1f1",
+        "teacher_index_sha256": "1ad57124ea4a5a8a1a77ce1b237d82675e62ee678a4f28c3b52ae3560f3b22f2",
+        "ready_policy_injection": "none",
+        "ready_loss_coefficient": 0.0,
+        "scope": "fresh H3/F4 resource BC conditional on one seed3 H3/F4 teacher corpus; inactive H2/F4 Ready donor retained",
+        "inactive_donor_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 2,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "runtime_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 3,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "ready_teacher_index": {
+          "path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_supervised_hf_labels_20260901_r1/stage2_bc_labels/iga1800/stage2_bc_teacher_index.json",
+          "sha256": "3b2cbe592d22fb2d4610a8edec3d6f10baec7b5258e3e6ca069e7efa6cfa9d35"
+        },
+        "runtime_teacher_index": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/teacher_h3f4/iga1800/stage2_bc_teacher_index.json"
+      }
+    },
+    "2": {
+      "actual_stage1_loader_passed": true,
+      "stage1_protected_bitwise_equal": true,
+      "ready_donor_bitwise_equal_and_inactive": true,
+      "unapproved_transfers_rejected": true,
+      "planning": {
+        "device_lookahead_dispatch": true,
+        "device_lookahead_safety_margin": 60.0,
+        "device_deadline_aware_dispatch": true,
+        "device_future_intent_horizon": 3,
+        "device_future_intent_mode": "bounded_frontier",
+        "device_frontier_max_requests": 4,
+        "resource_release_aware_eta": true,
+        "device_lookahead_reservation_mode": "soft",
+        "device_reservation_grace_seconds": 300.0,
+        "device_departure_lookahead": true
+      },
+      "provenance": {
+        "protocol": "b0_h3_fixed_teacher_cross_stage1_seed_v1",
+        "contract_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/fixed_teacher_contract.json",
+        "contract_sha256": "544477d8c21c079573202af66ea8ed922a7097d408bfbf427005da8ce101a706",
+        "student_stage1_sha256": "70498db39c336c48b2144ab2f3ac5777b11a75f55abcb81ef0df519019a477d8",
+        "donor_stage1_sha256": "8ce0244f9b0b3877e2cc581a2479a6e5edab1854c1ed643749712612d0c5379d",
+        "ready_donor_sha256": "c0c4825946e469b680e764a4c4b9f3bcbcfdaa66ccfb2fee221633b5d3afb1f1",
+        "teacher_index_sha256": "1ad57124ea4a5a8a1a77ce1b237d82675e62ee678a4f28c3b52ae3560f3b22f2",
+        "ready_policy_injection": "none",
+        "ready_loss_coefficient": 0.0,
+        "scope": "fresh H3/F4 resource BC conditional on one seed3 H3/F4 teacher corpus; inactive H2/F4 Ready donor retained",
+        "inactive_donor_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 2,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "runtime_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 3,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "ready_teacher_index": {
+          "path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_supervised_hf_labels_20260901_r1/stage2_bc_labels/iga1800/stage2_bc_teacher_index.json",
+          "sha256": "3b2cbe592d22fb2d4610a8edec3d6f10baec7b5258e3e6ca069e7efa6cfa9d35"
+        },
+        "runtime_teacher_index": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/teacher_h3f4/iga1800/stage2_bc_teacher_index.json"
+      }
+    },
+    "3": {
+      "actual_stage1_loader_passed": true,
+      "stage1_protected_bitwise_equal": true,
+      "ready_donor_bitwise_equal_and_inactive": true,
+      "unapproved_transfers_rejected": true,
+      "planning": {
+        "device_lookahead_dispatch": true,
+        "device_lookahead_safety_margin": 60.0,
+        "device_deadline_aware_dispatch": true,
+        "device_future_intent_horizon": 3,
+        "device_future_intent_mode": "bounded_frontier",
+        "device_frontier_max_requests": 4,
+        "resource_release_aware_eta": true,
+        "device_lookahead_reservation_mode": "soft",
+        "device_reservation_grace_seconds": 300.0,
+        "device_departure_lookahead": true
+      },
+      "provenance": {
+        "protocol": "b0_h3_fixed_teacher_cross_stage1_seed_v1",
+        "contract_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/fixed_teacher_contract.json",
+        "contract_sha256": "544477d8c21c079573202af66ea8ed922a7097d408bfbf427005da8ce101a706",
+        "student_stage1_sha256": "8ce0244f9b0b3877e2cc581a2479a6e5edab1854c1ed643749712612d0c5379d",
+        "donor_stage1_sha256": "8ce0244f9b0b3877e2cc581a2479a6e5edab1854c1ed643749712612d0c5379d",
+        "ready_donor_sha256": "c0c4825946e469b680e764a4c4b9f3bcbcfdaa66ccfb2fee221633b5d3afb1f1",
+        "teacher_index_sha256": "1ad57124ea4a5a8a1a77ce1b237d82675e62ee678a4f28c3b52ae3560f3b22f2",
+        "ready_policy_injection": "none",
+        "ready_loss_coefficient": 0.0,
+        "scope": "fresh H3/F4 resource BC conditional on one seed3 H3/F4 teacher corpus; inactive H2/F4 Ready donor retained",
+        "inactive_donor_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 2,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "runtime_planning_contract": {
+          "device_lookahead_dispatch": true,
+          "device_lookahead_safety_margin": 60.0,
+          "device_deadline_aware_dispatch": true,
+          "device_future_intent_horizon": 3,
+          "device_future_intent_mode": "bounded_frontier",
+          "device_frontier_max_requests": 4,
+          "resource_release_aware_eta": true,
+          "device_lookahead_reservation_mode": "soft",
+          "device_reservation_grace_seconds": 300.0,
+          "device_departure_lookahead": true
+        },
+        "ready_teacher_index": {
+          "path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_supervised_hf_labels_20260901_r1/stage2_bc_labels/iga1800/stage2_bc_teacher_index.json",
+          "sha256": "3b2cbe592d22fb2d4610a8edec3d6f10baec7b5258e3e6ca069e7efa6cfa9d35"
+        },
+        "runtime_teacher_index": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_20260920_r1/teacher_h3f4/iga1800/stage2_bc_teacher_index.json"
+      }
+    }
+  },
+  "full_teacher_corpus": true,
+  "teacher_cases_production_loader_verified": 240,
+  "initial_resource_heads_identical_across_seeds": true
+}

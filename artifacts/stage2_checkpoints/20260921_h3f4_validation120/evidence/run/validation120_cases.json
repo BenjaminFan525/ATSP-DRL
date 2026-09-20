@@ -1,0 +1,1922 @@
+[
+  {
+    "case_sha256": "3cb31c6bb00873f7e5af74427d31e7449761635afd9220c82eabd88e318e8b6e",
+    "content_sha256": "349d38644d4b567844bfa0b9ee5c73ad6ebee27a635b31c36c750901651d93b4",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "32afbe376fa3614c5768f6e50e9af3f2297cbd7af9faefa0a998e1a60303ee01",
+      "flights.json": "c88021d71f9e23c7ea623e9a8b449e17f0138e6e9168baeef0f1e92627933d11",
+      "job.json": "a34a64573f89e6d665e5887734c580500d1e1c75d51002393aca9f31a93f53dd",
+      "metadata.json": "b788f8dfa0680f1a3d5a62f9935b76b35ea020ded140c878f2530194b8b4e6f8",
+      "mobile_resources.json": "2863ec60a1b4a1a997ed11591bd45ee06286b64138c6c03047b8af1a9a14c63a",
+      "sites.json": "6b900d8929f6c79e084c8efe5208922e6b7ffc329e4ad01bbd02b8e40ab82828"
+    },
+    "name": "case_0001",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0001",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "9a76d695d55529c7e2f53f3303e13259df40cfc10a007deee0a9303fb38d5295",
+    "content_sha256": "a4e2640a1c537f74009665a0cdeae850dc5cab48ced5a690511bb70c13217507",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "84bf4775fb5ee74841d60ff2280ed1a6ef638d10c1d3b1e204aa53c501b585ba",
+      "flights.json": "9efc02c8949de97b55080d51031736396534832d1bc78fab88bdc2da0c3d1def",
+      "job.json": "cfb8adbdbb33e712f682c967171bed1bc1adb4296c54441c461cbbf0f0f057ff",
+      "metadata.json": "8562ea564f9438028ae22abb09d7e6345c44f0191c6572a80223f99de1163984",
+      "mobile_resources.json": "75c974b083e3f5f49f282e4c486cd335fd9a319377d15c2801b2f8c4283d66b4",
+      "sites.json": "5ffd7a7c433eb40f133cb87a361bfc271828b1bf3481cbc68b3ce0c7e266b108"
+    },
+    "name": "case_0002",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0002",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "22bc8a026fda723eb705212ff68f9e7c9f40403d6f60a0e669eb29d7763d41df",
+    "content_sha256": "40007207b22e369602efa6f21b9809aceca9c1d32ea95f901db45e15f5fccd2a",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "12d0e418fdef395394e2576f60fcbc077652f6baaf55979715124adaacfe2634",
+      "flights.json": "f237ecc59c9cb2a810e96c599f45b6b094b7badb25c879bf1fbb90257536e6f1",
+      "job.json": "f050b4a5d74bda4ea9e1cdf88b071ac78f453aedd996432c23002c284b6fa09c",
+      "metadata.json": "fba37e37c950e072cd06953843eb0a1049b4cd9143066bf450fd13c74258f864",
+      "mobile_resources.json": "b5bfcf2ab4d0b3ed17ae2f8cac09183f4be306c55de48fbb4b8902273fa91540",
+      "sites.json": "140ad75715c1132cb92270c1f3c1d031f4187b522d9b07abb2e27666f03de1dc"
+    },
+    "name": "case_0003",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0003",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "1e79bf77c42d7bc36bbcd548c8772dce7da439255553d60b74e76d6a382d7f5b",
+    "content_sha256": "9ccc7264e5916f7f02cd2156224b9420daf0ed9c40d04a11938b679c03580141",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "cc9424cacb973c87bcb43acc3506b60ae200b0919abdc227dd865be489937869",
+      "flights.json": "067179903998b444b57cc3768b44e1de49128b22d074283e9465d20e214d5ba0",
+      "job.json": "f63e668a8c4191b7d6ca73c94b351c6cf592d1e6edc8ca4bc196577de04b5ad9",
+      "metadata.json": "aed7210985e86f5958bc6ffbe272054f88e8ff0ff26632e84fdad95d23551954",
+      "mobile_resources.json": "f5084757edc8b004fe1b8290b6216a2e95777a4a14ea40c320fde62b98581d81",
+      "sites.json": "257369034a9d62ae0eee8c352595da9572663413b80569b622ebd47156d0f251"
+    },
+    "name": "case_0004",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0004",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "10b7a1b6e8daf34e6b0a7b242e2b26a74c560580a6e85f40324b210c7642ac9b",
+    "content_sha256": "11c02cb5496cd1402c2754474045772d3c8dac33e769fb059d65e3003cf5f979",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "a8bfe029b30d96856a84c9c35e575f77f1eddb0d9ffed950d9d855f1fe07e982",
+      "flights.json": "e09ceafa467fced7dbcc7d7d194c35adfccaeda8dd9b1b07a5d1f0b76205e106",
+      "job.json": "d26b64b3417d1003edb01fd66a320e23ef0559c1dfadce8c56a207f6a530fccb",
+      "metadata.json": "ea95a7e002385f6eaf2329664d6631e1b9be11c4ed7dc3cbc6c929b8f433e268",
+      "mobile_resources.json": "3bc5badba94923908af85968a51e575b03f36ccfa4853e03c08c9d96e11e73bb",
+      "sites.json": "9bd3227ecf4909a4534ea45a758880367a778f515741ae7c6cb7475967d893e7"
+    },
+    "name": "case_0005",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0005",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "f48d93238a8b4cf713c46c04f0db8fdc1d407f176b09c555ea6df9c98ba96b61",
+    "content_sha256": "4634209b0a6c235d6c2cecfff7d10d75bec150e81e24384d507684726ccb1bf4",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "569cb603bd0375c7b0d921c5fd0c9f83e8ee4095dfe4247a4afb0da4282f7fad",
+      "flights.json": "9d194d8b7b1d56628b234307a0bbf99f1beffe7c73278ee891e33c0ee25905c2",
+      "job.json": "5c36c0043317554491ef519b3dda5401981bf6ea45e73a356b26e0fb7213a7c4",
+      "metadata.json": "4d41afed1477e9face663bf732150cf0214c12a4ac6cee27cc145d914e56934f",
+      "mobile_resources.json": "aa4e817b3f7ea05b5544ba9ccf3ecb928730af992d4d9fa311a828d5f795f653",
+      "sites.json": "e542f7c378613aa9da32c8fa6cc0f8c3db6cc25bfd8a62a80bb2bdef658643a2"
+    },
+    "name": "case_0006",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0006",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "bfccc68310d1c3b8e7cac5cd5c28e6b171b80a68b4062327d4ec500bae97c57f",
+    "content_sha256": "ef59f1be0ea8bdc1d3246bfab2382753928cfdefdba0d28f0a99fcfe130d684a",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "34170579673928e8e7ab07354e82d3e131e36e53696df29bfab1ae484350f04e",
+      "flights.json": "718c15ba2c0ed43222e786a0632aa3d118ac5a22be0b6e1408bd7d29c64b9b00",
+      "job.json": "db6d02edd687afe886e3f79d025ad382f6725ff2e120654fc95a308a75008286",
+      "metadata.json": "be79287fbe5925af0a364b2a0b9e22ee698e8bfc3eb3755ef3a4a48afc4eb220",
+      "mobile_resources.json": "08db9a5bd5bebe929001b6c83c2e948faaf4ef2742b64e7849348a74f3841eff",
+      "sites.json": "5c7d2d7095c74b89d3b1dbd25bcfbd3eaf9f04e09d4e87584511672f44831741"
+    },
+    "name": "case_0007",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0007",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "c3025486879a8135a71f3c0fd1a486a2c7fa301f46c933074e3611eb0dc66c4c",
+    "content_sha256": "2a9fc945eef06e736fb5d395fe4f333330319c9fdbcaafa301388effbb664dd6",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a0c69159589437853a169e1c6314e6479da745efa5f1f35be3e0cf5e5c4f01a2",
+      "flights.json": "091c0d1f916938497c88d6cda1adfff70e8922f462a4ac3cc72dbe4bcd824c0b",
+      "job.json": "c89869328613856e1aa7115e2ef0d966f8b148392b1fe3b59027f960405a3bc9",
+      "metadata.json": "66184bf1ddad295b17c7fecfe03b38f1f33660ffbf3f6cf838c016efc1c3acfe",
+      "mobile_resources.json": "6f730eefaf7bcf31212d1ad5428a502a9bc47b7ea4f1444cca6dfc93799b13ee",
+      "sites.json": "18fac419db074baa75cc7c36d4b8909639666fe60a323b90b67de8fade1b6ff9"
+    },
+    "name": "case_0008",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0008",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "29101389765c0afee2e2ef63cc0129b46188ca33966c8c506a5a238c48806301",
+    "content_sha256": "fa615204e457d38f4c535e5fa51f3186c0501872698c81b60b353a3b6ddd3900",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "ca4994264915a3ff685e2fac87908c21f6b263d8d83634c0f70d0da4674e8e06",
+      "flights.json": "181d47c859891346f2141f77ff70c782efecbaa5f90d8fdd3b014579e2811328",
+      "job.json": "bb11a8cf39c2f93d5bcb479102d2e3a9c0081be0633ede80e74b4506cab9545f",
+      "metadata.json": "1ee31130ef0a598dff40ef3f7194a42dfcd0401683721ecdde00570d45501b05",
+      "mobile_resources.json": "94529b3d309c65775e51d70c20a33997f0b0170dbc1c474fbf9a8712d58213e3",
+      "sites.json": "67856a39355cdaeffd8fc17b5bec873fc4b11e2ac3639a240ada7777e60a97f3"
+    },
+    "name": "case_0009",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0009",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "c0fb6ba3cd2a740fe3c0a28b3d94fb4cd4efdf4e0e288ea6aa714a1d30df38fa",
+    "content_sha256": "99a335148c4a5ecc1cf4c667d55931a2fedc7e04661e06896ae87829071c4bf2",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "75237b2a1bb9a3c0e04066b4dd48b307a789974db67ee55b33f2814a9b8a1f8f",
+      "flights.json": "1da7f187cdc2a2534716ad4060f5d06d2c37f4110f54286fa231134aa3dae8f7",
+      "job.json": "bbbb0fd26665f9d50d1698defea69e41562ebb5d5840581546bf556ef04a0866",
+      "metadata.json": "fe9e2caf39497c233037e0600be6f2eaaffbeb352527a081f248b3e5972a5d95",
+      "mobile_resources.json": "598266fba1a9de8e1b8e559799820ce45af50781b2c759321be5f31091d36476",
+      "sites.json": "6446d6e24fa574591e05c9753a2157e65d4254d8614f17ad79f381a2b674c736"
+    },
+    "name": "case_0010",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0010",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "c477c4dfc72b0a1cbcf6464d58f83e49ffbb4acf357cc8043c6c57ddee9ca06d",
+    "content_sha256": "e70bd46d9d5d42bac8632f8793f3c13f3c6cfd1dab510349b3ece108522bc98f",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "fe6402f020b23465070f4366023a868893a1779451f2298a88c964fa72d47882",
+      "flights.json": "04a829d36b47242a6a71ccb520d0bc1375cdc4ddd9f4f83ed5cbcfd1124139e5",
+      "job.json": "c6928d656142a5b552d6f1b735fb503c7bb6c417785e3675912ead905fe00d39",
+      "metadata.json": "8fa28ca11a1bd439718ae67500b48ba2e62ccf9e9ef052336aecf93778596ab6",
+      "mobile_resources.json": "49e7cdd946ffcea37bb1a109c0ab0be3003e0452b00f6ce85d4998645b601349",
+      "sites.json": "7551fadd3202c203713d9164e5e9760d1f0be927daa0ed249c033cf72ce02673"
+    },
+    "name": "case_0011",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0011",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "ca1e5d28e8730447326ad498d786c3938c14ebdc45ebd8984065fa2047a9d9fc",
+    "content_sha256": "4ed8e84660974070f0ab57fc451901ad90343b3f71ace0894cac4f7d1d84f507",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "47f893a2fec09c7efe1c92047d0aa107b586865ec0cc80a0deccd2bd2ddcbef0",
+      "flights.json": "beb780fe473d50b0f76f7ef32469ed6e83fd896c418f3e99fb9a8fa71172de99",
+      "job.json": "339cfd924e6a4bd77d79674d2948f27c105c492a5cb17cc967775ec95d9a130d",
+      "metadata.json": "443d06a860f08607a29508bd64e97edf6810230563d2cc27f3a83b785eac4801",
+      "mobile_resources.json": "5640aa00c2b120ce72c155f97795ea246e53cbc2b8e300a21b7d8c0ea83187fa",
+      "sites.json": "d77f3481d2ad2d943e37cd8e507af827d8fdcf6e2075bbbb576dd902fe9c3140"
+    },
+    "name": "case_0012",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0012",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "bc0e5e2a4677596b9dd9eb266cfb37935c349779398b7559fa1e891aff74594f",
+    "content_sha256": "e27f7954dc0e57113bba5d7af1349e0ae7a33908e597c276e44e9a5a556c3c0d",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "676cd0a9541505a93a0d3af35c4a52d838c5a8b23c7615be9730837e0736f206",
+      "flights.json": "4d27dd991fd399a8d1a80ac2a00762f8097efab25aadd7c481af876fb8efaed0",
+      "job.json": "5d6e174669e74f46101a8d395525fec32032c01de359b7571624b0472804dd7d",
+      "metadata.json": "19b15143ca9429edf2e82850369925486ac84dd53d5a27ddf48872fbbc5e9f06",
+      "mobile_resources.json": "3426e050c133f31f06b9ce327ae755d2e436435b4f6a03e75d38b5c35bebfc19",
+      "sites.json": "c70bafddc3fd6132bf251c0269305e6075bbaecf45662a0cd8dc29b56888cfe8"
+    },
+    "name": "case_0013",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0013",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "35d22d8cfe9206e084506328cf6bbe6470db698ba8bfaba78b6c1a49aaaad581",
+    "content_sha256": "074da09609a92c66bd57ca7b28bf0baa9b987a61a866a1fde9e34d5cc4b05af7",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "0dd3d28caa299b309b737cee8804a32709b54ea9f4f870b8df1ed10f268d6752",
+      "flights.json": "b8afe9c8939bb5b14cc82eb649df7ad6ca5846322dddbe2b0b82bd5cbf783feb",
+      "job.json": "53275d6092dd4a4ea935052f4e08f189b99d625cd8da5b282fe2480146541b95",
+      "metadata.json": "95602bcaeb7de9bce4b2d1c0dc90d6cf21d51c8d3db79140d43d87eb20539e94",
+      "mobile_resources.json": "848bdc7833e9fba820e197cd47a37a36f0df3570fdf8e8f1e363d5d9fe41f836",
+      "sites.json": "32fbe4a8da44b1d73249544d15a5bec235e076aba2ea8aeb5ff57bcc0727c369"
+    },
+    "name": "case_0014",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0014",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "07a18d8a49375ae4741704ea2488bae9a5415064078b78dd6a33a7d4f21aeca4",
+    "content_sha256": "37e1314d98353667af94629d495be4413933fb574c3912c723f7c52cc597aa09",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "b98e67eec83644a11cb958e22fd7466c660d4be9e1ab366c703c480f2c58b4a5",
+      "flights.json": "8768f9417376351e892295db6dd91f643ae71e3dd1e2691a1d8d23263816d357",
+      "job.json": "b59e0d302a0031f9fbd000b5fcac97453cb6aa5b64286aee29dae442b51feb01",
+      "metadata.json": "772927bc2cb5d7aad3d089accffedbb94031f5cd1ac55c9f663a11950017d3a2",
+      "mobile_resources.json": "562a18882ac0da1024213ba3eef1c29e84b04a369c9c1148a5773a80020cca0e",
+      "sites.json": "99cb2407c09880ead56095ccfa6be51928d3111c03293b7b210f881d08566457"
+    },
+    "name": "case_0015",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0015",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "022fe8adc8994af52cf3669f7dddd8f276200a70aafefe5e46cf7341bc4b39da",
+    "content_sha256": "f0aeeeb258f702d85f043174d276f36ad31dccf61659d442f9194436113c2572",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "81751a3b96f9242466b5c3d178787a433b323281f0343523c2d9d59fc0c848f3",
+      "flights.json": "c0131223b263e42484f377691afdf2a3de9f31b49afb3a7a92cd109d64f547cc",
+      "job.json": "393c953556aba4f9f42019f7c95a6019d5fcd56cb41f15d9ee03739461e60c71",
+      "metadata.json": "e2f79398f7068e59b0cf3c3a049513d4ebb4cb3b2a6cce56e24cafa73f4bd29b",
+      "mobile_resources.json": "bc9a12b88904a353640c43d0442f251efcc4dadbdb002e0d9e8f4a7e6b65b678",
+      "sites.json": "f66dff066a2100f52e494914010df0ad738956b23a2b986070e81d18fbbaf2c9"
+    },
+    "name": "case_0016",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0016",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "3cd8b47bb62bee33f9d3decf47d9a3213673862bf20a3f8af2dcc3d11403f4ff",
+    "content_sha256": "a39d881f303ce112bc8bdc4cf3342d537c4bf5a1da8df68a8cb64cb012a2d4b5",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "4af5b89e996837781249a1583b5ec2db53d1d165c2a00fc8b45a3caa7e01b3df",
+      "flights.json": "e4e304475179a515940f48320af96a43e8bda57561b2581c468fa0217492a4c8",
+      "job.json": "c3ed1ec785ab3b61b8f9c4a9e5eb42a9bcdf5ac1ae87c9a5789b995eb592f14e",
+      "metadata.json": "e49e95867d650c9670ceb034d5e06ade0ffb7ed5ed86dc03f21789a06afb4193",
+      "mobile_resources.json": "488364c8cb7fb5f6307448ef562038953431f93b0756d4910b195dd426fd1dcb",
+      "sites.json": "0ec2d42427a04236db93f1a1fe0924fd3a0d0905a48f433992698ae60746f092"
+    },
+    "name": "case_0017",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0017",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "cdb0dcfccf2ffb533121f8160eda2856230f698cbc4fe3aa6c0dd8342b9b07a9",
+    "content_sha256": "685eb86609e41fcb2dd8e8f5b153dc6c89e8a370bf0aabe2237f770ecf74554e",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "9a447f2900730f0c3e22f74923b0187fedc2a87ad2ccd527125f5d783a91b6ef",
+      "flights.json": "3d540184317b889e6ff88cdf9ab0037892cb2e3292fc460da47d73e79ddee0b6",
+      "job.json": "2991812b6fc2ca6f6e0d2221ec300ac3ff3e3202095b3410d62edeedcc6363be",
+      "metadata.json": "95501aeb41c10ef928c3ce4666fce3717e134c5a6e9d112d84186a2b4ce276c5",
+      "mobile_resources.json": "57a258103aae146f37af5adc1eb934c6e6b93fe3461fbe12f1dc41a0b34797b4",
+      "sites.json": "f1155aa953fc71bfd574a071aaa5ba1a5c1ce14c3cc8c432ed2efe12cd4afa94"
+    },
+    "name": "case_0018",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0018",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "a52990b1ebc97915bc6913cf5a08b7da27c502a880df3b4fd7d98f0216a660b6",
+    "content_sha256": "3340efebba3948b2f43c567b5cb06dbdd4998b1224393900e6d27e0d06959bb0",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "8b6f511cdaffd8eb0d2ab68ca0584ac4ad9e1a49396606eacbd93b0b039257d5",
+      "flights.json": "fdb7e1f41cdb5fd9acb4551915130da5caf337f97dcbef43692831d0b0cf1b52",
+      "job.json": "fbc11ebc8f958d7d79be86390531a697e23b100e9d90a54bc9a946ec41d358ae",
+      "metadata.json": "a6e5abb1c7dea6dab46d7eff7fc158d486cae2f843af2eb4938c34db9f5f4000",
+      "mobile_resources.json": "db24fd07cc704c0e8dd79e7192e34433d731e5a26aa9f7d1ea8ac019084d5e06",
+      "sites.json": "7508b238850f2f83e55bb233d7dd70e6c8306952001059bd36d652d92612e0f4"
+    },
+    "name": "case_0019",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0019",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "55d6a99fc8f6f8b047e9be5915f29b908cabc07b8ec0121199285d3171ca7181",
+    "content_sha256": "a14d66caeabea09ddf73d4e479bb28b0021f2d76fc67a146361c06686afd6bc6",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "70f0e3b86b4a118e334f2aecb7f08c7b10e1020f7a786f1ccd9aeeaee75fdf55",
+      "flights.json": "55205a9e3f3ed8a462acc5ec1a929d12937890e1a90abbfa573d38d5cafa0fda",
+      "job.json": "e178ebd2fc3ad316f233d047590c7c3270b6b2a5d4892fdf7c668a1366ca060f",
+      "metadata.json": "25979055852a2edac664ddb79b2b06c689ea522a4f0e71c2a54d4507bbc0fd87",
+      "mobile_resources.json": "dcf595b3df26173fa1f9a621c0b99c9f1c6b5ed659b5257184857569fe76fa67",
+      "sites.json": "b4455416e9f964e168564e8411738711514bc125be5fd3867182403504ceb03c"
+    },
+    "name": "case_0020",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0020",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "e8e97e7a18225e5911e8762e5190619ee373bf7db6861a218ed3154bf7b3ec64",
+    "content_sha256": "2c28da6efc814b2204d7881712376482814a9b8133d66a92adee56c0f69aa8c1",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "c4de93c6254c609ad597353fcfb8cb281d46e388563de0771fa3de2a5b378b4a",
+      "flights.json": "2988b34b81366cb9cfe830d8813d47f0b898be6a83d217c31bee723f699a4f39",
+      "job.json": "2cd8b707e1a663ea0e0205475fc5ab82a80f57aef000650c60077c8c6d28b510",
+      "metadata.json": "996c90230d297a49b4701795dc607cffdc669d7fde971134741c1893ba06fdef",
+      "mobile_resources.json": "db01cf55308ab41947e8da2388f8d3b0de49373355fccb2600de8391ad172026",
+      "sites.json": "e5451f3b88e0e8347b123ef846e1355054633293721f7fbbc377fc2ed349f890"
+    },
+    "name": "case_0021",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0021",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "283b5b29d4b72270021f01eb69824f1e06c9b1d6c771f6ac60409b9a0d89da2f",
+    "content_sha256": "33153c556df7da50165d455781f92175ce2d9ef5c4b81840bc6578402c32faeb",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "e39c63367af4b8af01fe735fe63b173abff63be0c7733dc9cc37267a5849e2fb",
+      "flights.json": "b80b410fba1d47535c90e1d7b64c90c3017b1bd0436477ed71287ad00d286bfd",
+      "job.json": "4225e79c45d34d51228f42eb31f5493a410414a8b826e64b7b90b918f9bd1459",
+      "metadata.json": "4c7e27404bd1078e403507b625d7263863b8b2afe40f99170718f9247daa5518",
+      "mobile_resources.json": "d66287de61cef70ad12f39c31593ded1b2c4b74a4e95ab778e1c9c067aa95318",
+      "sites.json": "54b21f360c4983f38289a76626fe63c90bb515d36ab928d2714ecc0515f25b03"
+    },
+    "name": "case_0022",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0022",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "232406388a0e8f25f9bcf48869b948ec58c6f5c39254cc99da8aff4c56c58e00",
+    "content_sha256": "581fa50c9d15c34d73cd8e8ffaa4a872a3c4ac53d942426e43eea85eb5095b4c",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "f810528df50d3cdf727b3503a45318b4f06ccaaeaab6468e8e560fae16532675",
+      "flights.json": "1486cfb20ae31d36f6f6da062863ddb7f8e7dd1a968de9a8808eb126b24fab9f",
+      "job.json": "79be1377cef183adf2e2a7dd816946c01d84dd0635b989d02acf49d1d4583e06",
+      "metadata.json": "d1ba1fa6f7d1e64286002bbf55bf58d29ea96739090c4cd3749081af5af62281",
+      "mobile_resources.json": "b1b0dd07148c0748263e2fa5ec0bf23daa0bcaa97b58b8ac6b998ac9d1f19236",
+      "sites.json": "7880aecbd6196bb69839550f302908057c30b145ecfc81883869630ea57283ba"
+    },
+    "name": "case_0023",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0023",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "275bfc22c21939a4472add178b8d7ebda09d07b89340e72fa5419db140c8bd89",
+    "content_sha256": "5637aa6e13662509bb3b38833624144b865bc133a776df2e1ec7a6cf554e0af4",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "2a307a8a85efffe9df3550055762f7ecf16fb1f491d486187b8de8d3998d7486",
+      "flights.json": "409eafe8a5a0f9f9e2948113be83a67b8df987873985761764d5a2ef01cd4eb7",
+      "job.json": "8d3733fa60bfca4e4a755e35421720acd4c6c2ea932795512a46543f3b58cc88",
+      "metadata.json": "a791add0283acdc49a364877422c11410b1b164801ba30bf51efcf5872617199",
+      "mobile_resources.json": "96da481f90aac64f0f5118718c870414c9c4f5f1a8d93b54a961c218e7379fba",
+      "sites.json": "f53eab76ddf6858fc363f1de41dd0682e4b1f5d7cb40291101edecb55ae6183a"
+    },
+    "name": "case_0024",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0024",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "8c14f2ac19cc142f41a344a0a73a2d6625623f49992b5c78b1459455bf12634c",
+    "content_sha256": "58957afd7f92d5823573ed52ba3fbb7a6335dad2848d2c3923b56fdb21f794a4",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "435638779cf7b4694827cb4a48961a1c0366467b851aaa961e938cebb01a6b59",
+      "flights.json": "7be89cb20b57ff7d14d3744e02d3a537ab41f3044b77038ef81eba9a2931f374",
+      "job.json": "6116be70acc916b4ed4c61aeded8262bdfd304eb8afc8b32ab5926cfe1a05950",
+      "metadata.json": "cafd77d4f80f5b5e40e7093fda803806b8d90798f48edebe72f44721260f7113",
+      "mobile_resources.json": "4fcaa2468aac967d8ba00b4f62bbf64c682ef71a892e28295d1849faae1678b7",
+      "sites.json": "558f8b3a320dc474f1628ca03308ee1c56efb9b997a42af9fbc1d7847f3fcccd"
+    },
+    "name": "case_0025",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0025",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "f30150bb5dfd1172a4696bb84e8466bd2920fa23b2b66e82b09b93d2d8235946",
+    "content_sha256": "b392fc24ce132b329bd5747fe7861c35a10e4a36f1b9118b99957bab3eea1a73",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "90c87db0a3d01c70dbb8af877424f8f5546e28efd92576355497686b355f8c0c",
+      "flights.json": "40b0e2098887a8f86fd452978137e2f0367ee3b436acbec4aff39fc906ce7f72",
+      "job.json": "ae847bf7bab2ed848235d4326b243d68bb98a8c0285fae7e5f4ecb0443e40b08",
+      "metadata.json": "9b7f38b846733be4270663ae7f73011d101959a958c180060821d9b30dc6063a",
+      "mobile_resources.json": "08356aa35495eba8cba98fd2b5e71e70dcda760756f830f86aad7bd6be1298a7",
+      "sites.json": "cf3ef2559da5e88a0e6d33e7326254afe4ae07845d48633d198751157fdd6789"
+    },
+    "name": "case_0026",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0026",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "28f59c349aabfa9f81d1cddb028a6999d3a9eb48f34bdac1fa4769395168b881",
+    "content_sha256": "7b1aa153fdb2a00a5544b451d136003018cbb4bf43359487a2f1380d8d322102",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "bd6d74ce9df840774500ebad8fed540475da05b8901dc2d9afdeed5ff604205a",
+      "flights.json": "919feb005a72efff16a33349e5600c27f5931ab5b4c694941b54c96771aecf34",
+      "job.json": "0ccdca5b386866f403c65cc1c0395aa5699a086c3cb264fd26f504e24685fc0f",
+      "metadata.json": "26a686d61ee62602dd9c559c7c7563e8d591cfa901b21e06134e630ce00576bb",
+      "mobile_resources.json": "cd6488687c4f32940d931494775a7c778aeae53a0f4d3cc2e1fe9cdb6a868426",
+      "sites.json": "f54a6533150593ce54308756c33fe9ce50b712841ff5f55dc86ab6d897b93454"
+    },
+    "name": "case_0027",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0027",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "1148cb77ccbd1bcea009834025faad420f37b94de686c24fd6ff2480fe7b7954",
+    "content_sha256": "9d64e5a848eca74fad29e6ef8f9a54735fa5a69726811e74d28098debdda8c7b",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "6be453eb268143a846f53e8d34272247088bac33cb5e5c8f3d2b46ed8bb7d787",
+      "flights.json": "72633dbd92a10cd380648fb6000b6ccbac866eca961a6444dfcd1c2824fcd60d",
+      "job.json": "5dbb323e8305d5ad34239fe0305dd22313f96a63ba39627898b6eef583465e48",
+      "metadata.json": "5731f8f03324425dcf6ddc3d745a69cbdd3c79f16c29ee02b5b58b2cc2950f31",
+      "mobile_resources.json": "ef57b4a90866ea3d2051b081589ee2082ee2bb0f9afcde302929a6a6fd304612",
+      "sites.json": "ee85b4368b2c17995ed1af88de1d7464f430d16637ad9c4d11ab8fb53db607ce"
+    },
+    "name": "case_0028",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0028",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "f9a099c945dd1cd7bf6aeeeb37cdbda3ad01401181ace21b3e30c4ecc13076f5",
+    "content_sha256": "eeb0a049440d4525a3dc05d4b9e03c9ad3373f6ca67ffb0ef7c65dd667a29df0",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "1d707c26dc2abc2d800f4646a470aa7bfdb87486dffe2955f9ec8cf6b7fb2f0c",
+      "flights.json": "f2b507850e10dfddb9fbe2b87fcdb0eb5a2262e84426a03847508062f81e6bf9",
+      "job.json": "a10a3ac1a7b40459847f1d9805e6cf8eed7b954a9461d8cb9c1f3d500c3eefb4",
+      "metadata.json": "12b0dd70da927ef12a932691a6a8b34c54043742f01bf068464b6a5773011e5b",
+      "mobile_resources.json": "09d9662cfa7b2f57f63c317db97fc45cc662f779105afaba16694e855d5a4a88",
+      "sites.json": "8d6033d488b9d8a963d4aefc5b3ac5ef522c23505990ab2474680106c579ee0c"
+    },
+    "name": "case_0029",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0029",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "ad4a980d24f419d585084c43d6105f3bed800380571c95119aa11bc36e9a9baf",
+    "content_sha256": "9364312d2bbb4bc9ce13fec27370c3dffa0231b6eca20613617dd0e528bb5f59",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "2672754f0451c6317e8bf3b28a078a6aa6682a01c63c54a953407ed1541c09ac",
+      "flights.json": "768300286548c2e7b3a69215b63f1c94aa00c1527fc0f6e0e018450657f3bd0d",
+      "job.json": "6a738891dd9b90f5901ab6b1c818c0b324fbc9b2e3103393bfde114e17d6ec1b",
+      "metadata.json": "34f9510e56a3af53881b5fc1a609e616a6651d8816300af5b24d40bb11626299",
+      "mobile_resources.json": "9eac06fc6b7b1af675018493f44352a2e2dcad2a52ceae3efdaa831592b17747",
+      "sites.json": "18188d7f3295ca62642d4e837ecde987fcf6f4c4a0a2f60e033c35e4773fd038"
+    },
+    "name": "case_0030",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0030",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "c2ec48ce4d4c6dd04e8a68b1a6395fd0007cc84ed3a6dca368bd66e3cb975011",
+    "content_sha256": "03571fd1618fdc12763604b3f4b328fa1c61155c22a89ae4b4c7519a4543cfbc",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "ca0a1f714c2b71631de6e869f6d326b34e323e2c8b9a7458a8078719437b318c",
+      "flights.json": "776eb27e24a1a7bcaa6d559743cea3b1b4fa4f6ee6c8ae54fec5861ece17dbb4",
+      "job.json": "547e98bcb4cc3b05e0cefa59e11f88738c4d2d0909ea582a54065ea236751baf",
+      "metadata.json": "c8ace3fe7b732a0dd2111f5fac09274e4342a29f9aa5c825ac3a0a3be44ef42d",
+      "mobile_resources.json": "a2f57f00e9192cf78a0ac9f439bf94b17db9ebde9cd461fe4b24097cf6b76681",
+      "sites.json": "e0972a8f2958a89876d1bc06338036e7f2fff3dd1d38a2f1ef93021c34b0f26e"
+    },
+    "name": "case_0031",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0031",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "f98c0afc67f7454e6cf5a275b331c05b41f1628173f21a86ef80e56f071124e7",
+    "content_sha256": "c69d485425aeec949d2df1da0208245b612c9c07e1c302391b4ee21351d5b3b8",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "b2e93762aaba655b343e12b3d9cf7a933bb949321f8986bfcf5c69f9b5b9c25c",
+      "flights.json": "d1d914d9ee09b3cad6a9d70b9cc0d721576afe7d5a5bf18d55b9a6bccc253ccf",
+      "job.json": "30ec2651c786b4879a69a5e6ed3b4f4d64d3eb7824a3741baa25e745273882bb",
+      "metadata.json": "ddc3b873c57b2cffe2057b605a33ff455894ec0f13a1fd9bf0006008e126bcc0",
+      "mobile_resources.json": "675b597f5e8c9bbb437024634e84ef4aa5c93d2f9859eb41fef93dab9cbd59c9",
+      "sites.json": "f9758e4f56514e406fc8e6ccad4c1b14adeecbdfff02ecb577028c0290fd8b7d"
+    },
+    "name": "case_0032",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0032",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "eed1c11eaaa4cd0bb0a1a5e9bed63ea153ec68df26979dab5e14aee831ca59e0",
+    "content_sha256": "a3c997601eb3e9ab148b30f3548d95c1349b140ea4781adad5232059c416aacd",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "62ff916da81ca51cc97207bd52c54feab3577ab881577f2b0522cda52cff24f9",
+      "flights.json": "b88cfb4e69af10990b1fbe2c1b01a90afd5a62f58ed803353f8831453c216d8d",
+      "job.json": "848f76919375a335adbe19c890d9287c4326b20758adfea50d24878ae51d830d",
+      "metadata.json": "a66bda7c64a3281bde08aec9a865d3b66b503d7b56cd0809cc18b567145e482e",
+      "mobile_resources.json": "ff62bbc1753d474d473abe1adf24bb338f5f6f5d0f0f874b0fb4deeaf9ebe2e3",
+      "sites.json": "54cda4bcade81b2b917ea62f3bccf0a2d316bdcb092da38700af6483559bf422"
+    },
+    "name": "case_0033",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0033",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "bc84ce1e0f7d4ab201245bd27ceeeebd47211cac50326b23ed9fc6411df8a8c9",
+    "content_sha256": "70a4b4c9d42a2ea0438250e39a21b3decbe101d15e9084538c9c67cad46424a3",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "9b84f1abf2775b10e9f81e41f8e77f82a088b627443366b49053d6f98b7c0964",
+      "flights.json": "cfb9bf95d6083140eae813ad4cf9d9737b17db9c5123cb92fdbaf2373ff50962",
+      "job.json": "f49d919f15605cd8d554ae213be922b2aafc2af0fdc9a35fb76a060ca07e2e22",
+      "metadata.json": "d338fa706a3a7333e81e0acbe4cc87cdfe156411239f16380c8e62fae9872a46",
+      "mobile_resources.json": "54312a7327ae7cf81d801453c63377fe53c556460c4daf0e6ef9e55975f88f6a",
+      "sites.json": "d390b02d8f77847398c7bf4faed1d43c78437c61f36da5064410c6d40c206754"
+    },
+    "name": "case_0034",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0034",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "9e87af2e3bb0332823413ece7c88444ee094b33758da58f957d9f5ed9a750bf3",
+    "content_sha256": "eaddf7c810d1afb1d5c9f4047c4f54b068a052a55676d46a8b3c4a49e65a73a1",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a26bf8e9a6a468236abd867f00172957d4bbfb6beafd7db490ef91af199ff38e",
+      "flights.json": "7975ce231e036a9f0cfa9f1f23dcfac11909e458a40e871b612e0455178387c6",
+      "job.json": "4c74856f3da0e39c0dccb75c7b812028423b42c1e41cb78ce248e282bd9d5594",
+      "metadata.json": "e60ce44868b05a951180e1e0604551726ebc38833f73922ead4368b529d8bd80",
+      "mobile_resources.json": "2faf795b1ed771f50c5d153f7d770be07686bc0e545ce500b6b2fd0407ab734a",
+      "sites.json": "a8d36bb54794e97e12b4fc2c0cc7db20cfaa93a5b06e9e1a4b64cf0b51f2be3d"
+    },
+    "name": "case_0035",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0035",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "16cd8f6df57f940b23f57d3a2f333aae44b39ea8907b338dd146161e8c3c58aa",
+    "content_sha256": "9466f9de9307980f703259a0f3cd2a36b315de91dd2842d78f5df9e385f755d0",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "ad1b7f663dacce6dbafff2ce9cbe730de81553ac5fc8dd0f6acad67c9a5ab86f",
+      "flights.json": "1d120a9346b4c5e91f4c6a0ec55a9c4eb4cf710f7c8baf130c2b501a39b9050b",
+      "job.json": "6d6f0896239837e41f6427e365bb05f66b0ccb4d121b610587512a34c6bb80dd",
+      "metadata.json": "60fdc56902bb4f60109bda1dc179582d648e011caa88830a13801893e8649f15",
+      "mobile_resources.json": "9cc7986766cfbe876e75b3e6501bb72aa3502b49d1cced73e6ad85df200c7532",
+      "sites.json": "4f0673480af1ff7582cef3d89b3fb745fcddc91a1e0a8517438ef00b3faf0d50"
+    },
+    "name": "case_0036",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0036",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "636fad000204d68158efd0335fd406b4b2effa179cf4796613968bef8287eb37",
+    "content_sha256": "bd08866dfe4d811429a090628c58cff24213c839b679ec33c848eeeb65623694",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "54d3c693554bef931c0426b0ef7764d9477c8a80034d36a973b6ae72bd9fbcd8",
+      "flights.json": "cf63b670e60e6ce06f9d1179ac7962d6531f5b93b0495dac05c858e94e4bdfa4",
+      "job.json": "474e9ccd30f46c37489994cc8cb90591688701099d7bed11b78e69ede7a2f982",
+      "metadata.json": "8abe4d9e24dc194992ff361a7946f1118241e36658f8576c67ce67e24f2ddeee",
+      "mobile_resources.json": "29ec1590a4e4a0dd4a9e44fe913d3b6655749a80f71e9327d51c03d4a4880917",
+      "sites.json": "131a373ca0bfe041cd9c0d25fc2d2389fb6285b7b965aaacda33375fe3f1bcce"
+    },
+    "name": "case_0037",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0037",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "bed48ef0d314fe7cef85a5bf0b7937769103a3643b4a950ce0f0d09ce515ac6e",
+    "content_sha256": "18469d0f5f2c1949db5bbd5ccdcd4872782d074fbb16f15c9ab1037f5e0514d4",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "b4cd7839f7a8e5af2274340ddef22a186bf2025ee8f8917ecb87bc8d04ee5818",
+      "flights.json": "5bdca3cb78e12a286392abdde17404fdb9a95bb61bb9a0f354557eb1850b47e4",
+      "job.json": "db2c56d9a6f904bc629701d3eeb154b699fa017144072d2dd4d0bd7d13915dc4",
+      "metadata.json": "065e0bd8461038660b796187c09165847ebc271da3881b5144bad13bb0d4a362",
+      "mobile_resources.json": "90b3551e1b4778803e834ebc5c33bb45f4f6db7d2f5942bb27df4002e876e188",
+      "sites.json": "ae9466027e724e2c49be2833babd12e0dc271b04be9cba07ef8121a0064c9a22"
+    },
+    "name": "case_0038",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0038",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "aaaf41f305dc6d8af572cc7025e2597096fb0a7b7c4952a77e67c5c2924308a0",
+    "content_sha256": "911b899b1c02f06756228245340e1ae7cfac8d3fb79d8b1f55eb28e215da20fe",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "14f38b45bcd04bc2215a57b8a65b7314f1a2617138fdc6ad8de07368ba30b0a8",
+      "flights.json": "6e8955e628ac63642cb1c8f23942bbc18b4d36b37d3b2e78ddc10a6ba50ba4bb",
+      "job.json": "59f45fda51c5dae2cf6087bf6bf0b64496d26c31a8644937c65830e47af29c3b",
+      "metadata.json": "0bf656372ffe0f71d7384a0b1eda2a67886b36377494a4e8f94fc5ab9322402b",
+      "mobile_resources.json": "77a1eb1767f0a5069ed61f92b98194b16c2480aba712b0aa6caaafe14ecf516f",
+      "sites.json": "c7f1fa61a05861f40c64fc93b7b80d4953a177ec299b3fe16306fbc194066fee"
+    },
+    "name": "case_0039",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0039",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "bc53ad147e1002ee92b66554c3cdaaa5d19fd63ab59229fc65ccf8eedb48ff78",
+    "content_sha256": "ab33a745e300801106daab21987b8e9f84e31113e43914898e7f1b6eb7127528",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "37979c38caf398bcc41f1aa7123d665f52e04b717f5bfbd82a257fc696b7b8be",
+      "flights.json": "9c186fb7501c42ba043d27ac49ac04161e8b5c9284917bf504b2c141bd21a1e7",
+      "job.json": "c70b447f10aff1e5fc838f6a5a46f2d0ce58def9c3ff9d229307ca73201a4c97",
+      "metadata.json": "495c6748b01a4c8bada5cf8c2ea5e8fd92bc575f8c9699f6cf013d42d8d6a47b",
+      "mobile_resources.json": "fd45c16b073ef68755b040983f1ae7654cb499d2d1d4d033dfabfb03031e54b4",
+      "sites.json": "00e4462970d184f470e8131a6e620995f04b07c937c36f38db5c2212064fdcdb"
+    },
+    "name": "case_0040",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0040",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "e3557652a538b5e15c2787382a44a717099642a9c065aa805ade99faa00f44ac",
+    "content_sha256": "fb2eb02b5120a66bc8eb23b984845bc178315862e6509bc1f26a69ca98140568",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "6291ca83fa40b667b731a3d6606d43aa42b8965b50fc6434ab124fb0ef60cca1",
+      "flights.json": "7786014d71ff838c6f3d5563c31149546e1d482909b5c75092bf19acc1450f28",
+      "job.json": "708dbabe14c431408bbc454d7209b4dda02b4c26c6e4d12499a7aa75167b2bcf",
+      "metadata.json": "0f5484f99d0623167ee4831e5d4c02a6f6b00d0ad5aa85d9d434d647c7755f03",
+      "mobile_resources.json": "8e73a67c3326fc2ac9108114e9e3c6ac5838fc97584f0c34fc1091ce38c7b65c",
+      "sites.json": "287dc24afd348e786149569574e5ed36df7b7ea44f68bacb317fc166e5f23686"
+    },
+    "name": "case_0041",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0041",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "b361de35968a8a51e620228460cb6b589f302b5d2300fba8540b5aac27c58821",
+    "content_sha256": "8b909b3af552bee765377de8add44691ba4d691daa326f5083d73b613d374449",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "73ffe071e8cb54e4bf26392dc92c71dfad756f5b8bac1b59429db1fc54cd27dc",
+      "flights.json": "197331ac7afc0ffdb9ec04c96a0f0c66d6fc20d235641130158e315da6992002",
+      "job.json": "3ba311b5af3be3195fba83820b23847f298d57f3e010f36ebad65779738f1e1d",
+      "metadata.json": "54d69f924f5907a553e08dde2d1c92afb7e94c508786e15f046b17d71c72e807",
+      "mobile_resources.json": "3cb68c9ff8cc479b129fba2d5b80c6cdcae478a5a369f5ea9512849968ab51a4",
+      "sites.json": "46e0a5bd8df17dbefb4cc1910e0929436c7680f2c14c394660ac17ffb5710c4c"
+    },
+    "name": "case_0042",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0042",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "b40f68a86eac2f732dabc2956e37892c071017a831a9c91eff759fc60217ffbf",
+    "content_sha256": "aba8f7150aff1b18cf296aa86a4db3964743632d0c06b09ca5914e8af801baee",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "43af391293f47f70371136af2afa726eb0c903557a5c8759c944718f6cbaa45c",
+      "flights.json": "81438ce83667d0357c59cfebe7445c03a4e1d6c14a6b29692cf6a2e0782d5a82",
+      "job.json": "2901868c618f2474d6eda9d66ce4b185b57fd487061f6d687f35a646b5b72662",
+      "metadata.json": "46946e5a3c39393752ff68b9edcb0863f02dc974d91d84d71736f7ebeff0602f",
+      "mobile_resources.json": "7ea941e4c1aadc9a25880a6b43515a514fb42393b094e39d1867906991a8177c",
+      "sites.json": "da3f062bfe160f4047747b346dce0dee37a8ec874134860194e1b29decc8e45b"
+    },
+    "name": "case_0043",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0043",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "e189851639430354a8ce685b8980e5d1778623462863d3fe4b72f27a31bbc6e6",
+    "content_sha256": "c2fb11adacb24f469132f90e1a729213c0aa5a9fc1be8a1121a149b170902ea9",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "b0604d4cc7538378330907b6c48b6bd38a24b1603a1cb67b540b4e8c0a8208a2",
+      "flights.json": "58e3e4cd9ee41af3edb0d7e169d51de214bd29884f31ce4e3faf04699fdddebe",
+      "job.json": "5077e1911164aff4f104a36e159ebf297e87cb9d00e81dbd4ab4578ba1dfd08b",
+      "metadata.json": "904c52650f28c706672ad27d4dba2096bac7a7e01718c64a0336f34641db56f0",
+      "mobile_resources.json": "3ace47bf3906e73752e16c85c84bee149224a513ab49602a8d05739abd69bd1c",
+      "sites.json": "4c0cdefafaa0f9da74fa0f2ddbf5ed8f068c47b770ce8fedc531a21b7077f576"
+    },
+    "name": "case_0044",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0044",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "c9ad1115001ff951d4297534ef33d6d6403096cfe9b8b51ad1023e2763dbec3b",
+    "content_sha256": "0ea1b7ebe8d868b644f7c36c8d7276d2691e533b98f3869fd3eb14f3cfad52e5",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "1832f51f0acc3656120f8beb2c562a32caff9e144fb42c30d90abe333671bb99",
+      "flights.json": "3cc6e1ff80c9c9967cbb2b88d3c4c535b1ff2b04f6700d5c672d37f5466101cd",
+      "job.json": "317afdbf4f70cb7c275094bd903e926328225e24873e5d7a379072962881d5da",
+      "metadata.json": "0994012e64fee17a63af748ad4e540b35454df857f75deb085271e6959f7367d",
+      "mobile_resources.json": "2c54d60bab09d458b38a30b179b42574c8569800e25d066785ae74dcb5111dae",
+      "sites.json": "09c206f0e7a41c6c99d3a596be55dcf57abe7c4f2f3434398bb0d6edaabb4c43"
+    },
+    "name": "case_0045",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0045",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "97414dc27c3e67d980676239b9d76639998adea42fc48a6bff5855b2f28047e2",
+    "content_sha256": "db2e510b56849b81bd2ab749b6eca6193b2f5c61ef4793efe900e356c2ff3743",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "70fd928f087f23c5ed14d0599faf74fe53c9767dad5981cf9194fb2521ac9bf8",
+      "flights.json": "330ea47589e900679aaf789bc8e2f0f043f281c88dd31e9435533fbab7ee6db1",
+      "job.json": "7170972b28e1239a87acc936374756b28fc7e945d0ac18d7cc6e2acba054fcaa",
+      "metadata.json": "ef8c8933f7e388d248cbb0c910aad7291891123067ad90526406e9e8339cf640",
+      "mobile_resources.json": "92609aacc332d7681dc507e48754c9c72169e3292fea49067c14d3da1b2595ea",
+      "sites.json": "aa984e5343cf4ce9e9ec808c8342c7fe4187e64c2be45df3ff5a4e552fa2ccdf"
+    },
+    "name": "case_0046",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0046",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "a3adc0e3bef114f4925a27aaa900cdeef792b8f393e9ede00d687c7f5280a20d",
+    "content_sha256": "1b4bc0b06f239b7b1b918235e88c7134a9ff415444d07b4b9de83d079557ed8f",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a9007f9d876527b067e9886b38365316fa461b1f6b8d962b48ea0afcef836447",
+      "flights.json": "715c6c0fa975b29068cb924ef18e45e6813433c9fdbc4fdd0fafb4ced65db799",
+      "job.json": "dabd1bc0811b0b7d84cac8ee5fbb7eaf7f08d7e311eea21842eb7df066318423",
+      "metadata.json": "ee1adfee4f5434ba046885e17bd83f042097cd8d85c9fb8859b4b977437f761e",
+      "mobile_resources.json": "71e77d96987f45909165f48ac3864f6ea754a5f3d80ac7ff3d9d459aeab4679c",
+      "sites.json": "c4e4e91cb9cde10c47ac02768205993112b826476a0ca08b21176393d08d93e1"
+    },
+    "name": "case_0047",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0047",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "ef4459c1f8362fc6c3104c08c3ddc4007dc48aea45ade8ecb071f216f1631cf0",
+    "content_sha256": "49b74bc8e05a618e3379f23e33cdd81e048e966b4a7e3e0e4e09daa8a6be7ef0",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "0283aa5274aa041bbe3f13f67eb3b0872fe508b7cbfb49f017c063fbd5b700d3",
+      "flights.json": "318fbfe7804d756b6ac0713425930e28168b99a8a021063818310a05d8894f95",
+      "job.json": "28c2716d3fddd6415609a582ed498621e21d9494de2e79b3e98e39616c58f1c0",
+      "metadata.json": "e83d743d8c8a2545ccacac46ddfb1e12f96096b9a5c44eb93c7286655d3d74a8",
+      "mobile_resources.json": "b92f8f13179e6606c7c02e123caa422bf5b5c807589c10a4167a7f1d6dc36f80",
+      "sites.json": "1a90cb784a01fe7a91c32119a710837cb6ea36d0a16fc4f9c9fb8d4cbcbad218"
+    },
+    "name": "case_0048",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0048",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "c8a2b7acd9d01bc405d5eb958fb9fd39c7bbd7d3db795f3c10686788d42b109e",
+    "content_sha256": "9255ac64610e20e45dbbb06b8c55433058b4375c15dc2b2fee7c62e30afd515b",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "646f7b1136e28fa4046c1c9ab9e5e84ed060e1fac7afda092e391fa466472b58",
+      "flights.json": "d7b3a38ed505a7498367198f61fa473c4560de395e213f3bea2b02bb3caf7cfe",
+      "job.json": "77cd092aee246b159f020634ea2e71bf268eb973d0edf310e38a7f65bb45ef10",
+      "metadata.json": "641e766d731b2aa96276d83a908979410004e95400e1e9916b9662f2fe931f3d",
+      "mobile_resources.json": "c50766ae96dc08c722c53f84267b73a15ba236b26554c60ac004c0b281fafe3a",
+      "sites.json": "d52fc97022313c6dc5225a9d6a8b4c4410e764953567f3a3ebd3112e709c1d0b"
+    },
+    "name": "case_0049",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0049",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "aaf8f71e0d18da78557df062b7405ad6ed37ec6de58cd913d7496e2a0aeb4936",
+    "content_sha256": "dbbac2d7ea48d62623cc467cdfb0423ff6f5cb07af3be18bf539c0ba700fca20",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "0a90c3489cc53352cc651b73bee7b46d37300b1dcb541049f96cb3e55cb21794",
+      "flights.json": "bf8c3defec3b51ecc6ca05e0978040cbaeed0407ed06750f624c365b840455a3",
+      "job.json": "84d529db7b9c1000a756bbaca6f37efb7563164afb11b7d6a1a85371eabcfe0e",
+      "metadata.json": "7e2677b537704ceacc7c155eff8f7c97de9bd115ce9d5d7bc02d1dd1241ebf8a",
+      "mobile_resources.json": "293a0828e10d565d3dc9467d3b91b75ad301279d719a7133a8e948c35127603b",
+      "sites.json": "0043fa736012a7a54a91e3ea85a346cda67fd94f9a5b17f06787a0b45d5bb0c4"
+    },
+    "name": "case_0050",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0050",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "5dcc022151846c4b7de806a8d448eabf541fa9134a29dc1ed69935d88a4a1217",
+    "content_sha256": "3e8af736ce3fd03823738eacc4d4365c687bd0f1bcd41442a3e275793c27131f",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "811a5389faad95a438f7fccc3583279f222fbc8e85067532ccdba72ff704b0d9",
+      "flights.json": "b7d8a895f0406c9939cf818cd2805c70b8468c58b3bf04fbbb76941ec6b41e49",
+      "job.json": "bb11a8cf39c2f93d5bcb479102d2e3a9c0081be0633ede80e74b4506cab9545f",
+      "metadata.json": "001eb80c102e33cec4ef5154ad5a535c3ef8ce7a08598948f5a434c03e0b1be6",
+      "mobile_resources.json": "d519e6cd6f5dd52edd84e741660f1fa07bfbde424fea5147335a26b0a79e6b54",
+      "sites.json": "931e54810b4855f0b4095de5426e24b285438da715fc4eb9deed6ff0ec7c5ac7"
+    },
+    "name": "case_0051",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0051",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "549cceed6f988a5dc6fddf53c5299fe50e9d7b126e169d0a8d9f4cd1e3c39db7",
+    "content_sha256": "6a8175bb8623313ecbbf595909d32e33fcd99463d1b2a39e4dae62d460ae33fd",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "b69a89c9bc0dcf72f1b2b436b7cbe4745b6190ac7ccfbf21963e7dd144570ec8",
+      "flights.json": "54354f022bd42fb77bec53077d2172cb5b1b1795f1331a76f4382329c89b0dbe",
+      "job.json": "c48e24daebfdb4cd6c410756172c8a07aa7a7efcd1b81115b6e533aed60818ce",
+      "metadata.json": "2c978b24f8509462eb2b952a238ada9674b550f5ef9cc59d4781751c70514d62",
+      "mobile_resources.json": "7eac67632f4526828f5dc29cf8e4ac2db2bb4e4953a1590cd81b2d62cbf2547f",
+      "sites.json": "9a7a665b07225cd19293e1c41e6e4c93f564c55a5ba6061ba7ad7460dde37bcb"
+    },
+    "name": "case_0052",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0052",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "cf629600143a958f4f93a56434fccd4582483435ba8ec15da204e641d01c25b1",
+    "content_sha256": "27d001d4e964519430e29f2c5350e14b4eb70aba2c7738773f056b4c7d8ee218",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "6f177731cf5668e5ab789f7b1e7d11243234c4d76cce60d354e47952a746d195",
+      "flights.json": "2890e74f806db74f69120df189a8187d2bd85d9ae6cecb06a761a72ce60fa768",
+      "job.json": "6efae7cf906729b558e8c8a75df9bfab6814ed0b817fddc945a105758d3e15a1",
+      "metadata.json": "30337149765f1a18ffc524623aca8adf81b432386657fba381ffd35adc7dbb5a",
+      "mobile_resources.json": "5ff86dfe4d38110e47f3c567c2cc1480fecb116a90eea0b9d100a69b3e301dd9",
+      "sites.json": "9cf6b843e2c44e674d6a4ede170f64c97eccf228056cd44efc2f46fa60788bd5"
+    },
+    "name": "case_0053",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0053",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "85ce8fa77f8df6314a2caf8e624124650c55708958a34fa68d4454045113198f",
+    "content_sha256": "60610b3fd3de4912ee3b72d2648caccc94d9ed667850f10786fc0e9218389725",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "26059e4a1e3b8ac245bb19b027e108ebfe7ac8f3beb7698e9cf74b2a70807751",
+      "flights.json": "0e09e9db0cdb04bd159db111fcc955110e439dfa43c5b02c7ab1c17da82adb90",
+      "job.json": "25283449b4d6470cc724097b71a24271e87b9b8d7ef5ae3be19d50ebf26752ea",
+      "metadata.json": "c1a3ef8ac25fe328e0caf6fd471d0129d4bb60cd5c60b1d88525518c38916747",
+      "mobile_resources.json": "fc010ea8cbb7508c4fe7065907345c36c712bf824f189dca16c499067b19cb90",
+      "sites.json": "3a804a308d749bbe9d7f3fd0569c28157701984416b1022936ede3f5485ad3fe"
+    },
+    "name": "case_0054",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0054",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "bcad58cc1ca0f7775a5c81b4e4819ae462303ec65262fb95bc6a4e7f25fa335c",
+    "content_sha256": "77ad1bb8044dc6cbbcac5db6b96143b4c30ff27a3e3bf5d5e9c5fee9394acecf",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "4bddff3b7fab16f4e2e1963379dbc4dbe6a1349a43647e836b0871c543dad952",
+      "flights.json": "4b7be27322a3e26823f1662620b53122c88dd9444756f43438ecd798d1fe14ba",
+      "job.json": "b2e7172e7bcffdaed1ff61691ae7c7d60d88e74b598468d29ea6d0cba4b90214",
+      "metadata.json": "62720f9e67452f7824e7cf09c270d04fc1299c16617f129b0b57dcdfa4c07b04",
+      "mobile_resources.json": "b44d8c4b540d5d048e4cbeae288679cbf2cbd6c84106d45b339fd0acfb8dc930",
+      "sites.json": "30904441abbe0a51e48afe0a8571da32e5d3fa367ce3041678ff6aadc76f941f"
+    },
+    "name": "case_0055",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0055",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "8fb6afa8888620242b1edb31d1e02d8272521f89992276710dad163927f86cac",
+    "content_sha256": "4bf7bbd9541822bf51dc3aec384e761d3d0f41d643be7d2eed4e3faf56b178b7",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "2a59e0b5ac2c934b6027580a9d467307175780c812ecc781bcc3faf1c80d8a86",
+      "flights.json": "54b69a0c43181b93b69f2a5bf58a84bee4600e2dec93ab38fb8657d0f93642a8",
+      "job.json": "3f67113c8d3a80c065c30fa0b068ee8d957dd746aba16203dc18470733d6039b",
+      "metadata.json": "42dabe3c81115bbd457ef96c9ae99f3d4506402fcb29723295444a5f5912989e",
+      "mobile_resources.json": "ec4fb978d8a59855353e30ec8b0bf8e9539dda798b6f1cff7f679b38484e1b01",
+      "sites.json": "6373f8be00e9dbf100dba4aabae78ebf81b6d4d0e41116b219f911fcca8805ad"
+    },
+    "name": "case_0056",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0056",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "cd1cf6389997ae8dd3a6b260e969ac55bf86c61143becf7b0ba86d19327ffe08",
+    "content_sha256": "72de98dea344bfbea46d735078c22310f52eea109b453918a59c10acb340bfb7",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "44d07e0394a8c3090cdcf03f72e1db3b0ed458c4d6af96201f53b41d67d2e6b1",
+      "flights.json": "07ecf4a415955fe219a2063303baa197d53ada22822f41daf542b1e28f8dd2de",
+      "job.json": "e487d63db01e3d946314da8371a6f4c8c932d4c1cd3a6a53c9ebbf836646cd60",
+      "metadata.json": "bda8ab49fe896b6c4be256d45623f81042223e1b5cf3cbdc013c457f85d8efef",
+      "mobile_resources.json": "4152241fc57dc8db3d3683d5bb40582183c5f39de2fddae9e1b6ce40372c2226",
+      "sites.json": "e52ddef6585c6f3d0abf261eaa956d277f5d144babbf9891486dac76219e52f7"
+    },
+    "name": "case_0057",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0057",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "296e605ea49f73a59e8c149388e5303d3098c5e24de3917acd9dde60505ccc0d",
+    "content_sha256": "29fff9f9256e3d519709f6653fb9bc6c527378f4106b6146abd712505d67498d",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "6cb5b6a6add38439bbc78901a083793d58faff6523e0e47aeb0764d6448e02ed",
+      "flights.json": "922b0e14e020c7fe075183f590050a8bd938113c88fcacf7c70641bae293ca60",
+      "job.json": "db4cf498ecfacb02fd67ebbe33323d09ec8611576214a12d9f4a29eeb1710cda",
+      "metadata.json": "07b27dd2965d5c28c3e28d3ac2cc36c84ae2a7678c9d79e32dfc2cb26698cc4c",
+      "mobile_resources.json": "920fe8ca4582d62b7707db501d5dc6c2516bc03a21f0e2e71cff6ec306d26e49",
+      "sites.json": "2b6f9568efbcd468aecf8e42a434daa3ea564ffd36fcded31cf2469ab937da39"
+    },
+    "name": "case_0058",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0058",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "d385a67c4539f779663c0349665ec614ac4c8b50dec65e2bd3f63059758604fa",
+    "content_sha256": "a64a2080f540d71f5d268da0dff00aa63f143d423ee34d3e49685eb2c8d7bdd6",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "bbff77c80605d363f8c2deeb41ba14b62dde92170d9df3cc5ddf2fb3295c3515",
+      "flights.json": "040a93e1675c13dc7176271c37907cf78b63c0b109da510fc9395e0dbb17910d",
+      "job.json": "e5f0ed77b0c95fb9cfb620b79cde2dd84a02e12a95b8d49f0eaee01fa39d0bbd",
+      "metadata.json": "0877f8be1d527800774d9f0fd90cd9131381f551f257815cd418ebfcc2b7bd9a",
+      "mobile_resources.json": "156f45feecc2cc6cd6c92cd42be86292ffe8a9f0c7982a1882f84b629d3f5c0a",
+      "sites.json": "cdd983dcc96200a257fa28c207c6903f324fe8d9079f808ed067cab8202a88be"
+    },
+    "name": "case_0059",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0059",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "b63603facfc7b7b2e895cf7c73a68405b050b77e3b785fd04b807c72a80b6c5a",
+    "content_sha256": "0386bcca554488ce47d1600f1cd0dc7decb5577040d3e085c72ce87cceabbce0",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "726b609bd4a7267839e4e568861f4c3eaa9ad9c14def999a9dc3be3109c0c0fa",
+      "flights.json": "8925cde3902ded01b79447bf253c61323b4bc8eed0b29da88dc2dda9be9070c3",
+      "job.json": "0295af50c69b8e7f5a170fc55d31f9a618b072361ae42263cf7273b554306382",
+      "metadata.json": "5295556aedf78c80270b6fc426bf95f91b9e80974c17d66cab7ebfafdba9139a",
+      "mobile_resources.json": "ded2e4cc1182b7183bb4602286c2c1f66fae03e69ce41f8bfb6e9363f8682a71",
+      "sites.json": "e9866c99e77e025f19cf19650af67d008eb98aab690063e1301087e7727b1c7b"
+    },
+    "name": "case_0060",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0060",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "29638a3656b957dbddee50076268db5a2e837d690768a295d93c0435b39fa273",
+    "content_sha256": "52acd18220b2c84594345e4d04aa95bf5f65a8e5bf981aacbf8b30c1d54b8e9b",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "dddc56df064c06e0fcec793a78903d4c21dfa42fe6b57844b97a376f2398d242",
+      "flights.json": "841f3d058b32d3666c15f18c6ae109c8b32815e041dc2eeedae3d66972d54b96",
+      "job.json": "25760b6e9004ff0e5e88a2af19cb7d9f891600c1285bcac0eaf47a75357092ae",
+      "metadata.json": "e8e09486a5a5a07ee3edd70e592299f4ddb59889e524fd13c64e4a1488b9e584",
+      "mobile_resources.json": "4da5b716f5ebeea49b5f0d8f15a56f10e62371dbc16a1acc08c89221a9d9b959",
+      "sites.json": "04476a3a61d8dd07528f3ef5d88c56ac764c7c52cae418cd82ff750829b70c1a"
+    },
+    "name": "case_0061",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0061",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "418072f81e74202b7307ca57826eacf4df5d62d7515e2d715efb08d15cd97c85",
+    "content_sha256": "ded34d9e25affa9d13dcd910154250417e5b79f8a018d97ee2700243548856b1",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "2de237c76a68a947fa0880bdb6cf62f07ca1a7a87b52faaef743c7bdeaee5a3f",
+      "flights.json": "4a85bb3b6a23ab1a5658ef356c89990c561b4987be6a551678b1534d494109ea",
+      "job.json": "5f2d9d7c470188dc6f84277020bb71eae58a6ab32644d3ee27526292c7eb4b68",
+      "metadata.json": "4ad2b9efe4e2777dceb727558da4d4c4b9e2fc24b7a3e5f3800ca09f3a5dc32f",
+      "mobile_resources.json": "04dcc2cbdacaf437c170dbaffc9d46de23ed9281174ee68f3c01ab9f212f9c34",
+      "sites.json": "91b308c58a10a77546b759ebc0fd7038fd9853c934794229e084250513a8ba3f"
+    },
+    "name": "case_0062",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0062",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "b287b9d2021dca5e1c79c20dfe894f6c2051d1640879a46790c738e42ac49fb5",
+    "content_sha256": "517e4bf94505f9a5764f02d9c78ea63a8ad5ff94740b2dc9d24b17bfe2c0d9d7",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "7b7a26015ec4978ab9435fb5da39543b752958f9c040a3b7ade98b7ad05ea301",
+      "flights.json": "da4ce489bfce691c5cd20e1246ea7ff085e26f92d23a0727bf65cebe0484f510",
+      "job.json": "38d419948a640df8e09cf55b0ab159e98e1c9550740f49582019f6b3db3b1a13",
+      "metadata.json": "d55bd6fe0a4bb23eefaf2b51e6b22a36c7b633008c3c9b3914fe287bd9b74994",
+      "mobile_resources.json": "09f86e15dc5830640a28f72f76a9b711fee2521755f80ec66d0b9e5a08beef64",
+      "sites.json": "b4b95f7ca78f6e75c33859e69eb0e673c71d8de1be18f795edb9295770f41b30"
+    },
+    "name": "case_0063",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0063",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "404bdacef003f4e997eca8a5420a2a345e4783a459e2e25d3f8f1c198f64ebcc",
+    "content_sha256": "e297fe921435a82cc2a272c4eb083f43b6e781303f7a5cf178f64a344b8140bc",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "e5b3596c24018d1a55eacf5f9e5d24e2f6ee3e7bd362bf1a73ba58294928c6d9",
+      "flights.json": "97307e46591e790daefaa1a8e940a48087ed8c9b625107802a8b0b5d28d17245",
+      "job.json": "f7a5927a1900461463be4e9b1787c011faa82600a0d70b673130c6811de57bed",
+      "metadata.json": "692dde2b574fff5696b7b74243ac5756037a3db3fd19879106f338f44c70d245",
+      "mobile_resources.json": "b8c4f1358ffb1a3ec5ead0d5c80ed00b53f18b60fcedb6e35be32322000f7720",
+      "sites.json": "4d9e1244f0bd549ffc197de85e792fd6a7b72e70306059fda501bb37b943241e"
+    },
+    "name": "case_0064",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0064",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "fb9b85f7cdf257b11e81cbb5a33ef37b6a86a7a477873e6d28ff03d7ca85f6e2",
+    "content_sha256": "c8d5c28450808066c4b689484c95321054332913b02c99602438b5a65fda4143",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "464958dac61978af2f1306aefe646160177531e16a2d0c8ff0d63a9aa9b74eca",
+      "flights.json": "56ca64099ad2ab9e11535a24e0451be3a17c81fa774195c25e5e8fd4babd3172",
+      "job.json": "375cc030b1287413c2ec84dd1e7a5e05186d294c34219335db8b79c2ea2a33a8",
+      "metadata.json": "294b477979f7da3925245bbbe8fa3849f571a1bf790634e1052e23e365d1f26c",
+      "mobile_resources.json": "3fc3d1bb29cb7e8a06e23bb631fcfcdffd04a9cec0ba6040992a5f519bd2928b",
+      "sites.json": "97861f631c0c1e885dd34099762dd77f72f97d66ab95211be428506179abff7d"
+    },
+    "name": "case_0065",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0065",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "c6c8bd3099270c43fdf731a2544ff6102d686bb9d93bd3737de4ee2b7ca3f91a",
+    "content_sha256": "768b6fa915ad8b256e82831a05380ce595d2e2df5abfee04663695c19e3266c0",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "f507f5314d3607cb4c3397b8a77bc7a776287ff9134d1574c8e07eab266f922b",
+      "flights.json": "05d455a2f5a755b2f52915979c49a8335f493b581dc762364e57b1034ba060e7",
+      "job.json": "6bc9672bbacfcb1ebb88f0451bbc60439ee2db68d19e22be21e2119eaa91d44d",
+      "metadata.json": "5c4054630186eb28a7b62f09a6ff63c731b30a94ab3356a0698b0e8efd3c06ca",
+      "mobile_resources.json": "8fdb5f4bb5586f958381d33f4490e00abe2b4a7989915355991750e0b4079053",
+      "sites.json": "e285bc82cfd407ae565b35e4cfc9bb44618b27d3963d5f13d26bdd1abbcd9f3e"
+    },
+    "name": "case_0066",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0066",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "39ab3dfb49db8e4ea0e981bd25a37832a8fc44897ebf7212c9b83ca01f0b15e4",
+    "content_sha256": "7aafcf3785e326d390fce757e4bc62dd469df5b694a28cd68ffd32445e4a0882",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "aea43f4b2e415c2ff19483b3ad36bce4ca87eec1f9b4a51da3571de1f18923e3",
+      "flights.json": "c75dcfe74818a540ddfb37aaaf1a62da33d621082e42327c81aef872e82195e1",
+      "job.json": "c99c2dba7ab8714f01dd5af55b7d81abd16e00e70c05f32725324c66f58011cc",
+      "metadata.json": "41f2b3158ec5e7956dd1866e2781e2d60b39428ed972798a548da263de420508",
+      "mobile_resources.json": "155908634dec07d37f790ae869b749e99b4446a97274671432e3acfe87801f1c",
+      "sites.json": "03524862be484978aa93ff82a9be9284c37ba81999a6f2a7fbe21f327cc3ddf5"
+    },
+    "name": "case_0067",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0067",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "5ec501e0ead8b74b9255c2cc0c52c200a27670e9ed02abcc2250167bad696b20",
+    "content_sha256": "abfc46f40b5b495bc6f7f68f86fdef6d6b452c2ea5fe559257ec26d67fd279e1",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "690649d376c4b17879e242f96f8df53a1853a1e0206f39f003ebc90d8e0fe54a",
+      "flights.json": "b006003f79157893fd330e3607e9bce47541efc0820328d57e708784bfcdfc13",
+      "job.json": "b05c76642a6b591c6b97f18b3e843dbcbadaf0b05a8e05d5b531ede5b323b067",
+      "metadata.json": "a83820fbb7ca5f8e4f3c18871163741f552fe0f54891f0cff9f2a269746050b3",
+      "mobile_resources.json": "788669e5f6df6c2b2fe29865b2b01752a1e7d9ad96ce959d280e8f327b88488e",
+      "sites.json": "83c8d7f645afe157cb047d078ef014375fbe1d31a4e3247a59e88010305a3d0f"
+    },
+    "name": "case_0068",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0068",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "87d7f7b18bf2d9c4cb07d77357130dcc0568a22c159cb6cd90c6014fce74fd61",
+    "content_sha256": "b03d8d4f8fe61458cb8ca30b353ca2da71ab813e072d55dd1b66b7ea39955e48",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "c72ce1459b47dbc24e06825ab1c120fa4f1a8905655bb6fba4f288ee263e4394",
+      "flights.json": "6344e703a2cc65a036e082121c8f42aa0895fe902829578aaf6039a2f60212f8",
+      "job.json": "3c375ff6840160ea4869a31afc5e0848d9a2bacebd1cee8412c4e0fc8fe1e00d",
+      "metadata.json": "23a7cfc2cd544e1c00bad3acb979437236205bf444a23d2a67c4ed63d0d9d202",
+      "mobile_resources.json": "a47b4fff7f74832bd89e66819bf4772c18da2fb26c6939e4b1876625d66d4ef1",
+      "sites.json": "b0e9768399fa99b372d94b03192ce9432fbc7b7a1b5781623bf798fecc1bd514"
+    },
+    "name": "case_0069",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0069",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "ea02989e08f3e4f99d47dda57b55f7700dd8829c61b18bb3a60faa57604960e6",
+    "content_sha256": "db465eba2a2c8954e4949ee62939aea8809137a88addafe2314fd228e630ff02",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "1d8888f7721d0d85def4aa2d931b37b7aa0e7f8720a620f23c3580d38d51cf5f",
+      "flights.json": "5396d532af8cc110fb5722dcd83d65c820992380d0cea26538b6d7825cf2a717",
+      "job.json": "364d9a13a629f05d9af044274c98ec41141f3c662dfa51e3bbb8649d0ed364bb",
+      "metadata.json": "7448415a0537b590a0b4dd2160af429fe418b9433feefa7b70e5c739030a8ea9",
+      "mobile_resources.json": "bbc0bf60a56bdcdffc1adf6053f161aed5ebb2ff87ed5a0d74a485f248880735",
+      "sites.json": "233e7fb02ccfbacedc8c48609d7692dbf03ef8e7b30675b0ba24c0e7d9057606"
+    },
+    "name": "case_0070",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0070",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "7dfe73ad90f061e70fad7517e93bd194fafd78c38c70a6324b69306dfcb9c3ed",
+    "content_sha256": "005e2a05e566034a64563e8ba7d1648ccb5e01110dfaac1a69fdb27271b2c567",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "06a19c7f04658fe7159fb87d3153796294364e70fce03a7e8565107eb19780a9",
+      "flights.json": "46b082c5890b733dff9738bb70a4ab7b2780bf9196a371de6e9d016a9822185c",
+      "job.json": "0eb92cdf319b3d83806af0247cbc3a861fc5f57808fb62817c288c54b1d462e8",
+      "metadata.json": "5fcdc834dee6b43b12d77f7549be75f9c4b3e5ae7463c9bf6190b1da2f8ad6a5",
+      "mobile_resources.json": "d295be6039d7b709b0aa4e466810f34fdd3616e1d476309f0d2f98c818ef3dbf",
+      "sites.json": "ca404faf945f6fbc2fe86e99dbaf166573f82c5547f7b9b05b8599ab3765ee7c"
+    },
+    "name": "case_0071",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0071",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "841e0faa84fb02afc43f59f75343ebbf0292aa55b5800a73d00f2ba2d0bee689",
+    "content_sha256": "66bfadaf25c30a990657f144aa7d0bd27a4f612d9e39c4d5c1c3e74952ffab3a",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "4ca429f98ebbb88814191936766062eb02a2d8cb170630eaaa25289ff3299779",
+      "flights.json": "3eeaeeae2aadafaad1060c80d1c0965515459f774934fa904ed279687f50eece",
+      "job.json": "7292a89e1abe35e406509d320f07ae130053621ea330427a53d424adfe3b0599",
+      "metadata.json": "3046bc30f98000de4cbf2cf61b089ca16e8b5b8d4198ef7507d7933aa6fd18f9",
+      "mobile_resources.json": "e17df08779b8d6eaca6a046fe31e094556216b08d7e9bc6e614dc19bec24c80e",
+      "sites.json": "af6b8e5ff356a679a44a895d7f6c079a02d80d125a9ff1b544e746b22bcc09fc"
+    },
+    "name": "case_0072",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0072",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "16031eca52a0af3b0851b8e4584e1dcaa2d650cd3d3075cddbe0ed57d1311d8a",
+    "content_sha256": "03d555a568a0dfd60ee1814ba8858c6833c3fdb811c7f579d3db44338bad3d58",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "60dc5891a840b77cdf69194fc0a84b2badbf773ec9b8e42ee591ab7768532229",
+      "flights.json": "e51834452709ed7531c9a982ecbb2a9809d7ff06bbd3ce7ae4984782a6707ba9",
+      "job.json": "da33d9a099261d1f70041234f5b72d8f3cad63fd351855350b06ab369200890c",
+      "metadata.json": "12fb01b957782007a0554ef223c7bd2ce765d20302ef1a9ee000812a1d1b60c7",
+      "mobile_resources.json": "77c4c571f0971ae6e257d1d0222d156cc43b0077e48688ea6c7c739464d50996",
+      "sites.json": "ecfb85673e6443f8152ea21ba636bc2094c20de95335b030c1c0514751467606"
+    },
+    "name": "case_0073",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0073",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "f91f13f9a6072cbe2c61b532e1094cfeb3fe469491a25af86c69f444a19f1cce",
+    "content_sha256": "aac44655b3b5d51088844e90559db7b69eca833de3dc27096e080eb438edf015",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "82d052129c83b2e13f40ade478bf7f73e5e687ffb2050a5ffe8c06c37a9850f0",
+      "flights.json": "08a1d34bcda8c3dbb6df454ae1f41aba21bb8a245da1ca221b59fab6be4f9669",
+      "job.json": "18a6c25c3b637492eac89e35f1e98437d6f28b5e8cd9f22cb87e383952b32901",
+      "metadata.json": "7415e3bbf4a6270e1deea356fd1b21a2b7b7e8202d17575a6ee98500fe482b02",
+      "mobile_resources.json": "bae1d86b26e86c2e80b4472021f5fc58141377650a397823684ce740f4312d0b",
+      "sites.json": "5472fa0e253bdad5fdc9d759d2f7a890fbef8acc6955f397da2b68682af8c953"
+    },
+    "name": "case_0074",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0074",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "3723af82584199af8c8109157dffd1004f77c6cbfaeb6aabe2c6962c350c4f3e",
+    "content_sha256": "9a675efd1de42e4d78c4252a17f558865e6684de5db5ed8cc52ac699ade08ff3",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "675f7f4d749d62509b82d58d008433831c67854cca4364f64b56a0abbb598df8",
+      "flights.json": "b862323efd823268ea284c362ec57408998404b762bce4fe54c9ca8f40e33cfc",
+      "job.json": "7719b0de90cf087ec53a6aeed2e97436c98e1c1fc6b36506dbbc5fd723003494",
+      "metadata.json": "b8d2a922264ccab436d25393e20cd5eb612d7a5c64b1e66bdd167e3025f67717",
+      "mobile_resources.json": "c786579d38d133094005689601fe79097280bb01b0888ff2a8b7cb001cf94e05",
+      "sites.json": "b0ffd5092515267556e3063819ad7f7bc5d67b87d840939b030bc8996db82b79"
+    },
+    "name": "case_0075",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0075",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "c71df3c69f0e71d4865b258e74235fc70177452e2e37c5ea85d6463f5c457d22",
+    "content_sha256": "1d73377f36195f31ac110cb2da7395df564b7db4c8e474dfaa23e6f60ff195d1",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "50e434e485e0ea0e5eea0b7e912f49259b853d221948dfda3c0e30a2aeff6e25",
+      "flights.json": "4bfd2c175ee988bed6964092ba10eb577c2da8dfadfa47a1ba95b4a2b83afa91",
+      "job.json": "d4c5d43a5027409f8982235846ba6d3005b7a790b0c7faaac8173c09f43ab621",
+      "metadata.json": "282fe065a9e626ea34db6dfaa5d7224cb0b9235e814f7893fc85d30b061eee34",
+      "mobile_resources.json": "3de716b3ca3e1195a24de25790b60c013647d37dcb534a61f0535c042eb3c0ad",
+      "sites.json": "a2708ccb16403010a180abb0c9b769ae2728824b8b06d3a2977318a80ba2ae36"
+    },
+    "name": "case_0076",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0076",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "c3c3b41f892b6c9ab26585a55537a1e8d445b8cf7c1c43da4999adb39beb51c3",
+    "content_sha256": "068108f1ce16c02581ac6c8926b9718678041a770254b151dee8ceb16cac2e61",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "8aafd279eb4a9397f2b1d3ee48fe9a3c94ec04cccdd6d5c03aa0159abc33f668",
+      "flights.json": "7927d87aabaeba2fb34d14c9f6bffad99b51c893654f5629afe5ac9723db7223",
+      "job.json": "b3dcc994f9f8a31abf8d7d9fe2070aae672c93b0f8b73726e7d939b7e63f1949",
+      "metadata.json": "364c3a4d7038619e2f3c44168a95f7220099cbd9ea29913a22677510e293dee1",
+      "mobile_resources.json": "fe72b19063f0e6782b65f3def9260327e32fe1a3544f5d59b5fa10e8d1d7e50a",
+      "sites.json": "ca9dddb29a4ab405e3c5beda0aa3e2f26ba5c9495894d2ba9a08b4c95f06450e"
+    },
+    "name": "case_0077",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0077",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "4bcc17ecf328ea24a7549a1b9dd6ae163be348f9580d412d1e88957351f388eb",
+    "content_sha256": "1e7d65c8f31902498b800b5bbb61c87e19d083cccc550c853ded81afd3601a2a",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "8a43f59c1a46527fa6567f3b49918cc603f72050b53716a40530e51f3831c7fd",
+      "flights.json": "735a88b3ac4b4a073e5ac8fcae57fd5001115f227e307da31dd45f8677e7ef30",
+      "job.json": "4d1c6baafcb18a81c02ab364098887cc8059f3f565b3ae201492f346557b9483",
+      "metadata.json": "15544f340d53ab7c6840a57cc91ce2b470478c972e307f10ca0e594af20d9edd",
+      "mobile_resources.json": "6f2c0e6ff7657c5aec74ec7f2af170ccab7d488caafb336db626cdf057880d1d",
+      "sites.json": "c87f1d4c198a81e556dd2f4ef539b08bc58aeeb3b23239663e6496cec41c5fcd"
+    },
+    "name": "case_0078",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0078",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "e6e08a862a5edb5520580860d2e06810963e044fc84020bcac1cf80cdae294dd",
+    "content_sha256": "2204122e081d7ce5aa2d9161e8d950e2df23ca40a2b2586e9712a83797f59a00",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "892f85f788feb0c4c89fad9efecf87847e24bf6a1f4682935b0a08bb9dc6a960",
+      "flights.json": "f855348f209b970c6272bcccc10f201de3c6a91d171911b16d9e0aae916d4218",
+      "job.json": "25340d2ee3f9dbe2b3e53242773e32f826181d87ce6f24dda622535403e2fc01",
+      "metadata.json": "3d43dbc2d4cf99c6c8bed19d1daac832260f799ed03d6a1bfd5c431291c5fa6b",
+      "mobile_resources.json": "28eb990db03e7c4b723f59e7d01b2f776f9f23cf8fbe440dc654aea457d7ed12",
+      "sites.json": "7057813ffd3dc454a64d49054711d887f87205e54176d13eab2cda8897f23cba"
+    },
+    "name": "case_0079",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0079",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "fe6750e06f0c1f94f402f4f8e72f1ff0b489c3b43c3f7cfaa174e9f4948bff53",
+    "content_sha256": "f01fdc7cc48c89fbc9a248f7214b9b8c8978862aabb2be067970efa27da3167f",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "5a014da97f2559926ab6d98c6dbb44a6b91ba283ec962a0f15a70ef89d51610d",
+      "flights.json": "61c2f78d9b103f319377462bb72384a07870ec6cc9bb60f13739559f21474f2b",
+      "job.json": "bcd7e193ef564be7a902122f1e9b9e1aac87350544573f1d5357b895e44a75a0",
+      "metadata.json": "cb904deb39f8d125bf08ab9397d89cea07c000d5823fe5c480777924bd76e791",
+      "mobile_resources.json": "eb54c1b34d47685c0235162711f4dead18cc1c254fe2fcb176b1c964a48bcb45",
+      "sites.json": "91500e7e28adfbbcc5a7d776c61cdd69ab92f26d56cbd0e7d672a1feb0c5257e"
+    },
+    "name": "case_0080",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0080",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "ef642c00cfa02e3560a9fd1ba8c7b6b76c1712bb999832e7177b29d0ec77583d",
+    "content_sha256": "626fa66f7c2dfecc65a1c0ef2ad51ec5ce12a419b2ea4e9d530b8e0eefd17d9d",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "7be994f223fc1ee4ae3938fd39969ef2e86274398c5141bb5d8d8a8e91a33318",
+      "flights.json": "eccc281f5b52801e96f2bc920e09f2f72ae9b39fdde32fc28f786024a977fd5f",
+      "job.json": "6f1e488fe19754ecb4d9e7db33230b33c119abde3e7ceee97257feb8bdcd8713",
+      "metadata.json": "610ab0fa51b6e240c5af9a62d37068d9c38132ccf3e41b704899684e8c97e72b",
+      "mobile_resources.json": "e0b283f328022229b18717ed076289d989aef0fe425aabfd3a3f5b6cae5bb74e",
+      "sites.json": "91f6ae9c796dab874cb4710109a4171b2a97ccfb73a3294acc2c7a97ea64b668"
+    },
+    "name": "case_0081",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0081",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "a35c5c607eb6b49ddf042cedaea9f9d011fddcfbacf8788bb05a71ffbe3ad71f",
+    "content_sha256": "e93280e99bec75f72a21998d63f210e06a14556626e03a80dd106dd374626653",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "c4f66d7f10cf7b93815a2dbafc1bae29493d2a8e998939e8195be18dcb95abeb",
+      "flights.json": "0c2bcb6ab8cb520e9e93dbe4c4cb737bc96ce6d2b53dc522a4bd08f4f730f38f",
+      "job.json": "41c9e43ce77215e7c15378e10f4435c091de3c6c510e0a94f89cb62701cdca71",
+      "metadata.json": "3c5cc3a179c83a6159e4f92dfa86192f39ca95e29037e3e017f4090ef56fe5b8",
+      "mobile_resources.json": "88a65399136c331bbd7a5e3701ac5d82bb437dbf92c3c55071955a8d0c8ffc8b",
+      "sites.json": "965825de58b5309cf2183218a6bbc5f9b4bfb6e40940918a105420822f756af0"
+    },
+    "name": "case_0082",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0082",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "43ec7d3dc533a7314d89abf37b547dee1e317d18c00203c9b7bb98d2e8470b6c",
+    "content_sha256": "7bf79b8f5b16ed0d20a759840dcd52fa8c0f3ae2f73c1593ec84853a2d5963e3",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "aed9e2abf8c8b11105be94a62fb36d94f9d70334ac8305e9332bc48bb6b2449a",
+      "flights.json": "d4d4c37f39087aa6f6edd8df20f79ee927aafdad73b5b99117df433c417a7f58",
+      "job.json": "e039de2836079ba603d00eba3f27f506bc33ce51beea54037158e18d9b9f9945",
+      "metadata.json": "52c183db4e8fef1facf8487bf7ea6fe299dede678679250849569e42a81912db",
+      "mobile_resources.json": "f62135d08fff929d3baae7c43e19e23353d383974a2b8ed4f2182cd65b137bad",
+      "sites.json": "e695737f40f937547804d7a78c3c192b81af311e97dda931e5552e9a56e8704e"
+    },
+    "name": "case_0083",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0083",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "f0cc82751416836cf8ee01e0c448698e50afbc2fdf6aceb167c2c85b46098884",
+    "content_sha256": "3550ca7bd8321e4ee261585ad31f31d52ae90fdc032699e7c7198356bd590329",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "813b2f1b47cb04d023014ef03f4c2728c1a7ecb75bc0b3bbd6fa06ac18fb8a44",
+      "flights.json": "eae7af7b50a4028478fc217da6597ab45812402469b983ec948062fe7f3f9fc0",
+      "job.json": "d3576a6caee6e7f1a1c4f9ba9e9904854efcb63e9a2d42bc0ffd8381070599e2",
+      "metadata.json": "5b82299dc2478c71d6211c25724fe931c87bbb6a787b7e6f1a1729d88790dc86",
+      "mobile_resources.json": "deea1a5ff693af7462a2b9739ca48460564c1eb821c5528d2d305f40f0255582",
+      "sites.json": "5f910795612f84001bd550213f3f16da56b79b7c02ac9e4a60eea02822508d44"
+    },
+    "name": "case_0084",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0084",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "d455c855bd844901710e65db82e2c21794fbbb316a1e2001c07b6bb9d93f63ae",
+    "content_sha256": "23ec9710f9e0e756f715fbb435f05e3c2bceb6ddb639b2adb9e2a714a2290cc1",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "4b60741a78199269aae6391a43cf6312f1edcd9a6f7b4ae21369d6f3c58e3b23",
+      "flights.json": "733ad04cfbe1bf342999d570b378e119001d8a0788f593bbe82611c1200f8383",
+      "job.json": "d16ddd4a227b359af8be0f4d5f98544061dd46d521dbe927232c25aa9b85db24",
+      "metadata.json": "992d6f7b81941bdafb14e87c81441f0802971a5b45b7137bee6f74a8a939e403",
+      "mobile_resources.json": "80e8304af99d33b5633e98158107a6e8d519cc94c849b37ec476cd6d76dc2f7f",
+      "sites.json": "f3a92d48acd7be29bf70841e4cd7a2f8c5ad3b2a6b5de5e5d41e896772b6416a"
+    },
+    "name": "case_0085",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0085",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "5f21fd8d547366c983970a1568a66fe064b55da1ecec54493d444fa5b2514cdd",
+    "content_sha256": "e1c90bb5d885b3454f099a811f50735dce9015cb215edcfb8f110a3fac5b0962",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a2ee4457c97437373ef4cc59ae9862153da845feebc162d58451fcd6c877e3df",
+      "flights.json": "68699508d8d9a0c9991d322e562d86ef0aacbc1e54323c186ac1b67cf8f696d2",
+      "job.json": "82030a88207c90a92f55bc0fdb99e191f35af2e8ed382e81b396b865712851d5",
+      "metadata.json": "2fad5159e0bd7724531a6643632226c4347a131a2db104db6001c9651f8f14ad",
+      "mobile_resources.json": "4870892bae1c6a83fca3d65cd219df7eed01294e4324c332c848d054cac5bb9c",
+      "sites.json": "496eee853a152f97773f814ce3a98cbe356845d87b2c51c9113afefb1dd01f52"
+    },
+    "name": "case_0086",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0086",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "e4d1263ac8ec0240a94b8f8304b2dabfa7fecfdaed5c4e3cef7b08b8ae1a87fc",
+    "content_sha256": "069c217df1053437da51f6a0e23f3f8587aefe56f9dba18cf0f07aa9ceb943b8",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "633b8389d999feed1c59312c47f0f83da6ae6fd92ff6c2f69d38bc93a182454a",
+      "flights.json": "8a0b7946df7b47ec67be55e1560a308b3912763f5430b0e6a195432e8b4cea37",
+      "job.json": "8e10b89740a8fd48dbf196d35fc234ed7fe2d73a07de3228c608c7ef9bbfcc20",
+      "metadata.json": "f49c4a70fbb255c6881beb92509dfb3e8ca051bc7475596d91774ae2607dbb00",
+      "mobile_resources.json": "e0cb052d29f55f227264e295de4dfcfe494b8a187df76667eba6f52cb895d384",
+      "sites.json": "fde32d8fe195ab9661b6f83468eb15de19abcc0ed41da6fb931e620f8cdb3146"
+    },
+    "name": "case_0087",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0087",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "5a37c13e8b055d16f579ae942d0d0deaa5ccd915b898f47b5d2bbd1e31ca9955",
+    "content_sha256": "066a582800bcc4aeed00356b8d906cda3fc6722bde25820efd29b36bae3f67bb",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "d2599abe0f1460a09b9d3ad9a01d0990495fc44ed5d286e727b9332979af8ee2",
+      "flights.json": "29c5f92966d4d0d927b23b653e45bd690d89b4c61034751f98725050ba7185c2",
+      "job.json": "8f12536e3a45431c62899480d215d2ce1887f72cac0a0282cd2d02eb9501b55b",
+      "metadata.json": "08bc5d92f4fb09bf139a8dc0d7d63ca7d309a54741662d01e6e6310c9d71111a",
+      "mobile_resources.json": "298c75849427ac0736ac0127b82086b0b2e61d0b6b43dd5729f56806b7ad6e9b",
+      "sites.json": "df1799c69c391aa9f9e884cdfb31b68b20991a20d9dfeb2f3cedf8401569600b"
+    },
+    "name": "case_0088",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0088",
+    "profile": "high_flex"
+  },
+  {
+    "case_sha256": "9420ffc594533b25fb260596cfb4796eb89c72cd9b830d73f492df8aa1677bbc",
+    "content_sha256": "e4938034d1cf61a07e4a7c1e9a80b8def1c52ac1b3ce237a82a74c8c5e2250a9",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "b0d9ca5a730f7a807a9398a4aa9607de00e35eb9e4bc49610806623cd6230c96",
+      "flights.json": "238248a4586bef232437f3c4a6d25e124eb5c1db3b298bd7859d7422fad669d7",
+      "job.json": "f7d72c742a9cadd9104eb6707dcfaa9b880aa1769b9f0dee18abefd2d84e37c0",
+      "metadata.json": "9115610cbf1fe7e017dcf6344e30b5b23e4785f5a1ed3fe0c4080057abd601e3",
+      "mobile_resources.json": "fb5a082f43dc0062be5cb3ba326ecf049ccd37d5a5670511cc697c64438ec02a",
+      "sites.json": "9509ee8641ffc5fc4b54b92bf54b4e9076219e7ef468cf8a43456709266b994a"
+    },
+    "name": "case_0089",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0089",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "4fe92b830ceb6170d55d19ac170052809b3f979963d151069508a498e708ed7d",
+    "content_sha256": "6b3d89a03300f4339ab0cb0049dd8072ae8ef988e3be91267484838956fcd1d4",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "85bb97e300ffac5f11fae3eddadc1804d63ede7e2462a7e84681aec452a40b8c",
+      "flights.json": "db478b521027f75d9f26bcedfb7b468b5f9c47d99c4bddd3b96e0fb51124f756",
+      "job.json": "8cb2f29a4992bbd0791c80bfe377e34c803c343e46ecce0437d13d8abb01bb3c",
+      "metadata.json": "b59001d41b590c45dc8977cbcea39f08a08cb25d14b9e0365f01e24ae12d6b39",
+      "mobile_resources.json": "2874e003f62af08c8dcedcad4776ba5cb1373242446b8a34482065d1fc94130b",
+      "sites.json": "2933064e64562819a1b49769f1b54d47c69c7c651f999ebde1b63cfe0d3fcc15"
+    },
+    "name": "case_0090",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0090",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "dd3aab8f247e78d8e51d49cde18bc363195c94d0366654474feb746b09ba4289",
+    "content_sha256": "eace90d36ceccb1ab6e642eb8c81e66eb8b8fbfa6f5e3657a6ba9835eb8288b7",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "fc486c1ba0fae0fe6d158383b33e4f7507e76bd891bf6358e27d2113d4ac63b5",
+      "flights.json": "9bae4912b1867f96b76d3fb6d5dd596dfe91e64b1cf853dc5682cf6e22a9a8ab",
+      "job.json": "a382af571575d91d4b6520d9e062cacb149a51eef5dd37204b2ab9cb18b656bf",
+      "metadata.json": "f35c12f2c796be4f142a29ae51bb587aaccf72e2167d9342a7f105cab14c8916",
+      "mobile_resources.json": "4974a09e325a7e11e02e3f73f151bdb5d158971cee14a208019014742f804a30",
+      "sites.json": "6d4b5e2c36ca88caa80db30c455211469a6ba78d515d0b001e072ba8e1bb52bf"
+    },
+    "name": "case_0091",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0091",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "4b6d593c92883eaaf844973c6ea8db3964ec367999d2785e6f37436fcd531fb5",
+    "content_sha256": "a5ba34cb9b9b1940cd42cb69265921bb6fac7bb9b4dbf8363026d04f082f47d0",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "b50ff1261b6a53739540a4ebc83f2e4882c96124eb6fe7800c04e5c9a8088898",
+      "flights.json": "4380136f839b7302841dd1d05742294bdf24f4af4d166a56237a3488a4e45c18",
+      "job.json": "699a67cbb644507bc74e534ea1aae252a1384f41f9215c598bd011642c97c62b",
+      "metadata.json": "730af214d9520f04494b67bbe42a0488f65d7ec43164d0acb0a526e8fe048f0b",
+      "mobile_resources.json": "ecbc302ff9a7d90214656ef0c78b7c26f5b6769e3cb8cd26b33ed75bc3d9f674",
+      "sites.json": "8f72cb7517d0be976cd55e7248e5d27c74f49f0defb4ee2f850aba9251821118"
+    },
+    "name": "case_0092",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0092",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "9b492bcecf0084fc8fda6027194f3519cdda0a27e956c756e080054856704caa",
+    "content_sha256": "16b71eabbe99941afd5e7978409464eb4c0b1962b11883632128e5bcdfe3242e",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "8edf2cbd3093794f92cf28b6dff0272b5b30b2c9dffcae9a2ff614bfc99ce0d2",
+      "flights.json": "2960fe77242cc8ec4cb46699d7f856a069eb5640d12c4e2e9d83df36f5a89815",
+      "job.json": "1d75a546887fed48f302d02152face38dbc92c1904a66817de4fb6eeb61b3243",
+      "metadata.json": "51c3ba910663200f4a3cbe879d096404037c4435abb1a9ee5cb4e40f106a52e9",
+      "mobile_resources.json": "dc84ddd6a0727e486e106cb0e808a90db2151418c7f2aa14ff698a17b151e0ca",
+      "sites.json": "b0e06c76a192334591dac9e29f7baee3b0f900127400f14ad7ba43db76a337a8"
+    },
+    "name": "case_0093",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0093",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "f02c2917961f7c117185dfa205278aebf43c77f1f0d8ba7ee4bc4daf0c08d23f",
+    "content_sha256": "3005f706869e2a4928a81523d0bf618b3c9b98704f535e284540c3e85a0129d5",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "07baf34ab4e7ad692703900ff5c0c74ca7318649dfec317ef197f36c94f67210",
+      "flights.json": "bc7a91d13ade6f340c55b1958471bd372dd34d39bf3e2f460a24ac47705d268f",
+      "job.json": "f4bbad3aa33569fe0b225fcf0fca04cd247f1327f568386fe5772bb9f978e423",
+      "metadata.json": "495c01ab004fb0a6baf48ed1aff6cc4a4dcaf88bede6a62e2146478a8493a53b",
+      "mobile_resources.json": "6080c19a1f19f9eac30dc027ac430fb0bd6bddcd0d5e175fef70e66ba56381b9",
+      "sites.json": "8c4243578dde806a26f5c50126287941e3750609beae9633021421cff84f9789"
+    },
+    "name": "case_0094",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0094",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "df47f26eaac0d47562ba7e824fc7156d21517fce3730b9ed77faed524dac3cdc",
+    "content_sha256": "60218c51372678024fe12445cfa67ab16f0d6a5e6dba7aefdf5eaeef46c517fa",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "1c4d24b2d79a0c046e389d902f1551827f0da86b2c63569fcfe535bc5cb381d1",
+      "flights.json": "15275b3b4b0160d79eaa03436670aaec6a0efb547ee44b3ec99895d8476e68f3",
+      "job.json": "7f17dd39a794380c71a4fcebf51a6304c92e79b4f28cc6b5c77e72d3c78a62fa",
+      "metadata.json": "7272e2b42c549d7adf7a8c8fd042b7381922ca88af1a6077c04a6b74b1077fdd",
+      "mobile_resources.json": "f64f657e327bf3979a9777d8a1774c7b545aa7fc3c91af6a143a9a362513f8f8",
+      "sites.json": "f3e0a5629f939d9d3ad13c6bc3e133973d781e54c61e3cbe232bfff6fbef5eda"
+    },
+    "name": "case_0095",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0095",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "dc6b1658db6edc48a4965049e2ea72bdb4d1a3ae508cc1b895052c6ee57615f9",
+    "content_sha256": "8d2b9960594818a1fc76068d8abc58a2962792e1c5ac81b00f675da91acd8637",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "3016ed8625bc2ed94eb6473c02b26a8d2f1666a33847a85e58c91ef54105d9af",
+      "flights.json": "459add5f5a3b1b9911bc1cabcb58ad60a57ce50374f24ebda4a510aeca3221f0",
+      "job.json": "ac220d3b1785ea742c6ff5e9c33c410c3557fa8783e7302a57f21b54cb31c83f",
+      "metadata.json": "1227a45a1adf142b5a717cb7ef6d8674afdfd7fc8e7c6a0f2c9d5a1cdb86c42e",
+      "mobile_resources.json": "245c3e66433e68f95977580af2290cc874e81b249ddb4e0fab20eb84fa3e702a",
+      "sites.json": "8175169ded66347315326a7470e818caeefe38cd14f4e27947b0af55438aa9ad"
+    },
+    "name": "case_0096",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0096",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "e3257b6c0109e898d8a1b5a0a9aed6502dd458d2780e5f7a1d585fadb1d0cc89",
+    "content_sha256": "1ae6be4497b700e27dfbb91d9c329c9e1650847e823ad9c2c7b129a00832e84d",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "0f284e4dec1ca31369e2fa877d7d7fe1baa3e45d112a669e4cc4689fb4732673",
+      "flights.json": "2a725a6356f415c89ee343f7fa7ae0306931d164d544913f9e9ff9071572ef79",
+      "job.json": "c583f1585b3827ebb1bfe7bb4fa5cd5141a8905fc0fb21908c94a79778b4a0bf",
+      "metadata.json": "8752ae0904038286c5fa7144d8efcf3f0a46c0e0d718c312928f704632ec685b",
+      "mobile_resources.json": "5ab6dd68bdae1b87cfff6ae6ee0c6db483ff275cb97903f723920e2723340117",
+      "sites.json": "3fe27a410ba9517fb61d9504dea4d7a1728cbc70dc3496a4ee8a3eda89485510"
+    },
+    "name": "case_0097",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0097",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "e7f6b0c7fe8b41d69eee21c0bd0bbf791c9b55db681b1cea7a946bb386af438d",
+    "content_sha256": "2249fc8aeed38157e2a8ab003057c187db0988dab246f22ff2f08ef686539454",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "42755c44d26949d38b4b24ee68c859806847b2cdf5d1d6cc318c5b4ad4bd73c6",
+      "flights.json": "6fa06cc085f50dc3e22fde542caeeaf0e88c8e53d6976b25546dfa2bdce9245f",
+      "job.json": "20960a2520374bfda53aa691b3875bd3a9abbd40b542c12d75d927fd65e77575",
+      "metadata.json": "e7e53d650839a99dbe1eae8f01acc8ea9e30049808922114b1b9f4ba69d689a3",
+      "mobile_resources.json": "f6672dd1a63ee2827a4a015db21e97abd285ca07afb68581ffde5c8ba9d19109",
+      "sites.json": "5668fe7cc87efd8eed72f3e438978408c689f21ee01d4c811ca8a98f99bdda19"
+    },
+    "name": "case_0098",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0098",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "eab1de4e8d3239a5bda41e02e81c14ed3b2ff1ebb4a7433a7e0f5cd37954039b",
+    "content_sha256": "6824d81c049e6067e84403490dd70ff0a2e77c51ef7caec16c286d5a1d58b26e",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "a1a06ce0af4a8c3f6f11a3290fcb6ce2bb78e21d3d0daf27a1a6554f09179926",
+      "flights.json": "567c4cc625be3ed27ea1371a92f7291ba7d0dd3166d925cc4a84db7333ee186f",
+      "job.json": "2a69b89b4234832a204de8839f26c4f156c0f130310aa4103e88efa35ef36ee3",
+      "metadata.json": "3960566200a1d50799a8b6f79e2d80ebdf2f7c4dc064b987d6b64271d0d7121f",
+      "mobile_resources.json": "869c683bdc7ef9021435aa586d0c947b6a6dce70e68b82c5c536cd13ab3921c2",
+      "sites.json": "d3c81cee7db206ea1fd5e62f2f0b289262d1e807569e8bb842292b742b8b54a3"
+    },
+    "name": "case_0099",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0099",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "4e8da84a5c301f9b7f7a4c60d67d65d9bca260486efc9cd5b9e62efe4e20686b",
+    "content_sha256": "9a9731fadec80838cebe64b1d5b7475c9d92dad4f2e86dd988ba0ffbdf4c3b0c",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "a459403bf24b5c27ad52180f2829537a60d069851c5e78a8695e37abba4a9980",
+      "flights.json": "fa15470d977549132c8a9b6edf42ae9501d8672a0c4754bc4c865e0fdf8089d4",
+      "job.json": "21b614b4312cb993c8286a3a931bfd195ca55e8c3e8028fa600a7669d16d92d5",
+      "metadata.json": "fd73c34a6d2209c4f78c09a79775f682efa1f434c8ee11eb6f5c5cfd46374bec",
+      "mobile_resources.json": "3848aae11ca7a225160dd409cd1d1f1074fd54cb50315c6bb03755a7e64b435f",
+      "sites.json": "0f6a3eb1b5c2fff1eecfb123acc9ac106a2ab1d56ce86b1ea049c5c098b8580b"
+    },
+    "name": "case_0100",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0100",
+    "profile": "resource_sparse"
+  },
+  {
+    "case_sha256": "90f1c5ecd857da6f925a698a86dac637f75b32aacfcc5e643f3a9b4bfed2e37a",
+    "content_sha256": "b2792b2eb218d6cbd6543aaab25462ccdfb790380cc3917b18f1b639d9ed2165",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "bfedbce288496004fe913340fd0d785729337436be3c5047147d05b660501294",
+      "flights.json": "2626dc48c4b5b48d767ceaad15d588e510181d3c1bd6003098b1bf86870c6746",
+      "job.json": "9be196320e2800df55e02ae47854b3eb025e364b81c639407ea360e6bdb4fd8e",
+      "metadata.json": "2fbc725f041a7ba45e9a94850eb87b1aafb124f4de829991857018894cac896a",
+      "mobile_resources.json": "8baef3ece0ddcba3faa515eb49a8a77449b45b317e814d53c8e2e540d04f5f41",
+      "sites.json": "54a1ccfd7d940fdf169ca2900be854a48797677fb0fd605c68774acb40605669"
+    },
+    "name": "case_0101",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0101",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "36ee9f4fc38d542f4b37f1388542533da6033fa04dba42e33bb4af9e4544e7c9",
+    "content_sha256": "6dcdae7093806ee52517eae2dfa80a4810a9a134bfbca76e4901fd4ab01e09b2",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a63b537f32d5324b2976572989fcdbdff42d9208e88023c28e453c88afe4dd17",
+      "flights.json": "f07b90ea9c3587c55e6ad39790f74d9735095f1012e0a802e2c020c9b920a111",
+      "job.json": "b5dd9a17f88040828162829f62537f47071c3b97bb2e426df39562cba5a4e344",
+      "metadata.json": "a28f0e77b3ea5d509ca83a75229631a32f071537028275b7f6f83e49dfe5b6ef",
+      "mobile_resources.json": "8a3b59a3966c2fd301a4a50c3fb3237ae0206029afaf95a94793699026b1d65a",
+      "sites.json": "33d2810494973fc26dabcd0052350a6300aaba952a2e4ca70c25fe73a3ee7a17"
+    },
+    "name": "case_0102",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0102",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "0fd53dd027f33d43754b8cc4004aedca33e57226e498f33d97d0bd27cc05a954",
+    "content_sha256": "8c0541c82e1308dcc6b92dbc3ec1ad4d2863e3960431e6d81b3e217a601d7e19",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "74b9c8d20d950662df83814adc968d03cd1fbf8770f722f616c219d37727abbb",
+      "flights.json": "52a003bb74425103037f2ea7720bf46d4c584e39634b4d0f9c387ebe03b6e196",
+      "job.json": "cbd759d9911300d6c501916242e68d364353f6a9af9881b5fe1937d532fac19f",
+      "metadata.json": "e1998010a46f77bf8874027ff28677f40b0225955587db88579966b290dd58c8",
+      "mobile_resources.json": "d40962f80081fc634e947dc8bb5eb711ba174cc5904cec6c4a2d3bc607fe60af",
+      "sites.json": "43d756808c8e678e491da71b59f90dbb1248eba9b35dbda765303a21c8eb628e"
+    },
+    "name": "case_0103",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0103",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "a35c3c419eb597b0b52d813c99282c9948349ce460a841b55f0368ca14046289",
+    "content_sha256": "20bd14f58092ab633912b13e7beb7beda842e509ae6ac6e883587bae257bd81d",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "7929b40624320f9de2650946cb5ced7e142ac07930a6f4b5f4b0097c95c8b68a",
+      "flights.json": "e41e3c418391e245dda50991e2897c117ec1d2c2231275fca93c453519982b17",
+      "job.json": "fe82c731abdef48ee72a26997fb6106bfb1cfbce4b3b1a8d9a8d3f0ef7de375d",
+      "metadata.json": "2ba2a08e67a0e0c7b775aaf6df14f4dd7b70586aced275bdc3dca39418d40112",
+      "mobile_resources.json": "e42d52054dc4df1ab22c22dabfbaaee96695b81df1776c868b6199fd3e53bb2f",
+      "sites.json": "5092e33c251366fa00df5b3ccdb1681b2f52494d509ebaf4bad04f5207e6a3ad"
+    },
+    "name": "case_0104",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0104",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "83c8db33e3ecae6b8a5e2e5b3d0b89d139129d356f4f651a260e70046c261a6d",
+    "content_sha256": "87d8a258b486199905bf63840883092357027274f83312e17f5834461800ab00",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "cfb6c924e41cea7aee5217017c8215475ae355765d3e0ee2425fb282a84a9028",
+      "flights.json": "3c12458b097af45836c26116b8779d9359a5a70a194a2a4d1eb94f5ed42cd600",
+      "job.json": "dfb479b4d4fa0aa5e14bd0af84f3bd19160033c23d284d4bf0dce5e9fbce3b5d",
+      "metadata.json": "793ccd36187eeb4bd359f0bbc5af0cdb7e0061e86dfd5e8f6edf6204323aecf1",
+      "mobile_resources.json": "24f3ee60948d4b085bbc36dce0490bd8f62bec19103d2ddfcf023d4dca4a0006",
+      "sites.json": "fcd10f0216526e821e33dd33c84a4c68c42ba51a67b9c1f9a9b934667ef79f22"
+    },
+    "name": "case_0105",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0105",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "400c910630ee82cddd4550c412488d220013a2492e555a43e0bbd89085dc33a8",
+    "content_sha256": "eb5d5570b5d59147981f4a7f16621684b6a9b478b57a9b491a72dfb6d0213306",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "8ac4cb3eb2c7639af2135bddf62a51591a3b04c1985e32e853ef1309cf44c2e9",
+      "flights.json": "f52ae455f4ddd8fc5978b6326d7e3913b47c163ff7f73a034b417c60fde8a7b2",
+      "job.json": "414aef177b1ca3a73e1e9a71387c15f7128a85593fa4a17017409e9b7e3ddbea",
+      "metadata.json": "0e6ae9215612ff61e3197c027b4ec17664203543bf479ae06bd7bd98c2970b2f",
+      "mobile_resources.json": "5bacb3a7e9a7ccab607256d5a954fb5ea478ba51d67cae52339fafe26a8476ba",
+      "sites.json": "e9aadf7191d9616e09bb7123b35671ab0a48f2c01da28edfafc9396ae00420d3"
+    },
+    "name": "case_0106",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0106",
+    "profile": "resource_ood"
+  },
+  {
+    "case_sha256": "27a2e0498944fac568102373d45a44f0ba3e04b372d39005aab0f015da659055",
+    "content_sha256": "b1d3eec2987ba0580b931b8324a379ddf37e5f0d9294547ccf222af69aaf4d54",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "03951a11a449f875a2b31f7eb9f41f4e71c4d733c2cfb560f3039d447ac47536",
+      "flights.json": "9c51ae61f3f1eb5d0ddaf4e6fb3b3fa7d2b6eea22bff0a5dd3d835b2b6ceef23",
+      "job.json": "0775953dde06fdb3680dfe14cd58940babaab90b107ad3acacc2f752133087f2",
+      "metadata.json": "cb3bf330ee5adf6086f01b61e7fedf7cf50baeb7901033aa1b4cc3eb205625e6",
+      "mobile_resources.json": "8a929371cfc987b6118d38d9e3ad40f6827445f151161a973634a121028aac2a",
+      "sites.json": "8199434c9ec5fde0cb15419e09c3fa55b454662c20e8c852e675b7f2518bf232"
+    },
+    "name": "case_0107",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0107",
+    "profile": "stress_arrival"
+  },
+  {
+    "case_sha256": "4900fbff7341521e217b7d1307672f9cdfe6fd201d9df328e95f69d5eb5ad252",
+    "content_sha256": "636ab690b54e3d13c24ad86544750c78c7ea1e908e56b1bb9076a20d9e0edb88",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "e92eadeab9032f445fa551fb3afa8f2fa3b58924a6887f80bd0dbfd40f5a4eec",
+      "flights.json": "640ded85636833930bb4b7549f83e54a7083d33c202c9e9389f4a107c8fda0ae",
+      "job.json": "3bf89b767d3a5a176c18fc20f27c4bc5cf91ae653ca639b034dadf27ee60c1e7",
+      "metadata.json": "867f2a9c7504556c3775f25a63fc18b2bd19c6fe254776abd591e538358250bc",
+      "mobile_resources.json": "e715435a9ebd5fd5f83f61f3f90386b78d7d85c0db81e2ab272d5f9c89624d14",
+      "sites.json": "37558b17dd568451c545967f1756a5d97da4a732e69f534827929f8c16ad7f3d"
+    },
+    "name": "case_0108",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0108",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "eb5af98f58fbe94c2d457b69ea9cfcc123ea781994d6bf699d7b0debcee1a492",
+    "content_sha256": "79a1d1be1a2d03660b85be4e02b7d1073d1ef7f0399d6cce8b0760cb84f1021e",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "0438209d279dc2766180616ee71941447db52f24412bfeb2afe52dfae14eec7d",
+      "flights.json": "426dcc3e952faa89dcc7e85798f7cbea220b6f7748ebbed0dfb89338fd00d5a5",
+      "job.json": "c48bca375ca35cce9b9bb5db076d6d17a5c2a089434241e27db845d03a560fe2",
+      "metadata.json": "8b742375167f581e8bab74523359ffb88e93d153ae8f5b4bdf2329d3c029c6e0",
+      "mobile_resources.json": "c3956cf61380a8d3a367531224b71d7b49568557d28c0b66d3f9170a15823472",
+      "sites.json": "ae684f37b8b6c85f0ae2169de2697e8118d993ca0d0df0205cde6ada72e38ae5"
+    },
+    "name": "case_0109",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0109",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "6e4bae02f3924e72b8d1e3673b1a068fa3e8de5b62b687eff38459af00f91734",
+    "content_sha256": "301103a241caf06338319a8de087a62077000cc1c690e05799bd00b4e9f17b74",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "edebb97aa04724dbadfc039f56939fcb4e54275c55cdff46586c605377e229f4",
+      "flights.json": "84524452688de462e1500b46cd37d8a24dcc4b814ae4fb091a7cb3d7630dbe93",
+      "job.json": "7e8dd3288dad4541531054452be934886a7caad48ff7cfd03f2fc5474a697770",
+      "metadata.json": "c5a59efdeaee1c869859b2645f4eb2a053431c00f34d452a6ac45dabf6f3c85c",
+      "mobile_resources.json": "0cd2e27ad06c1cb3fb1c37ea29a752ccd6369f7fa54a9092923eb095b17097d2",
+      "sites.json": "e7b048cc6efbad73f33eea4b601986c6777fffed8f7ec467c2f71aa509b79957"
+    },
+    "name": "case_0110",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0110",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "20bca5b3c0ec4b1e0aaf4daf01592aca6d605e08b56f5961546d7c1956a837ec",
+    "content_sha256": "e604cd77cfe360bdbdf42581f71d4a23cc08b5602281ebbe1f272f4b6738f045",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "e3c33889d3c65e6c0cad821b11e3662696c1bf5daec8da7b8dec597300eb29cc",
+      "flights.json": "4f579e229a48bf51a9623db01ae3d0cf596819d177831ff46083db806fee9722",
+      "job.json": "b195641a48f95745955f50ce24bd766e1645676cd64a0ff14e1c6980b6784bf1",
+      "metadata.json": "f3ebe64366ab85c6c7f1390f00a548dc77d03f457a47b3401e8c802e3bf73cd4",
+      "mobile_resources.json": "205f5ab90c89d5f32904b72edb2b48e3ecda7cb9edfbd24390c71553ccf93a70",
+      "sites.json": "fe953a8b8a710e9031abf4632107ef0e2da250d5267a84eec679f22f9b239be9"
+    },
+    "name": "case_0111",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0111",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "f2fde7986f3af8dbcbc803ab305848b27be51af8e463186762f59aa4df5ea302",
+    "content_sha256": "81790fea7170a686d2532b87cfac807b2942dbeb2df7a2038ffb2b9f0d1d6997",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "62ba039a2997dd408f86e5336b862241a337dd5ee70d7a1fcf974cb4cda4c322",
+      "flights.json": "c1fc094edc7d6b95db7784e814dfc7bcfac983578ff464a7e2ecc5dc64c66751",
+      "job.json": "ea20b1dbee38889f0521c555428325119499073d7c488a15662e4edb076a9715",
+      "metadata.json": "df55c2e0e77f745a400f1b38ce195e818ce3a05d162c63133a4a8d9bfca726a6",
+      "mobile_resources.json": "3187d071489549cc9f764fc04ae74c68909521416f01c26efff49c9325e5bc7a",
+      "sites.json": "021e19b010361fdb2bce341c3f43ccb390eb328e1f1110d5999614e8f4f781a7"
+    },
+    "name": "case_0112",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0112",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "0e631a6c6187525ef52771962ae7ff98881f103d99ddf8651d94a614bb64acce",
+    "content_sha256": "cd2aab2cab007f86840cf49ca3bbb83f891a8a101a9837dc7a14b2498a925ba4",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "56fc847eeee337ebd2c843cd1f59a5313b977afd0c10a6ba52787f0c0c9eabdc",
+      "flights.json": "bb7ca1dfa282554fbe8c659863c14bb7bacb2ed852bcbb799f1dd688e9e28dc6",
+      "job.json": "e5de20fe8142c64ab8432a89a0fba0adc336ce25a80c5a4816cbb55e90732854",
+      "metadata.json": "f2b7df94e688dd76cdd09ea360c19c2f49c96498f934d676b800775a7c22e25f",
+      "mobile_resources.json": "0ad204e77d5c834de4aba62836ed2b21c3f2edfe23fb6f008fe33d9c76084148",
+      "sites.json": "066690d85b9207962c1523c8525f16690ab5a94ed5d6bdfd90c03be563dde598"
+    },
+    "name": "case_0113",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0113",
+    "profile": "coupled"
+  },
+  {
+    "case_sha256": "36eefb10f05866fd94447b0916b16cf81544a8b787410c7570830324f4743649",
+    "content_sha256": "03bd72c70e2ee2e2ac23b3bd7fd6f3300f936e902861ac4e70546ba8c298c058",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "a1689d8c88623327bc65cdbd353096ed3ff2efe003561f59b1da2305f3b33a1c",
+      "flights.json": "d832cbf8e594bc612e13b0376bee0ca611713bc355951982e4bf2801b0afaabe",
+      "job.json": "b08769b61a92fdc4bab6680b8fa715b133308bb613a2d7d58bef8ff52c9c8ded",
+      "metadata.json": "5aa093b97b9998b7ad582ea950116aef35f599fa025f50035192e84ca4156683",
+      "mobile_resources.json": "3a670cc6291af5eb335cfed3af8b07c5aa040210cbb62d3590a6d15627c2a86a",
+      "sites.json": "7b6c0a2261df231b7e47aacf20ab11b5e232a4af85e14a4da7545df2c8641cf9"
+    },
+    "name": "case_0114",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0114",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "02ef16cb9fb74c3be24e3dafc06808a9b5fbc18d17d97b96d0320e3b1e4cd5c2",
+    "content_sha256": "c4f5284a2542469049eecd04bd38837d9f6ef00644a90f3cec5480149e7b59a1",
+    "distribution": "ood_stress",
+    "files": {
+      "fixed_resources.json": "de9ccbe8d32c8a946e2513650957d682a13fcc31de3892de9c22d06a146158cd",
+      "flights.json": "3d28d026a79c155ede5aa9fe88cd1646d426dce0127eb5d4a890543d5c91428d",
+      "job.json": "ed6e13082b5bdbf892976266ee5be399814eeef4958862033ab139766c07298e",
+      "metadata.json": "9b671fd60df2e4dbf0ce662c5dc0bf8e9dfbf4bef4b5564d0f050cac4baec126",
+      "mobile_resources.json": "d3733bd66f9969f8ee67855a682b3d8448782b7b80faaf5e10ee1950684eba22",
+      "sites.json": "15b9a976db84ce5d268085ca0115a111168d8ec2c81682ce4d1457b01b3c0c5f"
+    },
+    "name": "case_0115",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0115",
+    "profile": "stress_joint"
+  },
+  {
+    "case_sha256": "4f22ebabc1a36fe1eb7dd48ad858ec0070d5196feb07d7af27a62f195861173b",
+    "content_sha256": "c0f201a4ad5cf00d45434b75fc3f81ea9e08016cee9f493d1482daa3e1dd602a",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "c9632cd42b149f99b8bdb1b2a62f2033865e1e9f26191513d0f20241a0b4ef79",
+      "flights.json": "530d6a73334e4b722d24df77c526c2f97d3cb0500c036296cbda3b31de42d8bb",
+      "job.json": "5ac450e1a19154ef89bae3b73a3574eb792870a3928976b92cb2e102850f6bcc",
+      "metadata.json": "c4bb9b46c0ce12c3b5cf8cc1d6d9124cf848337abcf8a724d1b286f671cda332",
+      "mobile_resources.json": "c3e5244eb3a0e125b45cb917446bf28bf749600490433e52569665fcfda612d7",
+      "sites.json": "fb01230a750fea26b17410a8dbf208e59f89ced73ace522b52bc74856961d7df"
+    },
+    "name": "case_0116",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0116",
+    "profile": "light"
+  },
+  {
+    "case_sha256": "dce0d36aa6b5bf93869ed05abc662bd05312cec0210742a766a20efee0d33263",
+    "content_sha256": "b4b858962d1cf2be8990e3d2b2af73ad363360beb63a2d778ed7b52b27a9d69b",
+    "distribution": "ood_scale",
+    "files": {
+      "fixed_resources.json": "8b3c9a7a65f21d3d02ee8216fd4161b99db53e4a07e46574f36696a72ccab8b0",
+      "flights.json": "fff65001f319f64599115d0f61f05df81634575e11589f80bce07b9cb71c20ee",
+      "job.json": "83a83974c0e06ac4f1f59ccd076037937a107ae8574baa7073c958a80d6bfca5",
+      "metadata.json": "9ed1efb1caa96a6afc998579c8f1734bd6eb5ea6fa7bb5d6bdbcf3c596074335",
+      "mobile_resources.json": "1bb26a89df954a29230349b257ab9039697a0d05796d37330f2efbe5cf60f357",
+      "sites.json": "bae62e1612bf1b9be7fc2e8801378f21f9e7f31925bef49c269cf4e40e9f6ba5"
+    },
+    "name": "case_0117",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0117",
+    "profile": "low_load_ood"
+  },
+  {
+    "case_sha256": "ddd4f8430eee5add90d9bcaa8e16a06d38ac5fe2034adb3d6e34f23cdc1f241a",
+    "content_sha256": "3256f47d9dae4e678ecefdaf9fdb89bbc79392876189dbd212479d9a82c688e5",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "d240c82e156a8f6c35b5b18d8cf26f8b180b2ec55fde0637ec0f2473afb06b87",
+      "flights.json": "586beded64f1e3c0c610df8e0382c4c07c8f8bdf7a9417e083463e3da8a204da",
+      "job.json": "a65df26ec1e6ef270609c2343e80a17c2aaf3f76d0d86fcd905c9b8cc1d05814",
+      "metadata.json": "4115f49db5fd9422f194046da0b39e0eae54b509e46d698a140db07bc6c2fc23",
+      "mobile_resources.json": "e3920c957367a6337307d7b63bcd5824ee5310e7d88ee9a3f1a3fe185b7d1c86",
+      "sites.json": "2712b9a71411d6f927d4fb86ee5b00ee9e4a80398e1ac894707ac215bcee8e50"
+    },
+    "name": "case_0118",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0118",
+    "profile": "balanced"
+  },
+  {
+    "case_sha256": "3c225da17702dc04326b483b329f0a6799e9ae472e8ecb6be9b0db58da3e2b33",
+    "content_sha256": "27637c2914ee33cfbda8b8fdcd02ea2e39d53e994241fb66a60767c4b1b01bfd",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "4455deb2b9396d773fe7f65c055abaaabd819603479e0953f1f5522b1a50cabd",
+      "flights.json": "315c5891b5cf98a2a1efe0cff44eb2d4a138b0a765e7c9d40730c7722aa9ef0b",
+      "job.json": "6be52640d07050e7b3e1a2f6fb85acb4859544eab515af7fb448387789b2e741",
+      "metadata.json": "ebf2bdf7d81fcf593276b56000de92aa33588359048408b37c16b7c1e3769251",
+      "mobile_resources.json": "d02ca68f47a5a3ed40c6021fcfd62c8866e6e8ae5b128cfd4b8632077c536e73",
+      "sites.json": "132c058ed3a551d49351ccd393d9986fcc80badc8f9f51e8053a5cd3f33d73ed"
+    },
+    "name": "case_0119",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0119",
+    "profile": "bursty"
+  },
+  {
+    "case_sha256": "d69abb4f7d803bae5d53ac5a8123eac8c17c6ba30b447b852a788a55923ce56f",
+    "content_sha256": "309ddaaa2c8485c0b988650f9fd2d4553df72a80e2726d641773841a3fc80f29",
+    "distribution": "iid",
+    "files": {
+      "fixed_resources.json": "38eb1d68e981192054822718cc8639a0b01113a78666423d46f065c81ce36c1c",
+      "flights.json": "6652c0255af0517b9fb0add78d79ed418a20c40f22f7505ccfb910acdc57e7ec",
+      "job.json": "167595fed65bfab14d10230a486f9944bdccbb1dae29a63220f41fd8c09955be",
+      "metadata.json": "40725c3f26b89e7c8cabed014e9ad80ca56294be118db3229063c2cb4015231c",
+      "mobile_resources.json": "a3b1cde72e9e19612f2bcd76ec994c2328c74f6c3a7e7ba2daaea9e72a71a5b0",
+      "sites.json": "0844fc4c700904a21695c449b214735ab0b36b44caeb2525dd0dc625ad02e38a"
+    },
+    "name": "case_0120",
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/envs/HKBZ/dataset/fjsp_v3_stage1_v2_eval_s20260803/validation/case_0120",
+    "profile": "high_flex"
+  }
+]

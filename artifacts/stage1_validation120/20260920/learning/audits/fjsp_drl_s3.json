@@ -1,0 +1,65 @@
+{
+  "case_count": 120,
+  "completion_count": 120,
+  "overlap60_exact_match_count": 52,
+  "overlap60_differences": [
+    {
+      "case": "case_0075",
+      "old": 8346.0,
+      "new": 8101.0
+    },
+    {
+      "case": "case_0033",
+      "old": 9850.0,
+      "new": 9502.0
+    },
+    {
+      "case": "case_0042",
+      "old": 12139.0,
+      "new": 12145.0
+    },
+    {
+      "case": "case_0067",
+      "old": 9027.0,
+      "new": 9021.0
+    },
+    {
+      "case": "case_0019",
+      "old": 8116.0,
+      "new": 8320.0
+    },
+    {
+      "case": "case_0104",
+      "old": 8070.0,
+      "new": 7990.0
+    },
+    {
+      "case": "case_0034",
+      "old": 8891.0,
+      "new": 8933.0
+    },
+    {
+      "case": "case_0081",
+      "old": 9168.0,
+      "new": 9290.0
+    }
+  ],
+  "metrics": {
+    "case_count": 120,
+    "mean": 9803.008333333333,
+    "composite": 9803.008333333333,
+    "median": 9296.5,
+    "p95": 13201.199999999999,
+    "worst10_mean": 13822.666666666666,
+    "worst": 17888.0,
+    "groups": {
+      "iid": 9195.5,
+      "ood_stress": 10766.777777777777,
+      "ood_scale": 7204.166666666667
+    }
+  },
+  "evaluation_seconds": 879.5240774300182,
+  "policy_history_mode": "authoritative",
+  "result_sha256": "fa5049627daec5d4b695a11c6b79316e2f9eca1dad423743ebddf2823aff9c1c",
+  "checked_unix_time": 1789910147.2132227
+}

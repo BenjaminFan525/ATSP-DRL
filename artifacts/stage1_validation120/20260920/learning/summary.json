@@ -1,0 +1,225 @@
+{
+  "status": "needs_review",
+  "checkpoint_selection": "Existing validation60 Best, fixed before evaluation; no reselection or training",
+  "case_count": 120,
+  "actual_distribution_counts": {
+    "iid": 60,
+    "ood_stress": 54,
+    "ood_scale": 6
+  },
+  "completed_jobs": 8,
+  "total_jobs": 15,
+  "learning": {
+    "P5": {
+      "seed_count": 3,
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "best_epochs": [
+        8,
+        7,
+        8
+      ],
+      "mean": 9128.130555555555,
+      "seed_sd": 34.300168380430485,
+      "composite": 9128.130555555555,
+      "p95_mean_across_seeds": 11562.85,
+      "worst10_mean_across_seeds": 12342.277777777777,
+      "groups": {
+        "iid": 8635.6,
+        "ood_stress": 9941.543209876543,
+        "ood_scale": 6732.722222222223
+      },
+      "per_seed": [
+        {
+          "seed": 1,
+          "case_count": 120,
+          "mean": 9155.641666666666,
+          "composite": 9155.641666666668,
+          "median": 8892.0,
+          "p95": 11422.949999999999,
+          "worst10_mean": 12348.0,
+          "worst": 15838.0,
+          "groups": {
+            "iid": 8619.433333333332,
+            "ood_stress": 9998.222222222223,
+            "ood_scale": 6934.5
+          }
+        },
+        {
+          "seed": 2,
+          "case_count": 120,
+          "mean": 9139.05,
+          "composite": 9139.05,
+          "median": 8902.5,
+          "p95": 11413.1,
+          "worst10_mean": 12264.083333333334,
+          "worst": 15996.0,
+          "groups": {
+            "iid": 8663.066666666668,
+            "ood_stress": 9945.185185185184,
+            "ood_scale": 6643.666666666667
+          }
+        },
+        {
+          "seed": 3,
+          "case_count": 120,
+          "mean": 9089.7,
+          "composite": 9089.7,
+          "median": 8864.5,
+          "p95": 11852.5,
+          "worst10_mean": 12414.75,
+          "worst": 15398.0,
+          "groups": {
+            "iid": 8624.3,
+            "ood_stress": 9881.222222222223,
+            "ood_scale": 6620.0
+          }
+        }
+      ]
+    },
+    "l2d": {
+      "seed_count": 3,
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "best_epochs": [
+        1,
+        4,
+        5
+      ],
+      "mean": 10764.383333333333,
+      "seed_sd": 81.33538248784716,
+      "composite": 10764.383333333333,
+      "p95_mean_across_seeds": 14483.333333333332,
+      "worst10_mean_across_seeds": 15002.861111111111,
+      "groups": {
+        "iid": 10107.733333333334,
+        "ood_stress": 11856.72839506173,
+        "ood_scale": 7499.777777777777
+      },
+      "per_seed": [
+        {
+          "seed": 1,
+          "case_count": 120,
+          "mean": 10683.383333333333,
+          "composite": 10683.383333333333,
+          "median": 10025.0,
+          "p95": 14483.849999999999,
+          "worst10_mean": 15047.583333333334,
+          "worst": 18094.0,
+          "groups": {
+            "iid": 9967.633333333333,
+            "ood_stress": 11842.222222222223,
+            "ood_scale": 7411.333333333333
+          }
+        },
+        {
+          "seed": 2,
+          "case_count": 120,
+          "mean": 10846.05,
+          "composite": 10846.050000000001,
+          "median": 10296.5,
+          "p95": 15039.699999999999,
+          "worst10_mean": 15360.583333333334,
+          "worst": 18252.0,
+          "groups": {
+            "iid": 10153.333333333334,
+            "ood_stress": 12006.074074074075,
+            "ood_scale": 7333.0
+          }
+        },
+        {
+          "seed": 3,
+          "case_count": 120,
+          "mean": 10763.716666666667,
+          "composite": 10763.716666666667,
+          "median": 10172.5,
+          "p95": 13926.45,
+          "worst10_mean": 14600.416666666666,
+          "worst": 16367.0,
+          "groups": {
+            "iid": 10202.233333333334,
+            "ood_stress": 11721.888888888889,
+            "ood_scale": 7755.0
+          }
+        }
+      ]
+    }
+  },
+  "iga": {
+    "iga180": {
+      "case_count": 120,
+      "mean_makespan": 9324.183333333332,
+      "median_makespan": 9017.5,
+      "p95_makespan": 11816.749999999998,
+      "worst_makespan": 15217.0,
+      "composite_makespan": 9324.183333333334,
+      "composite_weights": {
+        "iid": 0.5,
+        "ood_stress": 0.45,
+        "ood_scale": 0.05
+      },
+      "distributions": {
+        "iid": {
+          "count": 60,
+          "mean": 8839.883333333333
+        },
+        "ood_stress": {
+          "count": 54,
+          "mean": 10153.388888888889
+        },
+        "ood_scale": {
+          "count": 6,
+          "mean": 6704.333333333333
+        }
+      },
+      "mean_evaluated_candidates": 8.875,
+      "mean_optimization_wall_seconds": 180.04128096161537
+    },
+    "iga1800": {
+      "case_count": 120,
+      "mean_makespan": 9016.0,
+      "median_makespan": 8741.0,
+      "p95_makespan": 11639.4,
+      "worst_makespan": 14946.0,
+      "composite_makespan": 9016.0,
+      "composite_weights": {
+        "iid": 0.5,
+        "ood_stress": 0.45,
+        "ood_scale": 0.05
+      },
+      "distributions": {
+        "iid": {
+          "count": 60,
+          "mean": 8557.816666666668
+        },
+        "ood_stress": {
+          "count": 54,
+          "mean": 9807.851851851852
+        },
+        "ood_scale": {
+          "count": 6,
+          "mean": 6471.166666666667
+        }
+      },
+      "mean_evaluated_candidates": 82.81666666666666,
+      "mean_optimization_wall_seconds": 1620.0668130238323
+    }
+  },
+  "updated_unix_time": 1789915698.3233593,
+  "review_required_jobs": [
+    "multi_ppo_s1",
+    "multi_ppo_s2",
+    "fjsp_drl_s1",
+    "fjsp_drl_s2",
+    "fjsp_drl_s3",
+    "daniel_s2",
+    "daniel_s3"
+  ],
+  "error": null
+}

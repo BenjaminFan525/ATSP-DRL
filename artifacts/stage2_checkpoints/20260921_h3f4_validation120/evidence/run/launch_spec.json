@@ -1,0 +1,15 @@
+{
+  "authorization": "User: seed3\u73b0\u5728\u5c31\u5f00\u59cb; \u6539\u7528Validation120\u8bc4\u4f30",
+  "files": {
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/manifest.json": "481c300325d61b874a2db6bed343b7c486df1a4fe29d249ec1e346fbe00e0f05",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/previous_manifest.json": "be4e6fccc9043614bbff536b75e1d8d369853c0d76ec4a4fcfad789e4f69d38f",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/evaluator_source.json": "f5c068a5475dc09c9ff8a3b68b284b6ba0c9a3479eadc74b49c54cff6ef825fe",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/validation120_cases.json": "3996c9e55dd0e375d482068e86206ded4a2359f4c10fdb2b70d86fa3afa4f5fe",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/preflight.json": "050da9d714e8a4f5d2e8d122750a6493db7d5a7e8d68757bb6cd9c9322a1113c",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/migrate.py": "9766d5f4dfd41286c2001675170ddbe5186e8eb082b2de2013ad1bfde4c69610",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/coordinator.py": "fe28e35569b9914222d328f593644a8ee32dcbc2a34da3364342ac844a3ad264",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/launch.py": "c6542e38112e006a32aab5f7c7f8c4ee6ae55ea0063dc0b692f51a3abb7c813c",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/socket.txt": "0e47b7557acec65f294b5b8ce40d8d54ba07faee63937874488b4c4bceffac83",
+    "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/source_bundle.tar.gz": "4872539ccdcccd98207d67cb667d3200e16bc464a53a39f3a9643991f1601307"
+  }
+}

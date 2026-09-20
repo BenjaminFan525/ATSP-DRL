@@ -389,7 +389,8 @@ class Controller:
                    single_profile=self.m['recipe'].get('execution_profile')
                        if self.m.get('execution_mode') == 'single' else None,
                    optimizer_resize_after_epoch=self.m['recipe'].get('optimizer_resize_after_epoch'),
-                   stopping_policy=self.m['recipe'].get('stopping_policy'))
+                   stopping_policy=self.m['recipe'].get('stopping_policy'),
+                   epochs=self.m['recipe']['epochs'])
         m = dict(protocol=PROTOCOL,root=str(path.parent),suite=bind(self.path),recipe=r,
             parent_checkpoint=parent['checkpoint'],parent_manifest=self.m['parent_manifest'],
             parent_selection=bind(self.root/'parent_selection.json'),baselines=self.m['baselines'],

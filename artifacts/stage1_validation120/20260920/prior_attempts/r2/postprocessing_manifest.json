@@ -1,0 +1,9 @@
+{
+  "entrypoint": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r2/analyze_results.py",
+  "sha256": "53fe6976d80251a6c7341c66edbbfd168d6a19548eb7bcfd98c705cc47334fdb",
+  "requires": "15 completed jobs and all 900 original60 exact matches",
+  "outputs": [
+    "analysis/report.md",
+    "analysis/summary.json"
+  ]
+}

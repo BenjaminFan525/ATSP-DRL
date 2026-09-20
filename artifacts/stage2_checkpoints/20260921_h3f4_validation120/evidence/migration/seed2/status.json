@@ -1,0 +1,33 @@
+{
+  "status": "ready_to_resume",
+  "seed": 2,
+  "source_checkpoint": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/migration/seed2/captured/checkpoint_BCEpoch1.pt",
+  "source_sha256": "2538df25dd758a22460936617d3a099db3b2f469a434b35047497081cc92fb59",
+  "started_unix_time": 1789896563.3194633,
+  "changed_contract_fields": [
+    "eval_dataset_dir",
+    "max_eval_cases"
+  ],
+  "evaluation": "bc_epoch_1",
+  "finished_unix_time": 1789914414.4529622,
+  "target_checkpoint": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage2_h3f4_stage1_seeds123_validation120_20260920_r2/migration/seed2/models/checkpoint_BCEpoch1.pt",
+  "target_sha256": "72598b9152c3180fc41c12d1c0334b33981065ce5d860e77df2d8813d40234d8",
+  "model_optimizer_rng_bitwise_equal": true,
+  "production_resume_loader_passed": true,
+  "evaluation_cases": 120,
+  "epoch1_gate": {
+    "passed": true,
+    "reasons": [],
+    "pre_raw_makespan": 8969.291666666666,
+    "post_raw_makespan": 8508.966666666667,
+    "raw_delta_seconds": -460.3249999999989,
+    "pre_ood_stress_makespan": 10088.432098765434,
+    "post_ood_stress_makespan": 9512.296296296296,
+    "ood_stress_delta_seconds": -576.1358024691381,
+    "completion_rate": 1.0,
+    "cycle_count": 0,
+    "timeout_count": 0,
+    "max_raw_regression_seconds": 0,
+    "max_stress_regression_seconds": 30
+  }
+}

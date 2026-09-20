@@ -1,0 +1,71 @@
+{
+  "protocol": "hkbz_workspace_retirement_v1",
+  "date": "2026-09-20",
+  "source_commit": "14f5d2605fbfc0bb631aa18b44e064ad93d02554",
+  "route": "Stage1 P5 -> frozen Stage2 B0 -> B_SHARED H3 R0 E8 -> C03 R9 E10; Validation120 frozen IGA",
+  "archive_root": "/tmp/hkbz-workspace-retirement-20260920-tv3v88kw",
+  "archive_method": "same-filesystem rename preserving original inodes and bytes; independent Git mirror for tracked files",
+  "archived_files": 53042,
+  "archived_bytes": 161878279734,
+  "archived_gib": 150.76089625619352,
+  "tracked_files_removed": 442,
+  "tracked_files_removed_by_suffix": {
+    ".md": 51,
+    ".pyc": 41,
+    ".py": 242,
+    ".png": 1,
+    ".yaml": 1,
+    ".sh": 106
+  },
+  "retained_python_files": 164,
+  "retained_primary_runs": [
+    "result/hkbz_train_logs/stage1_departure_reward_formal_dual_20260816_r1",
+    "result/hkbz_train_logs/stage2_b0_stage1_seeds12_20260920_r1",
+    "result/hkbz_train_logs/stage2_supervised_hf_labels_20260901_r1",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260913_r8_train240_env240_mb240_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_h3_r0_frozen_iga_20260915_r1_gpu0",
+    "result/hkbz_train_logs/stage3_h3_r0e8_fresh_20260919_r9_env384_mb192_nopost_e10_gpu0",
+    "result/hkbz_train_logs/stage3_matched_iga_h3f4_validation120_20260918_r1"
+  ],
+  "retained_lineage_roots": [
+    "result/hkbz_train_logs/stage2_bc_injection_20260905_gpu0_half_pilot_r2",
+    "result/hkbz_train_logs/stage2_ready_reliable_20260904_local_a6000_r2",
+    "result/hkbz_train_logs/stage3_b_shared_b0_capacity240_120_recompute_20260913",
+    "result/hkbz_train_logs/stage3_b_shared_b0_capacity240_80_recompute_20260913",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260912_r2_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260912_r3_tuned_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260913_r4_resume64_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260913_r5_single_model_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260913_r6_env240_mb80_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_local_a6000_20260913_r7_env240_mb120_gpu0",
+    "result/hkbz_train_logs/stage3_b_shared_b0_single_model_probe_20260913",
+    "result/hkbz_train_logs/stage3_b_shared_b0_train240_capacity240_240_recompute_20260913",
+    "result/hkbz_train_logs/stage3_b_shared_b0_train240_restart_20260913",
+    "result/hkbz_train_logs/stage3_h3_continuation_tau_20260917_r1_gpu0",
+    "result/hkbz_train_logs/stage3_h3_continuation_tau_20260917_r2_dual_gpu0",
+    "result/hkbz_train_logs/stage3_h3_continuation_tau_20260917_r3_env96_gpu0",
+    "result/hkbz_train_logs/stage3_h3_r0e8_fresh_20260918_r5_env384_mb128_gpu0",
+    "result/hkbz_train_logs/stage3_h3_r0e8_fresh_20260918_r6_env384_mb192_gpu0",
+    "result/hkbz_train_logs/stage3_h3_r0e8_fresh_20260918_r7_env384_mb192_nopost_gpu0",
+    "result/hkbz_train_logs/stage3_h3_r0e8_fresh_20260918_r8_env384_mb192_nopost_e10_gpu0"
+  ],
+  "validation": {
+    "protected_files_unchanged": 323,
+    "frozen_route_bound_files": 195,
+    "frozen_source_files": 1400,
+    "stage2_bundled_files": 19,
+    "stage2_archived_results": 2943,
+    "cpu_tests_passed": 390,
+    "subtests_passed": 34,
+    "skipped": 10,
+    "skip_reasons": {
+      "Native committed fixture unavailable": 1,
+      "Local committed continuation fixture absent": 9
+    }
+  },
+  "new_experiments_started": false,
+  "publication_status_at_cleanup": {
+    "committed": false,
+    "pushed": false
+  }
+}

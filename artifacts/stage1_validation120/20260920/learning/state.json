@@ -1,0 +1,293 @@
+{
+  "status": "needs_review",
+  "started_unix_time": 1789904721.3490283,
+  "completed_jobs": 8,
+  "total_jobs": 15,
+  "jobs": {
+    "P5_s1": {
+      "status": "completed",
+      "reused": true,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 9155.641666666666,
+          "composite": 9155.641666666668,
+          "median": 8892.0,
+          "p95": 11422.949999999999,
+          "worst10_mean": 12348.0,
+          "worst": 15838.0,
+          "groups": {
+            "iid": 8619.433333333332,
+            "ood_stress": 9998.222222222223,
+            "ood_scale": 6934.5
+          }
+        },
+        "evaluation_seconds": 649.4901549050119,
+        "policy_history_mode": "legacy_previous_action_reset_inactive",
+        "result_sha256": "2b5aa10426e2a6017ee301ce45c7a7595a264552c550b91a13820847d2dc8b45",
+        "checked_unix_time": 1789904721.3708725
+      }
+    },
+    "P5_s2": {
+      "status": "completed",
+      "reused": true,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 9139.05,
+          "composite": 9139.05,
+          "median": 8902.5,
+          "p95": 11413.1,
+          "worst10_mean": 12264.083333333334,
+          "worst": 15996.0,
+          "groups": {
+            "iid": 8663.066666666668,
+            "ood_stress": 9945.185185185184,
+            "ood_scale": 6643.666666666667
+          }
+        },
+        "evaluation_seconds": 663.3309963429929,
+        "policy_history_mode": "legacy_previous_action_reset_inactive",
+        "result_sha256": "df969d7b413a60a12324dfbc823a56430e1d3d2d8cca571c991623f29b0cb90c",
+        "checked_unix_time": 1789904721.3906078
+      }
+    },
+    "P5_s3": {
+      "status": "completed",
+      "reused": true,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 9089.7,
+          "composite": 9089.7,
+          "median": 8864.5,
+          "p95": 11852.5,
+          "worst10_mean": 12414.75,
+          "worst": 15398.0,
+          "groups": {
+            "iid": 8624.3,
+            "ood_stress": 9881.222222222223,
+            "ood_scale": 6620.0
+          }
+        },
+        "evaluation_seconds": 650.0014525469742,
+        "policy_history_mode": "legacy_previous_action_reset_inactive",
+        "result_sha256": "2417ab71f95c454a15006c08c7be24764c8254364a63b4fadd4df826a7e4b8c3",
+        "checked_unix_time": 1789904721.4069502
+      }
+    },
+    "multi_ppo_s3": {
+      "status": "completed",
+      "started_unix_time": 1789904726.409387,
+      "ended_unix_time": 1789905626.5397654,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 9741.033333333333,
+          "composite": 9741.033333333335,
+          "median": 9212.0,
+          "p95": 13026.099999999999,
+          "worst10_mean": 13943.833333333334,
+          "worst": 18630.0,
+          "groups": {
+            "iid": 9127.35,
+            "ood_stress": 10726.203703703704,
+            "ood_scale": 7011.333333333333
+          }
+        },
+        "evaluation_seconds": 893.32335457101,
+        "policy_history_mode": "authoritative",
+        "result_sha256": "1811e2aed49a84b2f82da9de09400d5e346f360a9af0d17971b0a365a9843053",
+        "checked_unix_time": 1789905626.538694
+      }
+    },
+    "multi_ppo_s1": {
+      "status": "needs_review",
+      "started_unix_time": 1789905626.5447853,
+      "ended_unix_time": 1789906556.6886988,
+      "error": "Overlap validation drift: multi_ppo_s1 has 1/60 changed makespans; result requires review"
+    },
+    "multi_ppo_s2": {
+      "status": "needs_review",
+      "started_unix_time": 1789906556.6904976,
+      "ended_unix_time": 1789907496.8435283,
+      "error": "Overlap validation drift: multi_ppo_s2 has 1/60 changed makespans; result requires review"
+    },
+    "fjsp_drl_s1": {
+      "status": "needs_review",
+      "started_unix_time": 1789907496.8452775,
+      "ended_unix_time": 1789908406.9955807,
+      "error": "Overlap validation drift: fjsp_drl_s1 has 12/60 changed makespans; result requires review"
+    },
+    "fjsp_drl_s2": {
+      "status": "needs_review",
+      "started_unix_time": 1789908406.9973586,
+      "ended_unix_time": 1789909257.0959828,
+      "error": "Overlap validation drift: fjsp_drl_s2 has 9/60 changed makespans; result requires review"
+    },
+    "fjsp_drl_s3": {
+      "status": "needs_review",
+      "started_unix_time": 1789909257.0967166,
+      "ended_unix_time": 1789910147.2139897,
+      "error": "Overlap validation drift: fjsp_drl_s3 has 8/60 changed makespans; result requires review"
+    },
+    "daniel_s1": {
+      "status": "completed",
+      "started_unix_time": 1789910147.2158394,
+      "ended_unix_time": 1789911027.3744452,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 9645.041666666666,
+          "composite": 9645.041666666666,
+          "median": 9124.0,
+          "p95": 13738.6,
+          "worst10_mean": 14173.166666666666,
+          "worst": 16531.0,
+          "groups": {
+            "iid": 8951.116666666667,
+            "ood_stress": 10721.25925925926,
+            "ood_scale": 6898.333333333333
+          }
+        },
+        "evaluation_seconds": 875.03959467198,
+        "policy_history_mode": "authoritative",
+        "result_sha256": "6d7312ccfb1cacdb52a6072129719b35ba0af019b58689e9fd4fabe59851d379",
+        "checked_unix_time": 1789911027.3733876
+      }
+    },
+    "daniel_s2": {
+      "status": "needs_review",
+      "started_unix_time": 1789911027.379069,
+      "ended_unix_time": 1789911977.5567071,
+      "error": "Overlap validation drift: daniel_s2 has 2/60 changed makespans; result requires review"
+    },
+    "daniel_s3": {
+      "status": "needs_review",
+      "started_unix_time": 1789911977.5584795,
+      "ended_unix_time": 1789912867.7277005,
+      "error": "Overlap validation drift: daniel_s3 has 1/60 changed makespans; result requires review"
+    },
+    "l2d_s1": {
+      "status": "completed",
+      "started_unix_time": 1789912867.7295942,
+      "ended_unix_time": 1789913787.9053645,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 10683.383333333333,
+          "composite": 10683.383333333333,
+          "median": 10025.0,
+          "p95": 14483.849999999999,
+          "worst10_mean": 15047.583333333334,
+          "worst": 18094.0,
+          "groups": {
+            "iid": 9967.633333333333,
+            "ood_stress": 11842.222222222223,
+            "ood_scale": 7411.333333333333
+          }
+        },
+        "evaluation_seconds": 915.2259425009834,
+        "policy_history_mode": "authoritative",
+        "result_sha256": "cbb31cd526801dba00a80ca9c9634455dbf7c3d33a5c5fa458135c78ac6afa68",
+        "checked_unix_time": 1789913787.9042659
+      }
+    },
+    "l2d_s2": {
+      "status": "completed",
+      "started_unix_time": 1789913787.9107082,
+      "ended_unix_time": 1789914738.1050603,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 10846.05,
+          "composite": 10846.050000000001,
+          "median": 10296.5,
+          "p95": 15039.699999999999,
+          "worst10_mean": 15360.583333333334,
+          "worst": 18252.0,
+          "groups": {
+            "iid": 10153.333333333334,
+            "ood_stress": 12006.074074074075,
+            "ood_scale": 7333.0
+          }
+        },
+        "evaluation_seconds": 943.5837682330166,
+        "policy_history_mode": "authoritative",
+        "result_sha256": "6133aa4152aa8340b13d96ba522938e5bcee63653f49d5f827603806496b957d",
+        "checked_unix_time": 1789914738.1039653
+      }
+    },
+    "l2d_s3": {
+      "status": "completed",
+      "started_unix_time": 1789914738.110613,
+      "ended_unix_time": 1789915698.3185534,
+      "audit": {
+        "case_count": 120,
+        "completion_count": 120,
+        "overlap60_exact_match_count": 60,
+        "overlap60_differences": [],
+        "metrics": {
+          "case_count": 120,
+          "mean": 10763.716666666667,
+          "composite": 10763.716666666667,
+          "median": 10172.5,
+          "p95": 13926.45,
+          "worst10_mean": 14600.416666666666,
+          "worst": 16367.0,
+          "groups": {
+            "iid": 10202.233333333334,
+            "ood_stress": 11721.888888888889,
+            "ood_scale": 7755.0
+          }
+        },
+        "evaluation_seconds": 949.0677431579679,
+        "policy_history_mode": "authoritative",
+        "result_sha256": "71e3dc3db7458cb83f47a700028b18616c0796b8bb2c43d50194741ebc978488",
+        "checked_unix_time": 1789915698.317451
+      }
+    }
+  },
+  "review_required_jobs": [
+    "multi_ppo_s1",
+    "multi_ppo_s2",
+    "fjsp_drl_s1",
+    "fjsp_drl_s2",
+    "fjsp_drl_s3",
+    "daniel_s2",
+    "daniel_s3"
+  ],
+  "validator_pid": 1276162,
+  "updated_unix_time": 1789915688.289287,
+  "current_job": "l2d_s3",
+  "current_job_elapsed_seconds": 950.1786751747131,
+  "ended_unix_time": 1789915698.324878
+}

@@ -48,10 +48,13 @@ build/
 dist/
 *.egg-info/
 
-# Audited, byte-bound Stage2 handoff is the only checkpoint publication exception.
+# Audited, byte-bound Stage2 publication exceptions.
 !artifacts/stage2_frozen/20260912/checkpoints/b0.pt
 !artifacts/stage2_frozen/20260912/checkpoints/stage1.pt
 !artifacts/stage2_frozen/20260912/checkpoints/r1.pt
+!artifacts/stage2_checkpoints/20260921_h3f4_validation120/checkpoints/seed[123]/checkpoint_Best.pt
+!artifacts/stage2_checkpoints/20260921_h3f4_validation120/checkpoints/seed[123]/checkpoint_Last.pt
+!artifacts/stage2_checkpoints/20260921_h3f4_validation120/checkpoints/seed[123]/checkpoint_BCEpoch[12].pt
 
 # Local credentials and migration-only material must remain private.
 /id_rsa

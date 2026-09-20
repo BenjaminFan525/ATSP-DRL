@@ -40,8 +40,8 @@ python -m unittest onpolicy.envs.HKBZ.test.test_stage2_frozen \
 它不是调度评测、训练提速测试或新的 IGA 对比。
 
 发布验证记录见 [release_verification.json](artifacts/stage2_frozen/20260912/verification/release_verification.json)。
-完整 CPU 回归可运行 `python -m unittest discover -s onpolicy/envs/HKBZ/test -p 'test_*.py'`；
-IPC 测试需允许本地进程间 socket。两份校验绑定的合成 TRAIN fixture 随代码发布，
+保留路线的 CPU 回归位于 `onpolicy/envs/HKBZ/test/`；IPC 测试需允许本地进程间 socket。
+两份校验绑定的合成 TRAIN fixture 随代码发布，
 无需原机器数据路径；它们仅用于测试，不是完整 benchmark 或性能证据。
 
 Stage3 代码可以在创建 policy 前显式调用：
@@ -79,10 +79,20 @@ checkpoint, args, bundle = load_frozen_stage2(
 
 `history/experiment_results.tar.gz` 保留 2,943 份历史 JSON 的原始字节，
 `history/results_index.json` 列出来源、大小和 SHA256，未裁剪工程验证参数。
-本地 `result/`、`onpolicy/scripts/results/` 的完整产物继续保留并被 Git 忽略；
-未把约 148 GiB 原始日志、全部候选模型、数据集和标签轨迹上传。
+2026-09-20 工作空间整理后，本地 `result/`、`onpolicy/scripts/results/` 只保留
+最终技术链及其实际依赖，其他原始日志和候选模型已移入仓库外恢复区。
+清单与恢复位置见 [工作空间整理记录](docs/WORKSPACE_RETIREMENT.md)。
+原封存 manifest 和结果归档保持原始字节；其中的保留范围描述记录的是 2026-09-12 的状态。
+
+固定原教师、Stage1 seed 1/2、BC seed 11 的条件复现已单独完成，结果保留在
+`result/hkbz_train_logs/stage2_b0_stage1_seeds12_20260920_r1/`；它不替换本节的冻结 B0。
 
 ## 退役与恢复
+
+2026-09-21 新增实验保存包见 [H3/F4 Validation120 checkpoint](artifacts/stage2_checkpoints/20260921_h3f4_validation120/README.md)。
+该包保存 Stage1 seeds 1/2/3、BC seed 11 的 12 个 checkpoint、选模与来源记录，
+并记录 seed1/2 迁移评测的 tau 元数据差异；它不覆盖上述 H2/F4 冻结 B0，也不表示正式晋升。
+这些新增实验使用其自身封存源码，当前冻结入口的启动门禁保持不变。
 
 旧 Stage2 开发脚本及其专用测试已退出活动目录；仍被运行时导入的模块保留。
 通用 `resource_joint` 训练和保留控制器的自动启动入口现在明确拒绝新 Stage2 训练；

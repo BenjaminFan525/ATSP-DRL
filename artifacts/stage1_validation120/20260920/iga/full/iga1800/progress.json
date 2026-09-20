@@ -1,0 +1,37 @@
+{
+  "status": "running",
+  "started_unix_time": 1789872296.3028557,
+  "completed": 120,
+  "failed": 0,
+  "total": 120,
+  "updated_unix_time": 1789873939.6532578,
+  "metrics_so_far": {
+    "case_count": 120,
+    "mean_makespan": 9016.0,
+    "median_makespan": 8741.0,
+    "p95_makespan": 11639.4,
+    "worst_makespan": 14946.0,
+    "composite_makespan": 9016.0,
+    "composite_weights": {
+      "iid": 0.5,
+      "ood_stress": 0.45,
+      "ood_scale": 0.05
+    },
+    "distributions": {
+      "iid": {
+        "count": 60,
+        "mean": 8557.816666666668
+      },
+      "ood_stress": {
+        "count": 54,
+        "mean": 9807.851851851852
+      },
+      "ood_scale": {
+        "count": 6,
+        "mean": 6471.166666666667
+      }
+    },
+    "mean_evaluated_candidates": 82.81666666666666,
+    "mean_optimization_wall_seconds": 1620.0668130238323
+  }
+}

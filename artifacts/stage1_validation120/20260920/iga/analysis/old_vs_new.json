@@ -1,0 +1,35 @@
+{
+  "reference_old": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_departure_reward_formal_dual_20260816_r1/test60_p5_best/summary_vs_iga.json",
+  "reference_new": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/analysis/analysis.json",
+  "old_dataset": "independent test60",
+  "new_dataset": "aligned validation60",
+  "case_overlap": 0,
+  "comparison_metric": "raw mean makespan; both actual group counts are 30/27/3",
+  "old_iga1800": 8933.133333333333,
+  "old_P5": 8985.41111111111,
+  "new_iga1800": 9038.5,
+  "new_P5": 9196.783333333333,
+  "gap_decomposition": [
+    {
+      "distribution": "iid",
+      "old_p5_minus_iga": 99.29999999999927,
+      "new_p5_minus_iga": 142.23333333333358,
+      "weighted_gap_change": 21.46666666666715
+    },
+    {
+      "distribution": "ood_stress",
+      "old_p5_minus_iga": 7.01234567901156,
+      "new_p5_minus_iga": 172.55555555555475,
+      "weighted_gap_change": 74.49444444444444
+    },
+    {
+      "distribution": "ood_scale",
+      "old_p5_minus_iga": -10.555555555555657,
+      "new_p5_minus_iga": 190.33333333333394,
+      "weighted_gap_change": 10.04444444444448
+    }
+  ],
+  "weighted_gap_change": 106.00555555555607,
+  "algorithm_superiority_identified": false,
+  "identification_limit": "No old/new solver A/B on matched case payloads, seeds and compute settings."
+}

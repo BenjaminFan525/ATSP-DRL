@@ -1,0 +1,149 @@
+{
+  "status": "failed",
+  "checkpoint_selection": "Existing validation60 Best, fixed before evaluation; no reselection or training",
+  "case_count": 120,
+  "actual_distribution_counts": {
+    "iid": 60,
+    "ood_stress": 54,
+    "ood_scale": 6
+  },
+  "completed_jobs": 5,
+  "total_jobs": 15,
+  "learning": {
+    "P5": {
+      "seed_count": 3,
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "best_epochs": [
+        8,
+        7,
+        8
+      ],
+      "mean": 9128.130555555555,
+      "seed_sd": 34.300168380430485,
+      "composite": 9128.130555555555,
+      "p95_mean_across_seeds": 11562.85,
+      "worst10_mean_across_seeds": 12342.277777777777,
+      "groups": {
+        "iid": 8635.6,
+        "ood_stress": 9941.543209876543,
+        "ood_scale": 6732.722222222223
+      },
+      "per_seed": [
+        {
+          "seed": 1,
+          "case_count": 120,
+          "mean": 9155.641666666666,
+          "composite": 9155.641666666668,
+          "median": 8892.0,
+          "p95": 11422.949999999999,
+          "worst10_mean": 12348.0,
+          "worst": 15838.0,
+          "groups": {
+            "iid": 8619.433333333332,
+            "ood_stress": 9998.222222222223,
+            "ood_scale": 6934.5
+          }
+        },
+        {
+          "seed": 2,
+          "case_count": 120,
+          "mean": 9139.05,
+          "composite": 9139.05,
+          "median": 8902.5,
+          "p95": 11413.1,
+          "worst10_mean": 12264.083333333334,
+          "worst": 15996.0,
+          "groups": {
+            "iid": 8663.066666666668,
+            "ood_stress": 9945.185185185184,
+            "ood_scale": 6643.666666666667
+          }
+        },
+        {
+          "seed": 3,
+          "case_count": 120,
+          "mean": 9089.7,
+          "composite": 9089.7,
+          "median": 8864.5,
+          "p95": 11852.5,
+          "worst10_mean": 12414.75,
+          "worst": 15398.0,
+          "groups": {
+            "iid": 8624.3,
+            "ood_stress": 9881.222222222223,
+            "ood_scale": 6620.0
+          }
+        }
+      ]
+    }
+  },
+  "iga": {
+    "iga180": {
+      "case_count": 120,
+      "mean_makespan": 9324.183333333332,
+      "median_makespan": 9017.5,
+      "p95_makespan": 11816.749999999998,
+      "worst_makespan": 15217.0,
+      "composite_makespan": 9324.183333333334,
+      "composite_weights": {
+        "iid": 0.5,
+        "ood_stress": 0.45,
+        "ood_scale": 0.05
+      },
+      "distributions": {
+        "iid": {
+          "count": 60,
+          "mean": 8839.883333333333
+        },
+        "ood_stress": {
+          "count": 54,
+          "mean": 10153.388888888889
+        },
+        "ood_scale": {
+          "count": 6,
+          "mean": 6704.333333333333
+        }
+      },
+      "mean_evaluated_candidates": 8.875,
+      "mean_optimization_wall_seconds": 180.04128096161537
+    },
+    "iga1800": {
+      "case_count": 120,
+      "mean_makespan": 9016.0,
+      "median_makespan": 8741.0,
+      "p95_makespan": 11639.4,
+      "worst_makespan": 14946.0,
+      "composite_makespan": 9016.0,
+      "composite_weights": {
+        "iid": 0.5,
+        "ood_stress": 0.45,
+        "ood_scale": 0.05
+      },
+      "distributions": {
+        "iid": {
+          "count": 60,
+          "mean": 8557.816666666668
+        },
+        "ood_stress": {
+          "count": 54,
+          "mean": 9807.851851851852
+        },
+        "ood_scale": {
+          "count": 6,
+          "mean": 6471.166666666667
+        }
+      },
+      "mean_evaluated_candidates": 82.81666666666666,
+      "mean_optimization_wall_seconds": 1620.0668130238323
+    }
+  },
+  "updated_unix_time": 1789885135.0269198,
+  "status_source": "state.json",
+  "error": "Traceback (most recent call last):\n  File \"/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r2/code/onpolicy/scripts/train/run_stage1_validation120.py\", line 200, in run\n    audits[job[\"id\"]] = audit_result(job, manifest)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_validation120_best_20260920_r2/code/onpolicy/scripts/train/run_stage1_validation120.py\", line 90, in audit_result\n    raise ValueError(f\"Overlap validation drift: {job['id']} has {len(differences)}/60 changed makespans; inspect audit before continuing\")\nValueError: Overlap validation drift: multi_ppo_s3 has 1/60 changed makespans; inspect audit before continuing\n",
+  "failed_job": "multi_ppo_s3",
+  "ended_unix_time": 1789885765.1364768
+}

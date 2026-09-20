@@ -1,0 +1,119 @@
+--- B0/onpolicy/envs/HKBZ/experiment/evaluate_resource_iga_ablation.py
++++ H3F4/onpolicy/envs/HKBZ/experiment/evaluate_resource_iga_ablation.py
+@@ -1382,6 +1382,17 @@
+     parser.add_argument("--ac_config", default=str(ROOT / "onpolicy/config/ac.yaml"))
+     parser.add_argument("--env_config", default=str(ROOT / "onpolicy/config/env_plane_pretrain.yaml"))
+     args = parser.parse_known_args(command[2:])[0]
++    # The immutable Stage1 command records the former host root. Resolve only
++    # its configuration paths into this archived source; retain command bytes
++    # and SHA256 as the teacher's original provenance.
++    for name in ('ac_config', 'env_config'):
++        path = Path(getattr(args, name))
++        marker = 'onpolicy/config/'
++        if path.is_absolute() and marker in path.as_posix():
++            local = ROOT / marker / path.as_posix().split(marker, 1)[1]
++            if not local.is_file():
++                raise FileNotFoundError(f'Missing archived Stage1 configuration: {local}')
++            setattr(args, name, str(local))
+     # The checkpoint was trained with heuristic resource execution, but the
+     # resource ablation needs device-agent graph slots.  This flag changes no
+     # parameter shape; it only enables the already-present role backends.
+--- B0/onpolicy/runner/shared/hkbz_runner.py
++++ H3F4/onpolicy/runner/shared/hkbz_runner.py
+@@ -11048,10 +11048,14 @@
+             inactive_donor_source_sha256=(
+                 cross_parent_binding['donor_stage1_sha256'] if cross_parent_binding else None
+             ),
++            inactive_donor_planning_contract=(
++                cross_parent_binding.get('inactive_donor_planning_contract') if cross_parent_binding else None
++            ),
+         )
+         source_index = Path(checkpoint['resource_iga_teacher_index']).resolve()
+         runtime_index = Path(self.all_args.resource_iga_teacher_index).resolve()
+-        if source_index != runtime_index:
++        planning_transfer = cross_parent_binding and cross_parent_binding.get('inactive_donor_planning_contract')
++        if source_index != runtime_index and not planning_transfer:
+             raise ValueError('Ready predictor and policy BC teacher indexes differ.')
+         self.policy.ac.request_ready_head.load_state_dict(state, strict=True)
+         self.policy.ac.request_ready_head.requires_grad_(False)
+--- B0/onpolicy/utils/b0_fixed_teacher_reproduction.py
++++ H3F4/onpolicy/utils/b0_fixed_teacher_reproduction.py
+@@ -15,7 +15,8 @@
+         return None
+     path = Path(path).resolve()
+     contract = json.loads(path.read_text())
+-    if contract.get('protocol') != 'b0_fixed_teacher_cross_stage1_seed_v1':
++    h3 = contract.get('protocol') == 'b0_h3_fixed_teacher_cross_stage1_seed_v1'
++    if contract.get('protocol') != 'b0_fixed_teacher_cross_stage1_seed_v1' and not h3:
+         raise ValueError('Unknown B0 cross-parent contract.')
+     required = {
+         'request_ready_policy_injection': 'none',
+@@ -54,6 +55,30 @@
+     teacher = json.loads(teacher_path.read_text())
+     if teacher['frozen_plane_checkpoint_sha256'] != donor_parent['sha256']:
+         raise ValueError('Fixed teacher Stage1 provenance mismatch.')
++    planning_binding = {}
++    if h3:
++        source_index = Path(checkpoint['resource_iga_teacher_index']).resolve()
++        original_index = contract['ready_teacher_index']
++        if (source_index != Path(original_index['path']).resolve()
++                or file_sha256(source_index) != original_index['sha256']):
++            raise ValueError('Inactive Ready donor teacher provenance changed.')
++        source_planning = checkpoint.get('resource_lookahead_contract')
++        if source_planning != contract['ready_planning_contract']:
++            raise ValueError('Inactive Ready donor planning provenance changed.')
++        target = contract['planning_contract']
++        if (source_planning.get('device_future_intent_horizon') != 2
++                or source_planning.get('device_frontier_max_requests') != 4
++                or target != {**source_planning, 'device_future_intent_horizon': 3}
++                or teacher.get('resource_lookahead_contract') != target
++                or any(getattr(args, key, None) != value for key, value in target.items())):
++            raise ValueError('H3 fixed-teacher admission requires exact H2/F4 to H3/F4 inactive-Ready transfer.')
++        planning_binding = {
++            'inactive_donor_planning_contract': source_planning,
++            'runtime_planning_contract': target,
++            'ready_teacher_index': original_index,
++            'runtime_teacher_index': str(teacher_path),
++            'scope': 'fresh H3/F4 resource BC conditional on one seed3 H3/F4 teacher corpus; inactive H2/F4 Ready donor retained',
++        }
+     return {
+         'protocol': contract['protocol'],
+         'contract_path': str(path),
+@@ -65,4 +90,5 @@
+         'ready_policy_injection': 'none',
+         'ready_loss_coefficient': 0.0,
+         'scope': 'cross-Stage1-seed reproduction conditional on the fixed original teacher corpus',
++        **planning_binding,
+     }
+--- B0/onpolicy/utils/stage2_bc_contract.py
++++ H3F4/onpolicy/utils/stage2_bc_contract.py
+@@ -80,7 +80,8 @@
+ 
+ 
+ def validate_frozen_ready_checkpoint(checkpoint, ac, *, source_sha256,
+-                                     planning_contract, inactive_donor_source_sha256=None):
++                                     planning_contract, inactive_donor_source_sha256=None,
++                                     inactive_donor_planning_contract=None):
+     if checkpoint.get('stage2_training_mode') != 'ready_predictor_only':
+         raise ValueError('Ready source must be a predictor-only checkpoint.')
+     if checkpoint.get('source_m2_sha256') != source_sha256:
+@@ -89,7 +90,18 @@
+                 or getattr(ac, 'request_ready_policy_injection', None) != 'none'):
+             raise ValueError('Ready predictor and resource BC have different Stage1 sources.')
+     if checkpoint.get('resource_lookahead_contract') != planning_contract:
+-        raise ValueError('Ready predictor planning contract differs from resource BC.')
++        donor_planning = checkpoint.get('resource_lookahead_contract')
++        permitted = (
++            inactive_donor_planning_contract is not None
++            and donor_planning == inactive_donor_planning_contract
++            and isinstance(donor_planning, dict)
++            and donor_planning.get('device_future_intent_horizon') == 2
++            and donor_planning.get('device_frontier_max_requests') == 4
++            and planning_contract == {**donor_planning, 'device_future_intent_horizon': 3}
++            and getattr(ac, 'request_ready_policy_injection', None) == 'none'
++        )
++        if not permitted:
++            raise ValueError('Ready predictor planning contract differs from resource BC.')
+     if ready_head_config(checkpoint) != ready_head_config(ac):
+         raise ValueError('Ready predictor architecture/routing metadata mismatch.')
+     if float(checkpoint.get('request_ready_time_scale', -1)) != float(ac.request_ready_time_scale):

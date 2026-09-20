@@ -1,0 +1,33 @@
+{
+  "status": "completed",
+  "started_unix_time": 1789872093.349883,
+  "phases": {
+    "iga180": {
+      "status": "completed",
+      "started_unix_time": 1789872093.3500023,
+      "completed": 120,
+      "failed": 0,
+      "total": 120,
+      "updated_unix_time": 1789872296.0332785,
+      "ended_unix_time": 1789872296.3003745
+    },
+    "iga1800": {
+      "status": "completed",
+      "started_unix_time": 1789872296.3028557,
+      "completed": 120,
+      "failed": 0,
+      "total": 120,
+      "updated_unix_time": 1789873939.6532578,
+      "ended_unix_time": 1789873939.9193528
+    }
+  },
+  "current_phase": "iga1800",
+  "ended_unix_time": 1789873939.9226685,
+  "nested_verification": {
+    "case_count": 120,
+    "nested_regression_count": 0,
+    "improved_count": 111,
+    "tied_count": 9,
+    "mean_improvement": 308.18333333333334
+  }
+}

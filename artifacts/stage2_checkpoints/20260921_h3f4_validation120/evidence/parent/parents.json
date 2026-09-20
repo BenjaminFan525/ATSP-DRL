@@ -1,0 +1,44 @@
+{
+  "1": {
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed1/run1/models/checkpoint_Best.pt",
+    "sha256": "3055a1110502f63bf9db3be1c253cb922547e648a0e4cb90227ec0158229629b",
+    "size_bytes": 11190442,
+    "protected_parameter_sha256": "b7fbbf3c9fd135f412992bde3ea294d8551e1672bc4b06d9ddb4030d51ec2956",
+    "selected_episode": 8,
+    "selection_score": 9214.231034482758,
+    "validation_raw_makespan": 9223.85,
+    "source_command_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_departure_reward_formal_dual_20260816_r1/commands/formal_P5.json",
+    "source_command_key": "P5_team_time_potential_fixed_seed1",
+    "source_command_sha256": "4df1d8b64069fc8ff8d1dd2c256dfdd1c605d3589f8ae125f197a53f6252d8a1",
+    "source_command_size_bytes": 47826
+  },
+  "2": {
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed2/run1/models/checkpoint_Best.pt",
+    "sha256": "70498db39c336c48b2144ab2f3ac5777b11a75f55abcb81ef0df519019a477d8",
+    "size_bytes": 11190442,
+    "protected_parameter_sha256": "7cd232b0c3c791d2c20084736c10cbf406a7b22176a040359a0f87d2842c328a",
+    "selected_episode": 7,
+    "selection_score": 9223.376724137932,
+    "validation_raw_makespan": 9231.883333333333,
+    "source_command_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_departure_reward_formal_dual_20260816_r1/commands/formal_P5.json",
+    "source_command_key": "P5_team_time_potential_fixed_seed2",
+    "source_command_sha256": "4df1d8b64069fc8ff8d1dd2c256dfdd1c605d3589f8ae125f197a53f6252d8a1",
+    "source_command_size_bytes": 47826
+  },
+  "3": {
+    "path": "/home/fanyx/HKBZ-environment/onpolicy/scripts/results/HKBZ/simple/gnn_mappo/stage1_departure_reward_formal_dual_20260816_r1_formal_P5_team_time_potential_fixed_seed3/run1/models/checkpoint_Best.pt",
+    "sha256": "8ce0244f9b0b3877e2cc581a2479a6e5edab1854c1ed643749712612d0c5379d",
+    "size_bytes": 11190442,
+    "protected_parameter_sha256": "5cb39fc6893b9f5b38a8a4d9281b826814dd169854f2b8c99bdeb0fc70e88e68",
+    "selected_episode": 8,
+    "selection_score": 9116.529310344828,
+    "validation_raw_makespan": 9134.616666666667,
+    "source_command_path": "/home/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_departure_reward_formal_dual_20260816_r1/commands/formal_P5.json",
+    "source_command_key": "P5_team_time_potential_fixed_seed3",
+    "source_command_sha256": "4df1d8b64069fc8ff8d1dd2c256dfdd1c605d3589f8ae125f197a53f6252d8a1",
+    "source_command_size_bytes": 47826,
+    "source_seed": 3,
+    "handoff_path": "/home/fanyx/HKBZ-environment/onpolicy/config/stage1_m2_handoff.json",
+    "handoff_sha256": "d53a2bc717ff97c7238eec6f530d1d8bdf1bd875a5b251d5cdd8a6cd19cd460f"
+  }
+}

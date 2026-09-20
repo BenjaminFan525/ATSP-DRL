@@ -1,0 +1,231 @@
+{
+  "note": "The historical learning evaluation used manifest distribution overrides. aligned_validation60 preserves those groups solely for score compatibility; aligned_validation60_case_metadata reports actual dataset groups. Both use exactly the same 60 case payloads and makespans.",
+  "historical_distribution_by_case": {
+    "case_0018": "iid",
+    "case_0027": "ood_stress",
+    "case_0067": "ood_stress",
+    "case_0044": "ood_stress",
+    "case_0012": "iid",
+    "case_0097": "ood_stress",
+    "case_0052": "ood_stress",
+    "case_0010": "iid",
+    "case_0117": "iid",
+    "case_0091": "iid",
+    "case_0009": "iid",
+    "case_0112": "ood_stress",
+    "case_0043": "iid",
+    "case_0092": "ood_stress",
+    "case_0003": "iid",
+    "case_0020": "ood_stress",
+    "case_0024": "iid",
+    "case_0038": "ood_stress",
+    "case_0086": "ood_stress",
+    "case_0039": "ood_stress",
+    "case_0089": "ood_stress",
+    "case_0076": "ood_stress",
+    "case_0022": "ood_scale",
+    "case_0053": "ood_stress",
+    "case_0002": "iid",
+    "case_0099": "ood_stress",
+    "case_0028": "iid",
+    "case_0019": "iid",
+    "case_0108": "iid",
+    "case_0065": "ood_stress",
+    "case_0075": "iid",
+    "case_0068": "iid",
+    "case_0114": "iid",
+    "case_0066": "iid",
+    "case_0073": "iid",
+    "case_0001": "iid",
+    "case_0031": "iid",
+    "case_0118": "ood_stress",
+    "case_0034": "ood_stress",
+    "case_0055": "iid",
+    "case_0057": "ood_stress",
+    "case_0042": "iid",
+    "case_0104": "ood_stress",
+    "case_0100": "ood_stress",
+    "case_0084": "iid",
+    "case_0033": "iid",
+    "case_0088": "ood_stress",
+    "case_0115": "iid",
+    "case_0095": "ood_scale",
+    "case_0081": "ood_stress",
+    "case_0072": "iid",
+    "case_0103": "ood_stress",
+    "case_0077": "ood_stress",
+    "case_0101": "ood_stress",
+    "case_0011": "iid",
+    "case_0036": "ood_stress",
+    "case_0074": "iid",
+    "case_0058": "iid",
+    "case_0060": "ood_stress",
+    "case_0071": "ood_stress"
+  },
+  "mismatch_count": 32,
+  "mismatches": [
+    {
+      "case": "case_0018",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0067",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0044",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0012",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0097",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0052",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0010",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0117",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_scale"
+    },
+    {
+      "case": "case_0091",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0112",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0039",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0089",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0022",
+      "historical_baseline_distribution": "ood_scale",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0053",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0002",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0099",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0028",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0108",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_scale"
+    },
+    {
+      "case": "case_0114",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0001",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0118",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0055",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0042",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0104",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0100",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0084",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0088",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0115",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0103",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0077",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    },
+    {
+      "case": "case_0058",
+      "historical_baseline_distribution": "iid",
+      "dataset_distribution": "ood_stress"
+    },
+    {
+      "case": "case_0071",
+      "historical_baseline_distribution": "ood_stress",
+      "dataset_distribution": "iid"
+    }
+  ],
+  "source_evaluation": "/data/fanyx/HKBZ-environment/result/hkbz_train_logs/stage1_matched_iga_validation120_20260920_r1/inputs/aligned_validation60.json",
+  "source_evaluation_sha256": "ff1a9f9f63fea5e3104fb3fdea8f22a116267507e71b7906f275f911ed1e5821",
+  "postprocessor_sha256": "a6c19c32bd54f1ae9b3d3322f8666a35442a9cbede2fcdab9133b339f0328c92"
+}
