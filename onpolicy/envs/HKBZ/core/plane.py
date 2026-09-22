@@ -115,12 +115,19 @@ class Plane:
             parallel = plane.get_parallel_jobs('ZY05')  # 获取可并行作业
         '''
         parallel_jobs = []
+        # Reserve the selected anchor before admitting other jobs. Keep the
+        # original candidate/output order, including the anchor's position.
+        admitted = [job_code]
         for job in self.get_avail_jobs(self.site):
             if job == job_code:
                 parallel_jobs.append(job)
-            # 允许选择的并行作业：与所选作业不互斥，并且当前作业时间大于等于其他作业时间
-            elif job_code not in self.jobs[job].exclusive and self.jobs[job_code].time >= self.jobs[job].time:
+            elif self.jobs[job_code].time >= self.jobs[job].time and all(
+                other not in self.jobs[job].exclusive
+                and job not in self.jobs[other].exclusive
+                for other in admitted
+            ):
                 parallel_jobs.append(job)
+                admitted.append(job)
         return parallel_jobs
     
     def choose_job(self, job_code):
